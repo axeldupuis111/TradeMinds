@@ -77,6 +77,29 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
   };
 }
 
+/**
+ * REFUSE UN APPEL FACTURÉ À UN COMPTE EN DÉMONSTRATION.
+ *
+ * ⚠️⚠️ LE GARDE VIT SUR LA ROUTE, PAS DANS L'ÉCRAN. La règle « le mode
+ * démonstration sert des textes pré-écrits, il ne dépense rien » était écrite
+ * dans DEUX composants sur douze appelants : la page Analyse et le coach. Les
+ * dix autres écrans (débrief de séance, plan hebdo, bilan mensuel, résumé du
+ * jour, lecture de stratégie, compilation, verdict de projection, objectifs,
+ * défis de communauté, calendrier éco) appelaient le modèle pour de vrai,
+ * depuis un compte dont toutes les données sont fictives.
+ *
+ * ⚠️ CE QUE ÇA COÛTE : un appel au modèle se paie, et l'analyse visuelle est
+ * la plus chère du produit. Trois comptes sont en démonstration en production.
+ *
+ * ⚠️ ET LE COÛT N'EST PAS LE PIRE : le modèle rendait un jugement argumenté
+ * sur des trades inventés, présenté exactement comme un vrai. Un garde placé
+ * dans un composant ne protège que ce composant.
+ */
+export function refusSiDemo(auth: AuthResult): NextResponse | null {
+  if (!auth.demoMode) return null;
+  return NextResponse.json({ code: "ai_err_demo_mode", error: "demo_mode" }, { status: 409 });
+}
+
 interface QuotaCheckParams {
   userId: string;
   plan: PlanType;

@@ -638,7 +638,7 @@ const dict: Record<string, string> = {
   "api_error_monthly_limit": "Has alcanzado tu límite de mensajes para este mes. Se reinicia el día 1. Escríbenos si necesitas más, podemos ajustarlo en tu cuenta.",
   "analyze_err_unavailable": "El servicio de análisis no está disponible por ahora. Escríbenos si se alarga.",
   "analyze_err_no_trades": "No hay operaciones que analizar.",
-  "analyze_err_demo_mode": "En modo demostración, el análisis mostrado es un ejemplo: no se ejecuta ningún análisis real.",
+  "ai_err_demo_mode": "En modo demostración, los textos mostrados son ejemplos: no se ejecuta ningún análisis real.",
   "analyze_err_truncated": "El análisis se cortó antes de terminar. Vuelve a lanzarlo: no se te descontó el crédito.",
   "analyze_err_unexpected": "Respuesta inesperada de la IA. Vuelve a lanzar el análisis: no se te descontó el crédito.",
   "analyze_err_malformed": "La respuesta de la IA llegó truncada. Vuelve a lanzar el análisis: no se te descontó el crédito.",

@@ -212,7 +212,7 @@ function nomDuFiltre(type: string, t: (c: string) => string): string {
 
 export default function BacktestPage() {
   const { t, lang } = useLanguage();
-  const { plan: abonnement, loading: abonnementEnCours } = usePlan();
+  const { plan: abonnement, demoMode, loading: abonnementEnCours } = usePlan();
   const supabase = createClient();
   const estPremium = abonnement === "premium";
 
@@ -627,6 +627,9 @@ export default function BacktestPage() {
   const compiler = useCallback(async () => {
     const strat = strategies.find((s) => s.id === strategieId);
     if (!strat?.raw_text) return;
+    // ⚠️ Compte de démonstration : la route refuse (`refusSiDemo`), et un
+    // refus muet laisserait un bouton mort. On le dit ici, avant l'appel.
+    if (demoMode) { setCompilation("erreur"); setCompilationMsg(tr("ai_err_demo_mode")); return; }
     setCompilation("encours");
     setCompilationMsg(null);
     try {
@@ -770,7 +773,7 @@ export default function BacktestPage() {
       setCompilation("erreur");
       setCompilationMsg(tr("bt_compil_error"));
     }
-  }, [strategies, strategieId, code, fuseau, instrument, lang, plan, tr]);
+  }, [strategies, strategieId, code, fuseau, instrument, lang, plan, tr, demoMode]);
 
   /**
    * UN SEUL LANCEMENT, DES MESURES QUI S'AJOUTENT.

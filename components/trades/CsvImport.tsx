@@ -178,7 +178,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export default function CsvImport({ strategyId, onImported }: Props) {
   const { t, lang } = useLanguage();
-  const { plan, loading: planLoading } = usePlan();
+  const { plan, demoMode, loading: planLoading } = usePlan();
   const [preview, setPreview] = useState<ParsedTrade[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -456,8 +456,17 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       setSelectedChallengeId(null);
       onImported();
 
+      /**
+       * ⚠️⚠️ CET ÉCRAN FAISAIT PAYER UN COMPTE DE DÉMONSTRATION. La page
+       * Analyse sort avant d'appeler le modèle quand le compte est en démo,
+       * avec cette raison écrite : « cette table alimente le classement public,
+       * une ligne démo y ferait entrer un compte fictif dans le vrai
+       * classement ». Ici, l'import déclenchait la MÊME analyse, sans garde :
+       * deux appels au modèle partaient (résumé du jour et analyse complète),
+       * et l'analyse écrivait un `session_reviews` noté sur des trades inventés.
+       */
       // Generate daily summary for Plus
-      if (plan === "plus" || plan === "premium") {
+      if (!demoMode && (plan === "plus" || plan === "premium")) {
         setSummaryLoading(true);
         try {
           const { data: strat } = await supabase.from("strategies").select("name").eq("user_id", user.id).limit(1).single();

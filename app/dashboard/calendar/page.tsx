@@ -26,6 +26,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarClock, CalendarDays, ChevronDown, Filter, Sparkles, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
+import NoteDeDemonstration from "@/components/NoteDeDemonstration";
+import { usePlan } from "@/lib/PlanContext";
 
 type EventRow = EconomicEvent & { id: string };
 
@@ -92,11 +94,12 @@ function surprise(ev: EconomicEvent): "up" | "down" | null {
 
 function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
   const { t, lang } = useLanguage();
+  const { demoMode } = usePlan();
   const glossaryLang = lang as GlossaryLang;
   const reducedMotion = useReducedMotion();
 
   const [entry, setEntry] = useState<GlossaryEntry | null>(null);
-  const [source, setSource] = useState<"glossary" | "ai" | null>(null);
+  const [source, setSource] = useState<"glossary" | "ai" | "demo" | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBeginner, setShowBeginner] = useState(false);
 
@@ -110,6 +113,15 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
     if (curated) {
       setEntry(curated);
       setSource("glossary");
+      setLoading(false);
+      return;
+    }
+
+    // ⚠️ Compte de démonstration : aucun appel au modèle (la route refuse).
+    // Le glossaire ci-dessus, lui, reste servi : il ne coûte rien.
+    if (demoMode) {
+      setEntry(null);
+      setSource("demo");
       setLoading(false);
       return;
     }
@@ -137,7 +149,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
       .finally(() => { if (alive) setLoading(false); });
 
     return () => { alive = false; };
-  }, [ev.id, glossaryLang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ev.id, glossaryLang, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const time = new Date(ev.event_time).toLocaleString(langueCourante(), {
     weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
@@ -246,6 +258,8 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
                 </p>
               )}
             </div>
+          ) : source === "demo" ? (
+            <NoteDeDemonstration />
           ) : (
             <p className="text-sm text-foreground-muted">{t("cal_no_explanation")}</p>
           )}

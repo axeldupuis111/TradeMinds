@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import {
   indicatorId,
@@ -56,6 +56,8 @@ function serviceClient() {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
   // 15/j : très au-delà de l'usage réel, mais borne le pire cas de coût IA
   // (audit rentabilité 2026-07-03 : les caps anti-abus sont aussi des caps de déficit).
   const limited = await rateLimitAi(auth.userId, "calendar-explain", 15, auth.timezone);

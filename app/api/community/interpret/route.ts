@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import {
   COMMUNITY_METRICS,
@@ -117,6 +117,8 @@ Si le coach ne précise pas de dates, propose une semaine qui commence aujourd'h
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
 
   // Réservé à l'animateur d'une communauté active : c'est lui seul qui pourra
   // publier le brouillon, inutile d'ouvrir l'appel au reste des comptes.

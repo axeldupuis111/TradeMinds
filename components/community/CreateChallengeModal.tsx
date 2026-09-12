@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles, X } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import {
   DESC_MAX,
   TITLE_MAX,
@@ -69,6 +70,7 @@ export default function CreateChallengeModal({
   onCreated: () => void | Promise<void>;
 }) {
   const { t } = useLanguage();
+  const { demoMode } = usePlan();
   const editing = !!challenge;
   // Un défi lancé fige sa mesure, sa cible et sa date de début : le classement
   // est déjà en cours, la règle ne peut plus changer rétroactivement.
@@ -114,6 +116,9 @@ export default function CreateChallengeModal({
   async function askAi() {
     const text = idea.trim();
     if (!text) return;
+    // ⚠️ Compte de démonstration : la route refuse l'appel facturé. On le dit
+    // ici plutôt que de laisser le bouton tourner pour rien.
+    if (demoMode) { setAiError(t("ai_err_demo_mode")); return; }
     setThinking(true);
     setAiError(null);
     try {

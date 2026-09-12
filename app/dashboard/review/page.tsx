@@ -236,6 +236,9 @@ export default function MonthlyReviewPage() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 429) setAiErreur(t(d?.scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
+        // ⚠️ Compte de démonstration : la route refuse l'appel facturé. Sans ce
+        // cas, le trader lisait « la génération a échoué », ce qui est faux.
+        else if (res.status === 409) setAiErreur(t("ai_err_demo_mode"));
         else if (res.status === 403) setAiErreur(t("api_error_forbidden"));
         else setAiErreur(t("review_generate_failed"));
         return;

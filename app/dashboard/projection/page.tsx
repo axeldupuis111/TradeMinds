@@ -113,7 +113,7 @@ const COLONNES_STRATEGIE =
 
 export default function ProjectionPage() {
   const { t, lang } = useLanguage();
-  const { plan, loading: abonnementEnCours } = usePlan();
+  const { plan, demoMode, loading: abonnementEnCours } = usePlan();
   const { selectedAccount } = useActiveAccount();
   const c = useChartColors();
   const supabase = createClient();
@@ -328,6 +328,9 @@ export default function ProjectionPage() {
   }, [strategieId, annees]);
 
   async function demanderAvis() {
+    // ⚠️ Compte de démonstration : la route refuse (`refusSiDemo`), et un
+    // refus muet laisserait un bouton mort. On le dit ici, avant l'appel.
+    if (demoMode) { setAvisErreur(t("ai_err_demo_mode")); return; }
     setAvisEnCours(true);
     setAvisErreur(null);
     try {

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { sansCommentaires } from "./sans-commentaires";
@@ -40,24 +40,70 @@ describe("rien de fictif au classement", () => {
    * ⚠️ LA PORTE EST SUR LA ROUTE. On vérifie qu'elle lit bien `demo_mode` et
    * qu'elle REFUSE, plutôt que de se contenter de le lire.
    */
-  it("refuse une analyse réelle à un compte en démonstration", () => {
-    const src = source("app", "api", "analyze", "route.ts");
+  /**
+   * ⚠️⚠️ TOUTES LES ROUTES QUI APPELLENT LE MODÈLE, PAS UNE SEULE. La règle
+   * était écrite dans DEUX composants sur douze appelants : dix écrans faisaient
+   * partir un appel facturé depuis un compte dont toutes les données sont
+   * fictives, et affichaient le jugement du modèle comme s'il portait sur de
+   * vrais trades.
+   */
+  it("refuse un appel facturé à un compte en démonstration, sur chaque route", () => {
     /**
      * ⚠️⚠️ MA PREMIÈRE VERSION SE SATISFAISAIT ELLE-MÊME : elle cherchait
      * « demo_mode », qui est une SOUS-CHAÎNE de « analyze_err_demo_mode ». Elle
-     * serait restée verte avec le garde entièrement retiré, pourvu que le nom
-     * de la clé d'erreur survive. On vérifie donc le mécanisme, pas un mot.
+     * serait restée verte avec le garde entièrement retiré. On vérifie le
+     * MÉCANISME : la colonne lue, le drapeau exposé, la porte appelée.
      */
     const auth = readFileSync(join(process.cwd(), "lib", "api-auth.ts"), "utf8");
-    expect(auth, "requireAuth ne lit pas la colonne").toContain('"plan, plan_expires_at, timezone, demo_mode"');
+    expect(auth, "requireAuth ne lit pas la colonne").toContain(
+      '"plan, plan_expires_at, timezone, demo_mode"',
+    );
     expect(auth, "requireAuth n'expose pas le drapeau").toMatch(/demoMode:/);
-    expect(src, "la route n'interroge pas le drapeau").toMatch(/auth\.demoMode/);
-    expect(src, "la route ne refuse pas").toContain("analyze_err_demo_mode");
-    // Le refus doit précéder l'appel au modèle, sinon il ne coûte rien de moins.
-    const refus = src.indexOf("analyze_err_demo_mode");
-    const appel = src.indexOf("anthropic.com");
-    expect(refus, "le refus n'est pas posé avant l'appel au modèle").toBeGreaterThan(-1);
-    if (appel > -1) expect(refus).toBeLessThan(appel);
+    expect(auth, "la porte ne refuse pas").toMatch(/ai_err_demo_mode/);
+    expect(auth, "la porte ne rend pas un refus").toMatch(/status:\s*409/);
+
+    /** Les routes qui appellent le modèle. Le cron macro n'a pas d'utilisateur. */
+    const AVEC_MODELE = [
+      "analyze", "chat-coach", "session-debrief", "weekly-plan", "monthly-review",
+      "daily-summary", "projection-verdict", "parse-strategy", "compiler-strategie",
+      "goals/interpret", "community/interpret", "economic-calendar/explain",
+    ];
+    const sansGarde: string[] = [];
+    for (const route of AVEC_MODELE) {
+      const src = source("app", "api", ...route.split("/"), "route.ts");
+      if (!/refusSiDemo\(auth\)/.test(src)) sansGarde.push(route);
+    }
+    expect(
+      sansGarde,
+      "routes qui font payer un compte de démonstration : " + sansGarde.join(", "),
+    ).toEqual([]);
+
+    /**
+     * ⚠️ ET LA LISTE NE DOIT PAS PRENDRE DU RETARD SUR LE CODE : toute route
+     * qui lit la clé du modèle doit figurer ci-dessus (ou être le cron macro,
+     * qui n'a pas d'utilisateur à qui appliquer un mode démonstration).
+     */
+    const CRON_SANS_UTILISATEUR = ["macro-analysis/generate"];
+    const connues = new Set([...AVEC_MODELE, ...CRON_SANS_UTILISATEUR]);
+    const oubliees: string[] = [];
+    function parcourir(dossier: string, prefixe = ""): void {
+      for (const entree of readdirSync(dossier)) {
+        const chemin = join(dossier, entree);
+        if (statSync(chemin).isDirectory()) {
+          parcourir(chemin, prefixe ? `${prefixe}/${entree}` : entree);
+        } else if (entree === "route.ts") {
+          const src = readFileSync(chemin, "utf8");
+          if (/ANTHROPIC_API_KEY|CLAUDE_API_KEY|anthropic\.com/.test(src) && !connues.has(prefixe)) {
+            oubliees.push(prefixe);
+          }
+        }
+      }
+    }
+    parcourir(join(process.cwd(), "app", "api"));
+    expect(
+      oubliees,
+      "routes qui appellent le modèle sans être listées ici : " + oubliees.join(", "),
+    ).toEqual([]);
   });
 
   /**
@@ -102,6 +148,34 @@ describe("rien de fictif au classement", () => {
       fautes,
       "classements qui comptent des trades fictifs : " + fautes.join(" | "),
     ).toEqual([]);
+  });
+
+  /**
+   * ⚠️⚠️ REFUSER SANS LE DIRE EST UNE AUTRE FAÇON DE MENTIR. La porte est sur
+   * la route, mais un refus muet laisse à l'écran un bouton qui tourne pour
+   * rien ou une carte vide. Chaque écran qui déclenchait un appel facturé doit
+   * donc connaître le mode démonstration : soit il l'annonce, soit il ne
+   * déclenche pas.
+   */
+  it("dit au trader pourquoi rien ne se passe", () => {
+    const ECRANS = [
+      ["app", "dashboard", "session", "page.tsx"],
+      ["app", "dashboard", "review", "page.tsx"],
+      ["app", "dashboard", "strategy", "page.tsx"],
+      ["app", "dashboard", "projection", "page.tsx"],
+      ["app", "dashboard", "backtest", "page.tsx"],
+      ["app", "dashboard", "goals", "page.tsx"],
+      ["app", "dashboard", "calendar", "page.tsx"],
+      ["components", "dashboard", "WeeklyPlanCard.tsx"],
+      ["components", "community", "CreateChallengeModal.tsx"],
+      ["components", "trades", "CsvImport.tsx"],
+    ];
+    const muets: string[] = [];
+    for (const chemin of ECRANS) {
+      const src = source(...chemin);
+      if (!/\bdemoMode\b/.test(src)) muets.push(chemin.slice(-2).join("/"));
+    }
+    expect(muets, "écrans qui ignorent le mode démonstration : " + muets.join(", ")).toEqual([]);
   });
 
   /**

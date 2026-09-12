@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 import { startOfBrowserDayIso } from "@/lib/timezone";
+import { usePlan } from "@/lib/PlanContext";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -154,6 +155,7 @@ function AccountSelector({
 
 export default function SessionPage() {
   const { t, lang } = useLanguage();
+  const { demoMode } = usePlan();
   const quotesForLang = dailyQuotes[lang] ?? dailyQuotes.en;
   const dailyQuote = quotesForLang[new Date().getDay() % quotesForLang.length];
   const supabase = createClient();
@@ -514,6 +516,11 @@ export default function SessionPage() {
     setPaused(false);
     setPausedAt(null);
     setEnding(false);
+
+    // ⚠️ Compte de démonstration : pas de débrief IA. La route refuse l'appel
+    // (`refusSiDemo`) et la modale n'aurait affiché qu'un état d'erreur, pour
+    // une séance dont tous les trades sont fictifs de toute façon.
+    if (demoMode) return;
 
     // Débrief coach IA — la rétrospective à chaud de la session
     setDebriefOpen(true);

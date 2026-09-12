@@ -638,7 +638,7 @@ const dict: Record<string, string> = {
   "api_error_monthly_limit": "Du hast dein Nachrichtenlimit für diesen Monat erreicht. Es wird am 1. zurückgesetzt. Schreib uns, wenn du mehr brauchst, wir können es für dein Konto anpassen.",
   "analyze_err_unavailable": "Der Analysedienst ist vorübergehend nicht verfügbar. Schreib uns, wenn es länger dauert.",
   "analyze_err_no_trades": "Keine Trades zum Analysieren.",
-  "analyze_err_demo_mode": "Im Demonstrationsmodus ist die angezeigte Analyse ein Beispiel: Es wird keine echte Analyse ausgeführt.",
+  "ai_err_demo_mode": "Im Demonstrationsmodus sind die angezeigten Texte Beispiele: Es wird keine echte Analyse ausgeführt.",
   "analyze_err_truncated": "Die Analyse wurde vorzeitig abgebrochen. Starte sie neu: dein Guthaben wurde nicht belastet.",
   "analyze_err_unexpected": "Unerwartete Antwort der KI. Starte die Analyse neu: dein Guthaben wurde nicht belastet.",
   "analyze_err_malformed": "Die Antwort der KI kam abgeschnitten an. Starte die Analyse neu: dein Guthaben wurde nicht belastet.",

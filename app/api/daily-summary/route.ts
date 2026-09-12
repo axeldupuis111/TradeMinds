@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { stripLongDashes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { DEFAULT_CURRENCY, isSupportedCurrency, money } from "@/lib/account-currency";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
@@ -27,6 +27,8 @@ export async function POST(request: Request) {
     // ── 1. Auth + plan + anti-abus ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
+    const refus = refusSiDemo(auth);
+    if (refus) return refus;
     // Le résumé du jour est annoncé « Plus et Premium » dans la matrice des
     // plans, mais le verrou ne vivait QUE côté client (CsvImport n'appelle la
     // route que pour un plan payant). Un compte gratuit qui appelait la route

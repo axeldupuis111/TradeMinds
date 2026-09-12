@@ -638,7 +638,7 @@ const dict: Record<string, string> = {
   "api_error_monthly_limit": "You've reached your message limit for this month. It resets on the 1st. Write to us if you need more, we can adjust it on your account.",
   "analyze_err_unavailable": "The analysis service is temporarily unavailable. Write to us if it lasts.",
   "analyze_err_no_trades": "No trades to analyse.",
-  "analyze_err_demo_mode": "In demonstration mode the analysis shown is an example: no real analysis is run.",
+  "ai_err_demo_mode": "In demonstration mode the texts shown are examples: no real analysis is run.",
   "analyze_err_truncated": "The analysis was cut short. Run it again: your credit was not used.",
   "analyze_err_unexpected": "Unexpected reply from the AI. Run the analysis again: your credit was not used.",
   "analyze_err_malformed": "The AI's reply arrived truncated. Run the analysis again: your credit was not used.",

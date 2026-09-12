@@ -320,7 +320,7 @@ export default function GoalsPage() {
   const { t } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
   const displayCurrency = useDisplayCurrency();
-  const { plan, loading: planLoading } = usePlan();
+  const { plan, demoMode, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -508,19 +508,38 @@ export default function GoalsPage() {
     return true;
   }
 
+  /**
+   * Demande à l'IA si un objectif écrit à la main est mesurable.
+   *
+   * ⚠️ Un refus, une panne réseau ou un corps illisible rendent `null`, et
+   * l'appelant retombe alors sur l'objectif à cocher : c'est le repli prévu,
+   * pas un échec à signaler.
+   *
+   * ⚠️ Compte de démonstration : aucun appel. La route le refuserait
+   * (`refusSiDemo`), et l'objectif se crée très bien en mode manuel.
+   */
+  async function interpreterEnObjectifMesurable(
+    titre: string,
+  ): Promise<{ trackable?: boolean; metric?: Metric; target?: number } | null> {
+    if (demoMode) return null;
+    const res = await fetch("/api/goals/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: titre, period: customPeriod }),
+    });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  }
+
   async function addCustomGoal() {
     const title = customText.trim();
     if (!title) return;
     setBusy(true);
     try {
       // 1. L'IA tente de transformer l'objectif écrit en objectif mesurable (auto-suivi).
-      const res = await fetch("/api/goals/interpret", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: title, period: customPeriod }),
-      });
-      const data = await res.json().catch(() => ({ trackable: false }));
+      const data = await interpreterEnObjectifMesurable(title);
       let ecrit: boolean;
-      if (res.ok && data.trackable && data.metric) {
+      if (data?.trackable && data.metric) {
         // 2a. Mesurable → objectif suivi automatiquement.
         ecrit = await addMetricGoal(data.metric, Number(data.target), customPeriod);
         if (ecrit) setNotice("auto");

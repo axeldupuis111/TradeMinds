@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { isoWeekKey } from "@/lib/community-challenges";
 
@@ -35,6 +35,8 @@ function net(t: TradeRow): number { return t.pnl + (t.commission || 0) + (t.swap
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
   if (auth.plan !== "plus" && auth.plan !== "premium") {
     return NextResponse.json({ locked: true });
   }

@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 
 // A strategy description is at most a few paragraphs; cap input to keep token
@@ -13,6 +13,8 @@ export async function POST(request: Request) {
     // Server-side auth (don't rely on middleware alone) + anti-abuse rate limit.
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
+    const refus = refusSiDemo(auth);
+    if (refus) return refus;
     // Free n'a qu'une seule stratégie : 3 (ré)analyses/jour suffisent largement
     // et bornent le pire cas d'abus ; les plans payants gardent le cap large.
     const limited = await rateLimitAi(auth.userId, "parse-strategy", auth.plan === "free" ? 3 : 10, auth.timezone);

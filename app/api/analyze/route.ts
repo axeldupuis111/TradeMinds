@@ -20,7 +20,7 @@ import { logAiCost } from "@/lib/ai-cost-log";
 import { computeDisciplineScore, type Violation } from "@/lib/discipline-score";
 import { calculatePips, getTradeResult } from "@/lib/pips";
 import { localDateKey } from "@/lib/timezone";
-import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { appendSnapshot, parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
 import type { PlanType } from "@/lib/PlanContext";
@@ -121,9 +121,8 @@ export async function POST(request: Request) {
      * ne protège que ce composant, et c'est précisément ce qui vient
      * d'arriver. La porte est celle que tout le monde doit franchir.
      */
-    if (auth.demoMode) {
-      return NextResponse.json({ code: "analyze_err_demo_mode" }, { status: 409 });
-    }
+    const refus = refusSiDemo(auth);
+    if (refus) return refus;
 
     // ── 2. API key ──
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;

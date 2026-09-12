@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { logAiCost } from "@/lib/ai-cost-log";
 
@@ -100,6 +100,8 @@ function nombre(v: unknown, defaut = 0): number {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
 
   // Premium seulement, comme la page. Le `locked` laisse l'interface proposer
   // la montée en gamme au lieu d'afficher une erreur.

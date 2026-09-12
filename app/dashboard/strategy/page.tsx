@@ -72,7 +72,7 @@ export default function StrategyPage() {
   const { t, lang } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
   const displayCurrency = useDisplayCurrency();
-  const { maxStrategies, loading: planLoading } = usePlan();
+  const { maxStrategies, demoMode, loading: planLoading } = usePlan();
   const { selectedAccount } = useActiveAccount();
   const supabase = createClient();
 
@@ -350,6 +350,9 @@ export default function StrategyPage() {
 
   async function handleAnalyze() {
     if (!rawText.trim()) { showToast("error", t("strategy_write_first")); return; }
+    // ⚠️ Compte de démonstration : la route refuse (`refusSiDemo`), et un
+    // refus muet laisserait un bouton mort. On le dit ici, avant l'appel.
+    if (demoMode) { showToast("error", t("ai_err_demo_mode")); return; }
     setAnalyzing(true);
     try {
       const res = await fetch("/api/parse-strategy", {

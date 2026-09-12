@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { logAiCost } from "@/lib/ai-cost-log";
 import { compilerDepuisModele } from "@/lib/backtest/compilation";
@@ -234,6 +234,8 @@ Reponds STRICTEMENT en JSON, sans texte autour :
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
   if (auth.plan !== "premium") return NextResponse.json({ locked: true });
 
   const corps = (await req.json().catch(() => ({}))) as CorpsRequete;

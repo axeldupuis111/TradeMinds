@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { localDateKey } from "@/lib/timezone";
-import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { appendCommitment, parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
 import { createClient } from "@supabase/supabase-js";
@@ -118,6 +118,8 @@ function staticDebrief(trades: TradeRow[], lang: string): DebriefPayload {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
   const { userId, plan } = auth;
 
   let body: { sessionId?: string; language?: string };

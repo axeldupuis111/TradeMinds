@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { computeTradeStats, renderStatsBlock, type InsightTrade } from "@/lib/analysis-insights";
 import { logAiCost, sumUsage, type AiUsage } from "@/lib/ai-cost-log";
-import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
+import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { addDaysToDateKey, localDateKey } from "@/lib/timezone";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
@@ -114,6 +114,8 @@ export async function POST(request: Request) {
     // ── 1. Auth ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
+    const refus = refusSiDemo(auth);
+    if (refus) return refus;
     const { userId, plan, timezone } = auth;
 
     // ── 2. API key ──

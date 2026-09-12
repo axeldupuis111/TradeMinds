@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 import { Sparkles, Target, Lock } from "lucide-react";
+import NoteDeDemonstration from "@/components/NoteDeDemonstration";
+import { usePlan } from "@/lib/PlanContext";
 
 interface WeeklyPlan {
   headline: string;
@@ -17,12 +19,17 @@ interface WeeklyPlan {
  */
 export default function WeeklyPlanCard() {
   const { t, lang } = useLanguage();
+  const { demoMode } = usePlan();
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
 
   useEffect(() => {
     let alive = true;
+    // ⚠️ Compte de démonstration : aucun appel au modèle. La route refuse de
+    // toute façon (`refusSiDemo`) ; sans ce retour, la carte tournait puis
+    // restait vide, sans dire pourquoi.
+    if (demoMode) { setLoading(false); return; }
     setLoading(true);
     fetch("/api/weekly-plan", {
       method: "POST",
@@ -38,7 +45,7 @@ export default function WeeklyPlanCard() {
       .catch(() => { if (alive) setPlan(null); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [lang]);
+  }, [lang, demoMode]);
 
   const header = (
     <div className="flex items-center gap-2 mb-3">
@@ -49,6 +56,15 @@ export default function WeeklyPlanCard() {
       </div>
     </div>
   );
+
+  if (demoMode) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        {header}
+        <NoteDeDemonstration />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
