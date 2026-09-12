@@ -127,6 +127,10 @@ const DETECT_PATTERNS: Record<string, string[]> = {
     "opentime", "openingtime", "opendate", "entrydate", "entrytime",
     "tradetime", "tradingdate", "datetime", "dateutc", "dateandtime",
     "createtime", "heure", "ouverture", "timestamp",
+    // ⚠️ « Order Time » chez OKX et Bitget, « Filled Time » ailleurs : sans eux,
+    // le trade entrait SANS DATE, et le calendrier, les performances par heure
+    // et le bilan mensuel n'avaient rien à en faire.
+    "ordertime", "filledtime", "createdtime", "transactiontime", "executiontime",
     "date",  // low-priority fallback
   ],
   close_time: [
@@ -136,10 +140,16 @@ const DETECT_PATTERNS: Record<string, string[]> = {
   pair: [
     "symbol", "pair", "instrument", "market", "symbole", "paire",
     "ticker", "currencypair", "tradingpair", "asset", "contract",
+    // ⚠️ En dernier, donc de plus faible priorité : « Contracts » désigne le
+    // symbole chez Bybit et la quantité ailleurs. Un en-tête explicite
+    // (« Symbol », « Pair »…) gagne toujours, et `lot_size` récupère la
+    // colonne « Qty » qui l'accompagne systématiquement.
+    "contracts", "futures", "underlying", "coin",
   ],
   direction: [
     "type", "side", "direction", "action", "ordertype", "tradetype",
     "signal", "buyorsell",
+    "closingdirection", "positionside", "orderside", "buysell",
   ],
   lot_size: [
     "volume", "lot", "lots", "contracts", "quantity", "qty",
@@ -157,6 +167,10 @@ const DETECT_PATTERNS: Record<string, string[]> = {
   pnl: [
     "realizedpnl", "realizedprofit", "closedpnl", "netprofit",
     "profit", "pnl", "pl", "gainloss", "result",
+    // ⚠️ « P&L » se normalise en « pl », pas en « pnl » : Bybit écrit
+    // « Closed P&L » et TradingView « Net P&L USDT ». Sans ces formes, leur
+    // colonne de résultat n'était pas trouvée du tout.
+    "closedpl", "realizedpl", "netpl", "realisedpnl", "realisedpl", "profitloss",
   ],
   sl: ["stoploss", "sl"],
   tp: ["takeprofit", "tp", "target"],
@@ -184,9 +198,41 @@ function detectColumns(headers: string[]): ColumnMap {
   const found: Partial<ColumnMap> = {};
   const used = new Set<number>();
 
+  // ── 1re passe : égalité exacte, la seule qui soit une certitude ──────────
   for (const field of Object.keys(DETECT_PATTERNS)) {
     for (const pattern of DETECT_PATTERNS[field]) {
       const idx = normalized.findIndex((h, i) => h === pattern && !used.has(i));
+      if (idx !== -1) {
+        (found as Record<string, number>)[field] = idx;
+        used.add(idx);
+        break;
+      }
+    }
+  }
+
+  /**
+   * ── 2e passe : l'en-tête CONTIENT le motif ──────────────────────────────
+   *
+   * ⚠️⚠️ LES VRAIS EXPORTS PORTENT LEURS UNITÉS DANS L'EN-TÊTE.
+   * « Trade Time(UTC) », « Price USDT », « Net P&L USDT », « Closing
+   * Direction » : aucun de ces titres n'est égal à un motif, et l'égalité
+   * stricte les rendait invisibles. Le fichier partait alors en mappage
+   * manuel, c'est-à-dire que le trader devait désigner ses colonnes à la
+   * main, sur l'écran qui décide s'il reste ou s'il part.
+   *
+   * ⚠️ ELLE NE S'APPLIQUE QU'AUX CHAMPS ENCORE MANQUANTS, et ne prend qu'une
+   * colonne encore libre : tout ce que la 1re passe a reconnu reste
+   * intouché. Une correspondance approximative ne prend jamais la place
+   * d'une correspondance exacte.
+   */
+  for (const field of Object.keys(DETECT_PATTERNS)) {
+    if ((found as Record<string, number>)[field] !== undefined) continue;
+    for (const pattern of DETECT_PATTERNS[field]) {
+      // ⚠️ Motifs d'une ou deux lettres exclus : « pl », « sl », « tp »
+      // apparaissent dans trop de mots pour qu'un « contient » veuille dire
+      // quelque chose (« sl » est dans « slippage »).
+      if (pattern.length <= 2) continue;
+      const idx = normalized.findIndex((h, i) => h.includes(pattern) && !used.has(i));
       if (idx !== -1) {
         (found as Record<string, number>)[field] = idx;
         used.add(idx);
@@ -438,8 +484,28 @@ function parseGeneric(lines: string[]): { trades: ParsedTrade[]; needsMapping?: 
   const tvResult = tryParseTradingView(rawHeaders, rawRows);
   if (tvResult && tvResult.length > 0) return { trades: tvResult };
 
-  // 4. Try simple TradeDiscipline template format
-  const isSimple = headers.some((h) => h === "pnl");
+  /**
+   * 4. Gabarit TradeDiscipline.
+   *
+   * ⚠️⚠️ IL FAUT LA SIGNATURE DU GABARIT, PAS UNE SEULE COLONNE. Ce test était
+   * `headers.some((h) => h === "pnl")` : TOUT export portant une colonne
+   * nommée « PnL » était pris pour notre gabarit. C'est le cas d'OKX, nommé sur
+   * la page d'accueil.
+   *
+   * `parseSimpleRow` lit ensuite des noms de colonnes qui n'existent pas dans
+   * ce fichier (`date`, `pair`, `entry`…) : il rendait donc des trades avec un
+   * P&L, une paire VIDE, aucun prix et aucune date, sans lever `needsMapping`.
+   * Le trader importait, voyait « 12 trades importés », et se retrouvait avec
+   * un journal inexploitable, sans le moindre avertissement. Le mappage manuel
+   * aurait été une bien meilleure réponse, et la détection floue en dessous
+   * sait lire ce fichier correctement.
+   *
+   * Le gabarit distribué par `downloadTemplate()` porte
+   * « Date,Pair,Direction,Lot,Entry,Exit,SL,TP,PnL,Commission,Notes » : on
+   * exige les trois colonnes qui le caractérisent. Tout le reste descend vers
+   * la détection floue, qui est plus capable.
+   */
+  const isSimple = ["pnl", "pair", "date"].every((c) => headers.includes(c));
   if (isSimple) {
     const trades = normalizedRows.map((row) => parseSimpleRow(row)).filter((t): t is ParsedTrade => t !== null);
     if (trades.length > 0) return { trades };
