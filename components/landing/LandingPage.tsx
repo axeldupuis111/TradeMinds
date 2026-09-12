@@ -341,7 +341,7 @@ function HeroParticles() {
    HERO
 ───────────────────────────────────────────── */
 function Hero() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const prefersReduced = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -481,7 +481,7 @@ function Hero() {
         >
           <Magnetic strength={0.4}>
             <Link
-              href="/login"
+              href={localizedHref("/login", lang)}
               /* `border border-transparent` + inline-flex : le bouton secondaire
                  porte une bordure et pas celui-ci, d'où 1,3px d'écart de hauteur
                  et 3px de décalage vertical entre les deux. */
@@ -523,7 +523,7 @@ function Hero() {
 
         {/* Offre fondateur — sous la réassurance pour éviter la juxtaposition avec « gratuit » */}
         <div className="mt-8 mx-auto max-w-2xl">
-          <FoundingBanner href="/login" />
+          <FoundingBanner href={localizedHref("/login", lang)} />
         </div>
 
         {/* AI trust badge */}
@@ -1954,7 +1954,7 @@ function PricingCompareTable({ t }: { t: Traduire }) {
    PRICING
 ───────────────────────────────────────────── */
 function Pricing() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [annual, setAnnual] = useState(false);
 
   const plans = [
@@ -2140,7 +2140,7 @@ function Pricing() {
                 </div>
 
                 <Link
-                  href="/login"
+                  href={localizedHref("/login", lang)}
                   className="mt-7 block w-full py-2.5 rounded-xl font-semibold text-sm text-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
                   style={p.popular ? {
                     background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
@@ -2278,7 +2278,7 @@ function FAQ() {
    FINAL CTA
 ───────────────────────────────────────────── */
 function FinalCTA() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   return (
     <section className="landing-section px-6 border-t relative overflow-hidden" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
@@ -2313,7 +2313,7 @@ function FinalCTA() {
           <div className="mt-10">
             <Magnetic strength={0.45} className="inline-block">
               <Link
-                href="/login"
+                href={localizedHref("/login", lang)}
                 className="btn-primary-shimmer group relative inline-block px-8 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
                 style={{
                   background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
@@ -2428,7 +2428,7 @@ function ScrollProgress() {
    le scroll du hero — boost de conversion mobile.
 ───────────────────────────────────────────── */
 function StickyMobileCTA() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -2461,7 +2461,7 @@ function StickyMobileCTA() {
             }}
           >
             <Link
-              href="/login"
+              href={localizedHref("/login", lang)}
               className="flex-1 text-center px-5 py-3 rounded-xl font-semibold text-sm text-white"
               style={{
                 background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",

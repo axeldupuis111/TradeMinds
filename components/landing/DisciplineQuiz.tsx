@@ -10,6 +10,7 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { localizedHref } from "@/lib/locale-href";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -101,7 +102,7 @@ function ScoreCounter({ target }: { target: number }) {
 }
 
 export default function DisciplineQuiz() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const prefersReduced = useReducedMotion();
   const [step, setStep] = useState(0); // 0..3 questions, 4 = résultat
   const [score, setScore] = useState(0);
@@ -247,7 +248,7 @@ export default function DisciplineQuiz() {
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                     <Link
-                      href="/login"
+                      href={localizedHref("/login", lang)}
                       className="btn-primary-shimmer relative px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
                       style={{
                         background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
