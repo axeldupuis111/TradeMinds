@@ -978,7 +978,15 @@ export default function SessionPage() {
             {/* Strategy checklist link */}
             <div className="mt-4 pt-3 border-t border-border">
               <Link href="/dashboard/trades" className="text-xs text-muted hover:text-accent transition-colors">
-                {strategy ? `Voir checklist technique · ${strategy.name} →` : t("session_ict_link") + " →"}
+                {/* ⚠️⚠️ LA CLÉ TRADUITE NE SERVAIT QUE SUR LA BRANCHE QUE
+                    PERSONNE NE VOIT. Avec une stratégie, c'est-à-dire le cas
+                    normal, ce lien était écrit en français EN DUR : tout
+                    lecteur anglais, espagnol ou allemand lisait « Voir
+                    checklist technique » au milieu de sa page. Sans stratégie,
+                    il était traduit. La règle existait, appliquée au repli. */}
+                {strategy
+                  ? t("session_ict_link_named", { nom: strategy.name }) + " →"
+                  : t("session_ict_link") + " →"}
               </Link>
             </div>
           </section>

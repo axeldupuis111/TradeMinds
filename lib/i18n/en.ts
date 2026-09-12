@@ -1295,6 +1295,7 @@ const dict: Record<string, string> = {
   "session_checklist_desc": "Check every item before starting your session.",
   "session_checklist_subtitle": "Mental preparation before your session",
   "session_ict_link": "See also: Technical checklist",
+  "session_ict_link_named": "See the technical checklist · {nom}",
   "session_empty_checklist_title": "No items checked",
   "session_empty_checklist_body": "You haven't checked any items on your checklist. Are you sure you want to start the session?",
   "session_empty_checklist_cancel": "Stay",
