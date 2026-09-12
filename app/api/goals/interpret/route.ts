@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -53,7 +54,9 @@ Choisis une cible (target) raisonnable si l'utilisateur n'en donne pas. Utilise 
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ trackable: false });
 
-    const parsed = JSON.parse(match[0]) as { trackable?: boolean; metric?: string; comparator?: string; target?: number };
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    const parsed = nettoyerLesTextes(JSON.parse(match[0])) as { trackable?: boolean; metric?: string; comparator?: string; target?: number };
     if (!parsed.trackable) return NextResponse.json({ trackable: false });
 
     // Validation stricte de la sortie IA.

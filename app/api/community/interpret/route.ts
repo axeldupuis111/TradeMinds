@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
@@ -168,7 +169,9 @@ export async function POST(req: Request) {
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ ok: false, reason: "no_metric" });
 
-    const parsed = JSON.parse(match[0]) as AiDraft & { ok?: unknown; reason?: unknown };
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    const parsed = nettoyerLesTextes(JSON.parse(match[0])) as AiDraft & { ok?: unknown; reason?: unknown };
     if (parsed.ok !== true) {
       const reason = parsed.reason === "gain" ? "gain" : "no_metric";
       return NextResponse.json({ ok: false, reason });

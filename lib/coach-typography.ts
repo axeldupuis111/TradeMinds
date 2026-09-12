@@ -27,6 +27,41 @@
  */
 const HORS_LIGNE = "\u0000";
 
+/**
+ * LE MEME NETTOYAGE, SUR TOUTE UNE REPONSE STRUCTUREE.
+ *
+ * ⚠️⚠️ CE FICHIER EXPLIQUE POURQUOI UNE REGLE DE PROMPT NE SUFFIT PAS, et
+ * il n'etait branche que sur le coach. Les DIX AUTRES surfaces qui font ecrire
+ * un modele (l'analyse IA, le debrief de seance, le plan de la semaine, le
+ * resume du jour, le bilan mensuel, le briefing macro, les deux interpreteurs,
+ * les deux lecteurs de fiche, l'explication d'une annonce) rendaient leur texte
+ * tel quel. Mesure a l'ecran : « +394,68 € net sur 3 trades — un signal positif
+ * isole », sur la carte Insights IA du tableau de bord.
+ *
+ * ⚠️ UN SEUL DES ONZE PROMPTS PORTAIT MEME LA CONSIGNE. La regle etait
+ * ecrite, raisonnee, codee, et appliquee a un onzieme de ce qu'elle vise.
+ *
+ * ⚠️ SUR UNE STRUCTURE, PAS SEULEMENT UNE CHAINE : l'analyse rend un objet
+ * a une vingtaine de champs, dont des tableaux d'objets. Nettoyer champ par
+ * champ, c'est en oublier un au prochain champ ajoute.
+ *
+ * ⚠️ AUCUN RISQUE SUR LES IDENTIFIANTS ET LES DATES : on ne touche qu'au
+ * tiret long et au demi-cadratin, jamais au trait d'union. « 2026-09-12 »
+ * traverse intact.
+ */
+export function nettoyerLesTextes<T>(valeur: T): T {
+  if (typeof valeur === "string") return stripLongDashes(valeur) as unknown as T;
+  if (Array.isArray(valeur)) return valeur.map(nettoyerLesTextes) as unknown as T;
+  if (valeur && typeof valeur === "object") {
+    const sortie: Record<string, unknown> = {};
+    for (const [cle, v] of Object.entries(valeur as Record<string, unknown>)) {
+      sortie[cle] = nettoyerLesTextes(v);
+    }
+    return sortie as unknown as T;
+  }
+  return valeur;
+}
+
 /** Remplacement des tirets dans un texte complet. */
 export function stripLongDashes(texte: string): string {
   return (

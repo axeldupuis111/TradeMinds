@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { stripLongDashes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -101,7 +102,9 @@ Réponds UNIQUEMENT avec le résumé, sans titre ni formatage.`;
       return NextResponse.json({ error: "Réponse vide." }, { status: 500 });
     }
 
-    return NextResponse.json({ summary: textBlock.text.trim() });
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    return NextResponse.json({ summary: stripLongDashes(textBlock.text.trim()) });
   } catch (err: unknown) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("Daily summary error:", err);

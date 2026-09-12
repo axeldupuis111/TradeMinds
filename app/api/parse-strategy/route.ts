@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -176,7 +177,9 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
       );
     }
 
-    const parsed = JSON.parse(jsonStr);
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    const parsed = nettoyerLesTextes(JSON.parse(jsonStr));
     return NextResponse.json(parsed);
   } catch (err: unknown) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();

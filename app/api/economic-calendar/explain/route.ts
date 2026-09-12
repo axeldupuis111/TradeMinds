@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
@@ -160,7 +161,9 @@ N'invente JAMAIS de chiffre, de prévision ou de valeur. Décris seulement le r�
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ available: false });
 
-    const parsed = JSON.parse(match[0]) as Partial<Explanation>;
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    const parsed = nettoyerLesTextes(JSON.parse(match[0])) as Partial<Explanation>;
     if (!parsed.whatItIs || !parsed.whyItMoves || !parsed.beginnerNote) {
       return NextResponse.json({ available: false });
     }

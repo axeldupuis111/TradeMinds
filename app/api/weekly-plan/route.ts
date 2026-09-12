@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
@@ -151,7 +152,9 @@ Base les objectifs sur les données ci-dessus quand c'est pertinent (ex. réduir
     const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim();
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ plan: null, reason: "parse_failed" });
-    const parsed = JSON.parse(match[0]) as { headline?: string; focuses?: unknown };
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    const parsed = nettoyerLesTextes(JSON.parse(match[0])) as { headline?: string; focuses?: unknown };
     const focuses = Array.isArray(parsed.focuses) ? parsed.focuses.filter((f): f is string => typeof f === "string").slice(0, 3) : [];
     if (!parsed.headline || focuses.length === 0) return NextResponse.json({ plan: null, reason: "parse_failed" });
 

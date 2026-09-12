@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
@@ -355,7 +356,9 @@ ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le prix se sit
 
     let json: unknown;
     try {
-      json = JSON.parse(trouve[0]);
+      // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+      // une consigne de prompt ne le tient qu'une fois sur deux.
+      json = nettoyerLesTextes(JSON.parse(trouve[0]));
     } catch {
       return NextResponse.json({ plan: null, reason: "parse_failed" });
     }

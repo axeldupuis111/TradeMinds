@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { stripLongDashes } from "@/lib/coach-typography";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { alertCronFailure } from "@/lib/cron-alert";
@@ -153,11 +154,15 @@ function serviceClient() {
 
 /** Concatenate the model's final text blocks (ignoring web_search tool blocks). */
 function textOf(msg: Anthropic.Message): string {
-  return msg.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+  // ⚠️ Le tiret long se retire ici, au point de sortie unique du modele :
+  // le retirer champ par champ plus bas, c'est en oublier un.
+  return stripLongDashes(
+    msg.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim(),
+  );
 }
 
 /** Extract and validate the JSON object from a model response. */

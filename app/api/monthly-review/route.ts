@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -286,7 +287,9 @@ Mois précédent : score ${prev.avgDisciplineScore ?? "N/A"}/100, sessions ${pre
     const msg = await client.messages.create({ model: "claude-haiku-4-5-20251001", max_tokens: 600, messages: [{ role: "user", content: prompt }] });
     const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
     let review: { headline: string; strength: string; improvement: string; focus: string } | null = null;
-    try { const m = raw.match(/\{[\s\S]*\}/); if (m) review = JSON.parse(m[0]); } catch { review = null; }
+    // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
+    // une consigne de prompt ne le tient qu'une fois sur deux.
+    try { const m = raw.match(/\{[\s\S]*\}/); if (m) review = nettoyerLesTextes(JSON.parse(m[0])); } catch { review = null; }
     return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review, rawSummary: review ? null : raw });
   } catch (err) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();
