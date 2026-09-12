@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
-import { alertCronFailure } from "@/lib/cron-alert";
+import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, emailParagraph } from "@/lib/email-template";
@@ -111,6 +111,8 @@ export async function POST(req: Request) {
   }
 
   let sent = 0;
+  let echecs = 0;
+  let tentatives = 0;
   for (const user of users) {
     if (!user.email) continue;
     if (!isReminderDue((user.timezone as string) || "UTC")) continue;
@@ -118,6 +120,7 @@ export async function POST(req: Request) {
     const lang = (user.language as Lang) in REMINDER_COPY ? (user.language as Lang) : "en";
     const copy = REMINDER_COPY[lang];
 
+    tentatives++;
     try {
       await resend.emails.send({
         from: "TradeDiscipline <noreply@tradediscipline.app>",
@@ -126,7 +129,15 @@ export async function POST(req: Request) {
         html: buildEmailHtml(copy, lang),
       });
       sent++;
+      /**
+       * ⚠️⚠️ UN ÉCHEC D'ENVOI NE DOIT PAS RESTER DANS LES LOGS. Si Resend
+       * tombe, cette boucle échoue pour TOUT LE MONDE et le cron répond 200
+       * avec « sent: 0 », ce qui est aussi ce qu'il répond quand il n'avait
+       * personne à prévenir. Les deux sont indiscernables. On compte, et
+       * `alertEnvoisEchoues` crie si aucun envoi n'est passé.
+       */
     } catch (emailErr) {
+      echecs++;
       console.error(`Failed to send to ${user.email}:`, emailErr);
     }
   }
@@ -207,5 +218,7 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ sent, pushed, total: users.length });
+  await alertEnvoisEchoues("send-reminders", echecs, tentatives);
+
+  return NextResponse.json({ sent, echecs, pushed, total: users.length });
 }

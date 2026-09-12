@@ -3,7 +3,7 @@ import { resolveAccountCurrencies, resolveUserCurrency } from "@/lib/account-cur
 import { sumByCurrency } from "@/lib/account-currency";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { alertCronFailure } from "@/lib/cron-alert";
+import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, emailParagraph, statCell, statRow, EMAIL_GREEN, EMAIL_RED } from "@/lib/email-template";
@@ -180,6 +180,8 @@ async function handle(req: Request) {
 
   const now = Date.now();
   let sent = 0;
+  let echecs = 0;
+  let tentatives = 0;
   let skipped = 0;
   const preview: Record<string, unknown>[] = [];
 
@@ -254,6 +256,7 @@ async function handle(req: Request) {
       continue;
     }
 
+    tentatives++;
     try {
       resend ??= new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
@@ -264,13 +267,19 @@ async function handle(req: Request) {
           await resolveUserCurrency(supabase, user.id as string), lang),
       });
       sent++;
+    // ⚠️ Voir lib/cron-alert.ts : un échec d'envoi qui ne sort pas des logs
+    // rend une panne Resend indiscernable d'un cron qui n'avait personne à
+    // prévenir (les deux répondent « sent: 0 »).
     } catch (emailErr) {
+      echecs++;
       console.error(`Failed to send reactivation to ${user.email}:`, emailErr);
     }
   }
 
+  if (!dryRun) await alertEnvoisEchoues("reactivation", echecs, tentatives);
+
   return NextResponse.json(
-    dryRun ? { dryRun: true, wouldSend: preview.length, skipped, preview } : { sent, skipped, total: users.length }
+    dryRun ? { dryRun: true, wouldSend: preview.length, skipped, preview } : { sent, echecs, skipped, total: users.length }
   );
 }
 

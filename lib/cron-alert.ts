@@ -67,6 +67,43 @@ export async function alertAiCeiling(
 }
 
 /**
+ * Alerte quand un cron d'e-mails n'a réussi AUCUN envoi.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * Les trois crons d'e-mails (rappel quotidien, bilan hebdo, réactivation)
+ * attrapaient chaque échec d'envoi dans un `try/catch` par utilisateur qui ne
+ * faisait qu'un `console.error`. Si Resend tombe (clé révoquée, quota, domaine
+ * suspendu), le cron parcourt tout le monde, échoue partout, répond 200 avec
+ * `sent: 0`, et personne n'apprend que plus aucun trader ne reçoit ses e-mails.
+ * `sent: 0` est d'ailleurs aussi ce que répond un cron qui n'avait simplement
+ * personne à prévenir : les deux se ressemblent parfaitement.
+ *
+ * ⚠️ LE SEUIL N'EST PAS ARBITRAIRE, ET C'EST VOULU. Un échec isolé est normal
+ * (adresse morte, boîte pleine) et alerter dessus apprendrait à ignorer
+ * l'alerte. On n'alerte que si TOUTES les tentatives ont échoué, ce qui ne
+ * s'explique que par une panne. Le compte d'échecs, lui, remonte toujours dans
+ * la réponse du cron.
+ */
+export async function alertEnvoisEchoues(
+  cron: string,
+  echecs: number,
+  tentatives: number,
+): Promise<void> {
+  if (echecs === 0 || echecs < tentatives) return;
+  return sendAdminAlert(
+    `envois:${cron}`,
+    `📪 ${cron} : aucun e-mail n'est parti`,
+    `Les ${tentatives} envoi(s) du cron « ${cron} » ont TOUS échoué le ` +
+      `${new Date().toISOString()}.\n\n` +
+      `Un échec isolé serait normal ; zéro réussite ne l'est pas. À vérifier en ` +
+      `priorité : la clé RESEND_API_KEY, le quota du compte Resend, et le statut ` +
+      `du domaine d'envoi.`,
+    `${echecs}/${tentatives} envois en échec`,
+  );
+}
+
+/**
  * Alerte quand un GARDE-FOU n'a pas pu se prononcer.
  *
  * ⚠️⚠️ UNE ALERTE DE RISQUE QUI NE PART PAS RESSEMBLE À « TOUT VA BIEN ». Les
