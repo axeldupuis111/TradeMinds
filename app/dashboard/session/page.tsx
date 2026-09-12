@@ -127,8 +127,16 @@ function AccountSelector({
       <label htmlFor="session-session-account-label" className="text-xs text-muted uppercase tracking-wider shrink-0">
         {t("session_account_label")}
       </label>
+      {/* ⚠️ LA VALEUR AFFICHÉE CORRESPOND TOUJOURS À UNE OPTION RÉELLE. Avec
+          « tous les comptes » en mémoire, `value=""` ne correspond à aucune
+          option et le navigateur affiche la première : le sélecteur montrait
+          alors un compte que le reste de l'écran n'utilisait pas. */}
       <select id="session-session-account-label"
-        value={selectedAccountId ?? ""}
+        value={
+          selectedAccountId && accounts.some((a) => a.id === selectedAccountId)
+            ? selectedAccountId
+            : accounts[0]?.id ?? ""
+        }
         onChange={(e) => setSelectedAccountId(e.target.value)}
         className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
       >
@@ -156,6 +164,32 @@ export default function SessionPage() {
     loading: accountLoading,
   } = useActiveAccount();
   const accountSize = selectedAccount?.account_size ?? 0;
+
+  /**
+   * ⚠️⚠️ ON NE TRADE PAS SUR « TOUS LES COMPTES ». Mesure a l'ecran, une
+   * seance demarree pour de vrai : l'en-tete annoncait « COMPTE ACTIF Tradovate
+   * · DEMO8651651 · 50 000$ » pendant que la carte « P&L vs limite de perte »
+   * ecrivait « +0,00 € » et que le calculateur de position demandait un
+   * « Solde du compte (€) » avec une « valeur du pip (€/lot) ». Trois composants
+   * de cette page lisent le compte choisi ; il valait `null` parce que le
+   * tableau de bord etait reste sur « Tous les comptes », et les trois sont
+   * tombes sur l'euro par defaut.
+   *
+   * ⚠️ L'EN-TETE, LUI, N'EST JAMAIS TOMBE : avec un seul compte actif, il
+   * affiche `accounts[0]` comme un FAIT, sans que ce compte soit selectionne.
+   * D'ou deux reponses a « de quel compte parle-t-on ? » sur le meme ecran, a
+   * huit lignes d'ecart, dont une sur l'outil qui dit combien risquer.
+   *
+   * ⚠️ ON CHOISIT DONC, ET ON LE DIT : « tous les comptes » n'est pas un
+   * etat dans lequel une seance peut commencer. Le choix se propage au reste du
+   * produit, ce qui est coherent avec ce que le trader vient de lire ici.
+   */
+  useEffect(() => {
+    if (accountLoading) return;
+    if (selectedAccount) return;
+    const premier = activeAccounts[0];
+    if (premier) setSelectedAccountId(premier.id);
+  }, [accountLoading, selectedAccount, activeAccounts, setSelectedAccountId]);
 
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [strategy, setStrategy] = useState<Strategy | null>(null);
