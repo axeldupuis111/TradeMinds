@@ -825,7 +825,15 @@ function AccountCard({
 
       {/* Equity curve */}
       <div className="mt-6">
-        <EquityCurve data={stats.equityCurveData} initialBalance={stats.curveBaseline} />
+        {/* ⚠️⚠️ LA DEVISE DU COMPTE, PAS CELLE PAR DÉFAUT. Sans elle,
+            `EquityCurve` retombe sur l'euro : mesuré en production sur un
+            compte Tradovate en dollars, l'axe de la courbe affichait
+            « 50 063€ … 50 748€ » quinze pixels sous un solde écrit
+            « 50 120,64$ ». Deux devises pour le même compte, sur la même
+            carte. Le composant accepte `currency` depuis le début, et
+            `cur` était déjà à portée : la règle était écrite, l'appel ne la
+            passait pas. */}
+        <EquityCurve data={stats.equityCurveData} initialBalance={stats.curveBaseline} currency={cur} />
       </div>
     </div>
   );
