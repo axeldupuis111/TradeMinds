@@ -76,6 +76,9 @@ export default function AdminPage() {
     month: string;
     codes: { code: string; subscriptions: number; activeSubscriptions: number; gross: number; eligible: number; rate: number; tier: string; commission: number }[];
     totals: { gross: number; eligible: number; commission: number };
+    /** Les codes de réseau n'ont pas pu être lus : le relevé peut être en double. */
+    exclusionReseauxRatee?: boolean;
+    exclusionReseauxCause?: string | null;
   } | null>(null);
   const [affLoading, setAffLoading] = useState(false);
   const [affError, setAffError] = useState<string | null>(null);
@@ -1006,6 +1009,21 @@ export default function AdminPage() {
 
           {affLoading && <p className="text-sm text-muted">Chargement depuis Stripe…</p>}
           {affError && <p role="alert" className="text-sm text-loss">{affError}</p>}
+
+          {/*
+            ⚠️ Le relevé peut compter DEUX FOIS les mêmes ventes : faute d'avoir
+            pu lire les codes de réseau, des ventes déjà payées au palier du
+            réseau peuvent réapparaître ici, code par code. On le dit avant le
+            tableau, parce qu'un relevé faux qui a l'air complet est pire qu'un
+            relevé absent.
+          */}
+          {affData?.exclusionReseauxRatee && !affLoading && (
+            <p role="alert" className="text-sm text-loss mb-3">
+              ⚠️ Codes de réseau illisibles{affData.exclusionReseauxCause ? ` (${affData.exclusionReseauxCause})` : ""} :
+              les ventes des collaborateurs de réseau peuvent apparaître ici EN PLUS de l&apos;onglet
+              Réseaux. Ne pas payer sur ce relevé avant de l&apos;avoir rechargé.
+            </p>
+          )}
 
           {affData && !affLoading && !affError && (
             affData.codes.length === 0 ? (

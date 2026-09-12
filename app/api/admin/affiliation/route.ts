@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { tierFor } from "@/lib/partners";
+import { lireExclusionReseaux } from "@/lib/exclusion-reseaux";
 
 /**
  * Affiliation (admin) — commissions influenceur calculées depuis Stripe.
@@ -95,27 +96,11 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── 0. Codes appartenant à un RÉSEAU : à exclure d'ici ────────────────
-    // Un collaborateur de réseau grave lui aussi son code dans
-    // `subscription.metadata.promo_code`. Sans ce filtre, ses ventes
-    // apparaîtraient DEUX fois : ici, code par code et au palier Bronze (un
-    // collaborateur dépasse rarement 10 abonnés à lui seul), et dans l'onglet
-    // Réseaux, agrégées au palier du réseau. Deux écrans, deux montants, pour
-    // le même argent : c'est exactement le genre d'écart qui fait perdre un
-    // mois à comprendre qui a raison.
-    const excluded = new Set<string>();
-    try {
-      const admin = createAdminClient();
-      const { data: networkReps } = await admin
-        .from("partner_reps")
-        .select("code, partners!inner(kind)")
-        .eq("partners.kind", "network");
-      for (const r of networkReps ?? []) excluded.add(String(r.code).toUpperCase());
-    } catch (err) {
-      // Base injoignable : on préfère un relevé complet (avec les réseaux
-      // dedans) à pas de relevé du tout, mais on le dit fort.
-      console.error("[Admin Affiliation] exclusion des réseaux impossible:", err);
-    }
-
+    // Le raisonnement complet est dans lib/exclusion-reseaux.ts, avec le
+    // défaut qu'il corrige : une lecture ratée s'y présentait comme « aucun
+    // réseau », donc comme le cas normal, et faisait payer deux fois.
+    const exclusion = await lireExclusionReseaux(createAdminClient());
+    const excluded = exclusion.codes;
     // ── 1. Abonnements attribués à un code promo ──────────────────────────
     // Volume faible (petit SaaS) : on liste tout et on filtre en mémoire.
     const attributed = new Map<string, { code: string; startDate: number; status: string }>();
@@ -206,6 +191,14 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       month: `${year}-${String(month).padStart(2, "0")}`,
+      /**
+       * ⚠️ Le relevé est peut-être en DOUBLE : faute d'avoir pu lire les
+       * codes de réseau, des ventes déjà comptées dans l'onglet Réseaux
+       * peuvent réapparaître ici. L'écran le dit, parce qu'un relevé faux
+       * qui a l'air complet est pire qu'un relevé absent.
+       */
+      exclusionReseauxRatee: exclusion.lectureRatee,
+      exclusionReseauxCause: exclusion.cause,
       codes,
       totals: {
         gross: codes.reduce((s, c) => s + c.gross, 0),
