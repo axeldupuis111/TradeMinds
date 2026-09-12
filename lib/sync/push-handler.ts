@@ -110,7 +110,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   // Un refus n'est jamais silencieux : le motif part dans la réponse, que l'EA
   // imprime dans son journal. C'est le seul canal de diagnostic dont dispose un
   // utilisateur depuis son terminal MetaTrader.
-  let accountSynced: "ok" | "unknown_account" | "write_failed" | "invalid" | "none" = "none";
+  let accountSynced: "ok" | "unknown_account" | "write_failed" | "read_failed" | "invalid" | "none" = "none";
   let accountError: string | undefined;
 
   if (body.account != null) {
@@ -127,7 +127,9 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
         accountError =
           res.reason === "unknown_account"
             ? `aucun compte ne porte le numero ${snapshot.account} (verifie l'onglet Comptes, le statut du compte n'a pas d'importance)`
-            : "erreur d'enregistrement cote serveur";
+            : res.reason === "read_failed"
+              ? "impossible de lire tes comptes pour l'instant : rien n'a ete ecrit, le prochain envoi reessaiera"
+              : "erreur d'enregistrement cote serveur";
         console.warn(
           `[Push Sync] état de compte non appliqué pour ${userId} (compte ${snapshot.account}) : ${res.reason}`,
         );

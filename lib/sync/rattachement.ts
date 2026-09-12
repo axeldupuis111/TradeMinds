@@ -46,9 +46,17 @@
  */
 export function challengeRattache(
   numeroFourni: string | null | undefined,
-  carte: Map<string, string>,
+  /** `null` : la lecture a échoué, on ne sait pas ce que le trader a déclaré. */
+  carte: Map<string, string> | null,
   challengeActifUnique: string | null,
 ): string | null {
+  /**
+   * ⚠️⚠️ UNE CARTE ILLISIBLE N'EST PAS UNE CARTE VIDE. Sans ce cas, une
+   * panne de lecture se présenterait comme « le trader n'a déclaré aucun
+   * numéro », et rouvrirait la devinette que toute cette fonction ferme.
+   */
+  if (carte === null) return null;
+
   const numero = (numeroFourni ?? "").trim();
 
   // Correspondance exacte : le cas normal, et le seul qui soit une certitude.

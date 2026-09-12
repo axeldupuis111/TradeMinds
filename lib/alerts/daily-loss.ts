@@ -213,15 +213,30 @@ export async function resolveActiveChallengeId(
  * Le repli `resolveActiveChallengeId`, lui, reste limité aux comptes actifs :
  * sans numéro à comparer, il devine, et on ne devine que sur un compte en cours.
  */
+/**
+ * @returns la carte, ou `null` si la LECTURE a échoué.
+ *
+ * ⚠️⚠️ UNE CARTE VIDE ET UNE CARTE ILLISIBLE NE SONT PAS LA MÊME CHOSE. Le
+ * rattachement ne devine que s'il n'a RIEN à comparer, c'est-à-dire si le
+ * trader n'a déclaré aucun numéro de compte. Rendre une carte vide sur une
+ * lecture ratée transformait la panne en « aucun numéro déclaré » et
+ * rouvrait exactement la devinette qu'on venait de fermer : le solde d'un
+ * compte inconnu repartait sur le challenge en cours.
+ */
 export async function getChallengeAccountMap(
   admin: SupabaseClient,
   userId: string,
-): Promise<Map<string, string>> {
-  const { data } = await admin
+): Promise<Map<string, string> | null> {
+  const { data, error } = await admin
     .from("prop_challenges")
     .select("id, account_number, status, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[Sync] lecture des numéros de compte impossible :", error.message);
+    return null;
+  }
 
   // Deux comptes peuvent porter le même numéro : un challenge échoué puis un
   // nouveau lancé sur le même login. L'actif l'emporte, sinon le plus récent.

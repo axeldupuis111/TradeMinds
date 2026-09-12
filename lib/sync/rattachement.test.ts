@@ -46,6 +46,21 @@ describe("le rattachement d'un envoi de robot à un challenge", () => {
     expect(challengeRattache("   ", CARTE, "ch-actif")).toBe("ch-actif");
   });
 
+  it("ne devine RIEN quand la carte n'a pas pu être lue", () => {
+    /**
+     * ⚠️⚠️ L'ANGLE MORT DE LA CORRECTION ELLE-MÊME. La règle se décide sur
+     * « le trader a-t-il déclaré des numéros ? », et une lecture ratée rendait
+     * une carte VIDE : la panne se présentait donc comme « aucun numéro
+     * déclaré » et rouvrait exactement la devinette qu'on venait de fermer.
+     *
+     * Un `null` distinct dit « je ne sais pas », et on ne devine jamais sur
+     * « je ne sais pas ».
+     */
+    expect(challengeRattache("DEMO8651651", null, "ch-actif")).toBeNull();
+    expect(challengeRattache("", null, "ch-actif")).toBeNull();
+    expect(challengeRattache(null, null, "ch-actif")).toBeNull();
+  });
+
   it("ne rattache à rien quand il n'y a ni correspondance ni repli", () => {
     expect(challengeRattache("", new Map(), null)).toBeNull();
     expect(challengeRattache("INCONNU", CARTE, null)).toBeNull();

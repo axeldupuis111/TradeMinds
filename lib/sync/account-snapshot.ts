@@ -12,7 +12,7 @@ import { challengeRattache } from "./rattachement";
 
 export type SnapshotResult =
   | { applied: true; challengeId: string }
-  | { applied: false; reason: "unknown_account" | "write_failed" };
+  | { applied: false; reason: "unknown_account" | "write_failed" | "read_failed" };
 
 /**
  * Écrit l'état du compte sur le challenge actif correspondant au n° reçu.
@@ -31,6 +31,9 @@ export async function applyAccountSnapshot(
   snap: AccountSnapshot,
 ): Promise<SnapshotResult> {
   const accountMap = await getChallengeAccountMap(admin, userId);
+  // La lecture des numéros a échoué : on ne sait pas si ce compte est connu.
+  // Écrire ailleurs serait pire que ne rien écrire, et le motif part au robot.
+  if (accountMap === null) return { applied: false, reason: "read_failed" };
   const challengeId = challengeRattache(
     snap.account,
     accountMap,
