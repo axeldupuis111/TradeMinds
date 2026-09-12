@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FEATURE_MONTHLY_CEILING } from "./ai-ceilings";
 import {
   AI_ROUTES,
   COACH_DEFAULT,
@@ -212,5 +213,45 @@ describe("le modèle économique reste honnête", () => {
     const forfaitUnique = { ...COACH_DEFAULT, sortieOutilTokens: COACH_DEFAULT.sortieTokens };
     const gain = coutCoachEur(forfaitUnique, "premium") - coutCoachEur(COACH_DEFAULT, "premium");
     expect(gain, `la distinction ne rend que ${gain.toFixed(2)} €`).toBeGreaterThan(0.5);
+  });
+});
+
+/**
+ * ⚠️⚠️ LE MODÈLE DE COÛT ET LES ROUTES RÉELLES DOIVENT SE CORRESPONDRE, DANS LES
+ * DEUX SENS.
+ *
+ * Ce fichier existe parce que l'enveloppe IA n'avait jamais été calculée ; il
+ * chiffre chaque route à son plafond mensuel, et ce qui reste est la marge.
+ * Rien ne vérifiait pourtant que la liste chiffrée ICI soit la liste des routes
+ * qui dépensent VRAIMENT.
+ *
+ * Une route facturée absente de `AI_ROUTES` compte pour zéro euro : la marge
+ * annoncée serait celle d'un produit qui n'existe pas, et la décision prise
+ * dessus (relever un plafond, passer une route sur un modèle plus cher) serait
+ * prise sur un chiffre faux. Dans l'autre sens, une route chiffrée qui n'existe
+ * plus fait payer au budget une dépense éteinte, donc refuse au trader une
+ * enveloppe qui lui revient.
+ */
+describe("le modèle de coût couvre les routes réelles", () => {
+  it("chiffre chaque route plafonnée, et rien d'autre", () => {
+    const chiffrees = new Set(AI_ROUTES.map((r) => r.feature));
+    // `analyze` a son plafond dans PLAN_MONTHLY_CEILING (par plan) et non dans
+    // la table des routes secondaires ; le coach est modélisé à part.
+    const plafonnees = new Set([...Object.keys(FEATURE_MONTHLY_CEILING), "analyze"]);
+
+    const nonChiffrees = Array.from(plafonnees).filter((f) => !chiffrees.has(f));
+    expect(
+      nonChiffrees,
+      "routes qui dépensent sans entrer dans la marge : " + nonChiffrees.join(", "),
+    ).toEqual([]);
+
+    const fantomes = Array.from(chiffrees).filter((f) => !plafonnees.has(f));
+    expect(
+      fantomes,
+      "routes chiffrées qui n'ont plus de plafond : " + fantomes.join(", "),
+    ).toEqual([]);
+
+    // ⚠️ Un garde qui ne trouve rien ne protège rien.
+    expect(chiffrees.size, "aucune route chiffrée").toBeGreaterThanOrEqual(11);
   });
 });

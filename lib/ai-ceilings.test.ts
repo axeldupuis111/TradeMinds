@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FEATURE_MONTHLY_CEILING, PLAN_MONTHLY_CEILING, monthKey } from "./ai-ceilings";
 
@@ -92,22 +94,57 @@ describe("plafonds mensuels", () => {
     expect(PLAN_MONTHLY_CEILING.chat.free).toBeLessThanOrEqual(5);
   });
 
-  it("couvre toutes les routes secondaires plafonnées", () => {
-    // Si une route est ajoutée avec rateLimitAi mais sans plafond mensuel, elle
-    // reste bornée au journalier seul — ce qui est précisément le trou qu'on
-    // vient de boucher. Cette liste doit suivre les appels à rateLimitAi.
-    for (const feature of [
-      "session-debrief",
-      "daily-summary",
-      "weekly-plan",
-      "monthly-review",
-      "parse-strategy",
-      "goals-interpret",
-      "calendar-explain",
-      "community-interpret",
-    ]) {
-      expect(FEATURE_MONTHLY_CEILING[feature], `${feature} sans plafond mensuel`).toBeGreaterThan(0);
+  /**
+   * ⚠️⚠️ LA LISTE SE DÉRIVE DE LA SOURCE, ELLE NE SE RECOPIE PLUS À LA MAIN.
+   *
+   * La version précédente énumérait HUIT routes en disant « cette liste doit
+   * suivre les appels à rateLimitAi ». Il y en avait DIX : `compiler-strategie`
+   * et `projection-verdict` manquaient. Elles avaient un plafond par chance, pas
+   * par vérification, et le garde serait resté vert si elles n'en avaient pas eu.
+   *
+   * ⚠️ CE QUE COÛTE UN OUBLI : `consumeMonthlyCeiling` commence par
+   * `if (!limit || limit <= 0) return true`. Une route dont le nom n'a pas
+   * d'entrée dans la table ne lève donc AUCUNE erreur : le disjoncteur mensuel
+   * est simplement désactivé pour elle, en silence, sur un chemin qui dépense de
+   * l'argent à chaque appel.
+   */
+  it("plafonne chaque route qui passe par rateLimitAi", () => {
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        const c = join(d, f);
+        if (statSync(c).isDirectory()) fichiers(c, out);
+        else if (f === "route.ts") out.push(c);
+      }
+      return out;
     }
+
+    const MOTIF = /rateLimitAi\(\s*[^,]+,\s*["'`]([a-z-]+)["'`]/g;
+    const appelees = new Set<string>();
+    for (const chemin of fichiers(join(process.cwd(), "app", "api"))) {
+      const src = readFileSync(chemin, "utf8");
+      let m: RegExpExecArray | null;
+      MOTIF.lastIndex = 0;
+      while ((m = MOTIF.exec(src)) !== null) appelees.add(m[1]);
+    }
+
+    // ⚠️ Un garde qui ne trouve rien ne protège rien.
+    expect(appelees.size, "aucun appel à rateLimitAi trouvé : ce test ne cherche rien").toBeGreaterThanOrEqual(10);
+
+    const sansPlafond = Array.from(appelees).filter((f) => !(FEATURE_MONTHLY_CEILING[f] > 0));
+    expect(
+      sansPlafond,
+      "routes sans disjoncteur mensuel, donc bornées au journalier seul : " + sansPlafond.join(", "),
+    ).toEqual([]);
+
+    /**
+     * ⚠️ ET DANS L'AUTRE SENS : un plafond qui ne protège plus aucune route est
+     * une ligne morte que le modèle de marge continue pourtant de chiffrer.
+     */
+    const orphelins = Object.keys(FEATURE_MONTHLY_CEILING).filter((f) => !appelees.has(f));
+    expect(
+      orphelins,
+      "plafonds qui ne correspondent à aucune route : " + orphelins.join(", "),
+    ).toEqual([]);
   });
 });
 

@@ -66,6 +66,22 @@ export const INFRA_FIXED_EUR_PER_MONTH = 45;
  */
 export interface AiRoute {
   nom: string;
+  /**
+   * Le nom que la ROUTE passe à `rateLimitAi` (ou « analyze » pour le quota de
+   * plan, qui vit dans `PLAN_MONTHLY_CEILING`).
+   *
+   * ⚠️⚠️ SANS LUI, RIEN NE RELIAIT CE MODÈLE DE COÛT AUX ROUTES RÉELLES. Une
+   * route facturée pouvait recevoir un plafond sans jamais entrer dans le calcul
+   * de marge : elle aurait compté pour zéro euro, et la marge annoncée aurait
+   * été celle d'un produit qui n'existe pas. Toute décision prise dessus
+   * (relever un plafond, passer une route sur un modèle plus cher) l'aurait été
+   * sur un chiffre faux.
+   *
+   * ⚠️ Un test compare désormais les deux listes DANS LES DEUX SENS : une route
+   * chiffrée qui n'a plus de plafond fait payer au budget une dépense éteinte,
+   * donc refuse au trader une enveloppe qui lui revient.
+   */
+  feature: string;
   model: string;
   /** Plafond mensuel par plan. */
   plafond: Record<Exclude<PlanType, "free">, number>;
@@ -80,6 +96,7 @@ export interface AiRoute {
 export const AI_ROUTES: AiRoute[] = [
   {
     nom: "analyse de trades",
+    feature: "analyze",
     model: "claude-sonnet-5",
     plafond: { plus: PLAN_MONTHLY_CEILING.analyze.plus, premium: PLAN_MONTHLY_CEILING.analyze.premium },
     inputTokens: 7426,
@@ -88,6 +105,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "lecture de communauté",
+    feature: "community-interpret",
     model: "claude-sonnet-5",
     plafond: { plus: FEATURE_MONTHLY_CEILING["community-interpret"], premium: FEATURE_MONTHLY_CEILING["community-interpret"] },
     inputTokens: 2000,
@@ -96,6 +114,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "débrief de session",
+    feature: "session-debrief",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["session-debrief"], premium: FEATURE_MONTHLY_CEILING["session-debrief"] },
     inputTokens: 3000,
@@ -125,6 +144,7 @@ export const AI_ROUTES: AiRoute[] = [
      * compté : il dépend du trafic, donc d'une hypothèse.
      */
     nom: "compilation de fiche en plan de backtest",
+    feature: "compiler-strategie",
     model: "claude-haiku-4-5-20251001",
     plafond: {
       plus: FEATURE_MONTHLY_CEILING["compiler-strategie"],
@@ -136,6 +156,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "fiche stratégie (parsing)",
+    feature: "parse-strategy",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["parse-strategy"], premium: FEATURE_MONTHLY_CEILING["parse-strategy"] },
     inputTokens: 2000,
@@ -144,6 +165,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "résumé quotidien",
+    feature: "daily-summary",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["daily-summary"], premium: FEATURE_MONTHLY_CEILING["daily-summary"] },
     inputTokens: 1500,
@@ -152,6 +174,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "calendrier économique",
+    feature: "calendar-explain",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["calendar-explain"], premium: FEATURE_MONTHLY_CEILING["calendar-explain"] },
     inputTokens: 1500,
@@ -160,6 +183,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "plan hebdomadaire",
+    feature: "weekly-plan",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["weekly-plan"], premium: FEATURE_MONTHLY_CEILING["weekly-plan"] },
     inputTokens: 2000,
@@ -168,6 +192,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "objectifs (interprétation)",
+    feature: "goals-interpret",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["goals-interpret"], premium: FEATURE_MONTHLY_CEILING["goals-interpret"] },
     inputTokens: 1500,
@@ -180,6 +205,7 @@ export const AI_ROUTES: AiRoute[] = [
     // en phrases. Une route Sonnet dédiée cassait le stress à 20 % pour un gain
     // de qualité nul sur ce type de sortie.
     nom: "verdict de projection",
+    feature: "projection-verdict",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: 0, premium: FEATURE_MONTHLY_CEILING["projection-verdict"] },
     inputTokens: 1200,
@@ -188,6 +214,7 @@ export const AI_ROUTES: AiRoute[] = [
   },
   {
     nom: "bilan mensuel",
+    feature: "monthly-review",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["monthly-review"], premium: FEATURE_MONTHLY_CEILING["monthly-review"] },
     inputTokens: 4000,
