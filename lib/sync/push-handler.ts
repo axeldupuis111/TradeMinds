@@ -348,6 +348,25 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
 
     if (updateErr) {
       console.error("[Push Sync] update error:", updateErr.message);
+      /**
+       * ⚠️⚠️ L'ÉCHEC ÉTAIT LU, PUIS PERDU. Il partait dans les logs serveur et
+       * nulle part ailleurs : le trade n'était ni compté dans `synced`, ni
+       * versé dans `errors`. L'EA imprimait donc « reçus 50, synchronisés 48 »
+       * sans dire ce qu'étaient devenus les deux autres, et le trader gardait
+       * dans son journal un trade figé sur des valeurs périmées (P&L d'avant
+       * la clôture, par exemple) sans aucun signe.
+       *
+       * ⚠️ `errors` EST LA SEULE VOIE DE RETOUR : c'est ce que l'EA écrit dans
+       * son journal, du côté où se trouve la personne qui peut agir. Un
+       * `continue` reste juste (un trade en échec ne doit pas faire tomber le
+       * lot), mais il ne dispense pas de le dire.
+       */
+      if (errors.length < 20) {
+        errors.push({
+          ticket: String(row.external_id),
+          reason: `mise à jour refusée : ${updateErr.message}`,
+        });
+      }
       continue; // Non-fatal: continue with remaining trades
     }
     synced++;

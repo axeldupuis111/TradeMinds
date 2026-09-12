@@ -19,6 +19,7 @@ import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
+import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -81,6 +82,11 @@ interface ActiveAccount {
   /** Devise saisie à la création, et celle annoncée par le broker (qui prime). */
   currency: string | null;
   synced_currency: string | null;
+  /** Instantané poussé par le client broker : c'est lui qui fait le solde. */
+  synced_balance: number | null;
+  synced_equity: number | null;
+  synced_open_positions: number | null;
+  synced_at: string | null;
 }
 
 interface Props {
@@ -227,16 +233,40 @@ export default function DashboardContent({
     [activePeriodTrades, currencyMap],
   );
 
+  /**
+   * LE SOLDE DU COMPTE, RÉSOLU COMME PARTOUT AILLEURS.
+   *
+   * ⚠️⚠️ CET ÉCRAN LISAIT LA COLONNE `balance` TELLE QUELLE, c'est-à-dire un
+   * CACHE. Cette colonne n'est réécrite que par deux chemins : l'instantané
+   * poussé par le client broker, et la page Comptes quand on l'ouvre. Pour un
+   * compte alimenté par import CSV ou saisie manuelle, elle restait donc figée
+   * sur la dernière visite de la page Comptes, pendant que la garde de
+   * challenge rendue par le MÊME layout résolvait, elle, le vrai solde.
+   *
+   * ⚠️ Deux chiffres pour le même fait, sur le même écran, et ce sont eux qui
+   * remplissent la barre d'objectif, le drawdown consommé et le calage de la
+   * courbe d'équité. Le commentaire de `ChallengeGuardian` énonçait déjà la
+   * règle (« même résolveur que l'onglet Comptes ») : elle manquait ici.
+   */
+  const soldeDuCompte = useMemo(() => {
+    if (!displayAccount) return null;
+    const pnlDuCompte = allTrades
+      .filter((tr) => tr.challenge_id === displayAccount.id)
+      .reduce((somme, tr) => somme + netPnl(tr), 0);
+    return resolveAccountBalance(displayAccount, pnlDuCompte);
+  }, [displayAccount, allTrades]);
+  const soldeAffiche = soldeDuCompte?.balance ?? displayAccount?.balance ?? 0;
+
   const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
     ? (displayAccount.account_size * displayAccount.profit_target_pct) / 100
     : 0;
   const challengePct = profitTargetAmount > 0
-    ? Math.max(0, Math.min(100, ((displayAccount!.balance - displayAccount!.account_size) / profitTargetAmount) * 100))
+    ? Math.max(0, Math.min(100, ((soldeAffiche - displayAccount!.account_size) / profitTargetAmount) * 100))
     : null;
 
   // ── Drawdown ───────────────────────────────────────────────────────────────
   const ddMax  = displayAccount ? displayAccount.account_size * displayAccount.max_total_dd_pct / 100 : 0;
-  const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - displayAccount.balance) : 0;
+  const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - soldeAffiche) : 0;
   const ddPct  = ddMax > 0 ? (ddUsed / ddMax) * 100 : 0;
 
   // ── Calendar discipline overlay (process, not P&L) ───────────────────────────
@@ -255,7 +285,7 @@ export default function DashboardContent({
   // historique tronqué séparait les deux. Le décalage est uniforme, donc les
   // écarts — et le drawdown qui s'y lit — restent intacts.
   const curveOffset =
-    displayAccount ? displayAccount.balance - (displayAccount.account_size + totalPnl) : 0;
+    displayAccount ? soldeAffiche - (displayAccount.account_size + totalPnl) : 0;
   const initialBalance = (displayAccount?.account_size ?? 0) + curveOffset;
 
   const equityCurveData = useMemo(() => {
@@ -316,7 +346,7 @@ export default function DashboardContent({
     ? {
         firm: displayAccount.firm,
         accountNumber: displayAccount.account_number,
-        balanceChange: displayAccount.balance - displayAccount.account_size,
+        balanceChange: soldeAffiche - displayAccount.account_size,
       }
     : null;
 

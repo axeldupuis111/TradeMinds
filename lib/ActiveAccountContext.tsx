@@ -18,7 +18,18 @@ import {
   useState,
 } from "react";
 
-// All fields needed for DD calculations (same set as ChallengeGuardian).
+/**
+ * Tous les champs nécessaires aux calculs de drawdown.
+ *
+ * ⚠️⚠️ CE COMMENTAIRE DISAIT DÉJÀ « même jeu que ChallengeGuardian », ET C'ÉTAIT
+ * FAUX : le garde lit aussi l'instantané poussé par le broker
+ * (`synced_balance` et compagnie) et RÉSOUT le solde, là où ce contexte ne
+ * transportait que la colonne `balance`, qui est un cache. Le calculateur de
+ * position, seul consommateur à en avoir besoin, reconstruisait donc le solde
+ * à partir du capital nominal plus la somme des trades : une méthode fausse
+ * dès qu'un dépôt ou un retrait passe par le compte, et c'est elle qui
+ * décidait du drawdown restant, donc de la taille à risquer.
+ */
 export interface ActiveAccount {
   id: string;
   firm: string;
@@ -36,6 +47,11 @@ export interface ActiveAccount {
   /** Devise saisie à la création, et celle annoncée par le broker (qui prime). */
   currency: string | null;
   synced_currency: string | null;
+  /** Instantané du client broker : c'est lui qui fait foi sur le solde. */
+  synced_balance: number | null;
+  synced_equity: number | null;
+  synced_open_positions: number | null;
+  synced_at: string | null;
 }
 
 interface ActiveAccountContextValue {
@@ -82,7 +98,7 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
       const { data } = await supabase
         .from("prop_challenges")
         .select(
-          "id, firm, account_number, type, market_type, account_size, balance, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, max_daily_loss_pct, currency, synced_currency"
+          "id, firm, account_number, type, market_type, account_size, balance, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, max_daily_loss_pct, currency, synced_currency, synced_balance, synced_equity, synced_open_positions, synced_at"
         )
         .eq("user_id", user.id)
         .eq("status", "active")
@@ -103,6 +119,10 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
         max_daily_loss_pct: row.max_daily_loss_pct ?? null,
         currency: row.currency ?? null,
         synced_currency: row.synced_currency ?? null,
+        synced_balance: row.synced_balance ?? null,
+        synced_equity: row.synced_equity ?? null,
+        synced_open_positions: row.synced_open_positions ?? null,
+        synced_at: row.synced_at ?? null,
       }));
 
       setAccounts(list);

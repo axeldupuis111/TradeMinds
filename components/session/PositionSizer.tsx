@@ -2,6 +2,7 @@
 
 import { DEFAULT_CURRENCY, accountCurrency, currencySymbol, money } from "@/lib/account-currency";
 import { computeChallengeRules } from "@/lib/challenge-rules";
+import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import {
@@ -104,7 +105,24 @@ export default function PositionSizer({ strategy }: Props) {
     // ⚠️ Lecture incomplète : on ne propose pas une taille de position sur un
     // historique amputé. Voir lib/trades-du-compte.ts.
     if (allTrades === null) return;
-    let running = account.account_size;
+
+    /**
+     * ⚠️⚠️ CET OUTIL DIT COMBIEN RISQUER, ET IL LE DISAIT SUR UN SOLDE
+     * RECONSTITUÉ. Il repartait du capital nominal et y rajoutait la somme des
+     * trades connus : la méthode que `resolveAccountBalance` existe précisément
+     * pour remplacer, parce qu'elle ne voit ni les dépôts, ni les retraits, ni
+     * une erreur de saisie du capital initial. Le drawdown total restant, donc
+     * la taille de position proposée, en héritait.
+     *
+     * ⚠️ Et la garde de challenge, rendue par le même layout, résolvait déjà :
+     * deux soldes du même compte sur le même écran, dont celui qui dimensionne
+     * le risque. Son commentaire le disait mot pour mot, un cran plus haut.
+     *
+     * Le décalage est UNIFORME sur toute la courbe, donc les écarts (et le
+     * drawdown glissant qui s'y lit) restent intacts.
+     */
+    const resolu = resolveAccountBalance(account, allTrades.reduce((s, tr) => s + netDuTrade(tr), 0));
+    let running = account.account_size + resolu.curveOffset;
     const equityCurveBalances = allTrades.map((tr) => {
       running += netDuTrade(tr);
       return running;
@@ -117,10 +135,7 @@ export default function PositionSizer({ strategy }: Props) {
         0
       );
 
-    const balance =
-      equityCurveBalances.length > 0
-        ? equityCurveBalances[equityCurveBalances.length - 1]
-        : account.balance;
+    const balance = resolu.balance;
 
     const rules = computeChallengeRules(
       {
