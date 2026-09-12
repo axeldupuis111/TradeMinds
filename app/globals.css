@@ -222,29 +222,29 @@ html.light {
    colore avec les tokens de l'application (`text-warning`, `text-profit`…),
    qui savent déjà changer avec le thème. Un test mesure les ratios d'ici.
    ──────────────────────────────────────────────────────────────────────── */
-html.light .text-orange-400:not(.force-dark *) { color: #c2410c; }
-html.light .text-orange-300:not(.force-dark *) { color: #c2410c; }
-html.light .text-yellow-400:not(.force-dark *) { color: #9a5e07; }
-html.light .text-yellow-300:not(.force-dark *) { color: #9a5e07; }
-html.light .text-green-400:not(.force-dark *) { color: #15803d; }
-html.light .text-emerald-400:not(.force-dark *) { color: #047857; }
+html.light .text-orange-400:not(.force-dark *) { color: #9a3412; }
+html.light .text-orange-300:not(.force-dark *) { color: #9a3412; }
+html.light .text-yellow-400:not(.force-dark *) { color: #854d0e; }
+html.light .text-yellow-300:not(.force-dark *) { color: #854d0e; }
+html.light .text-green-400:not(.force-dark *) { color: #166534; }
+html.light .text-emerald-400:not(.force-dark *) { color: #065f46; }
 html.light .text-sky-400:not(.force-dark *) { color: #0369a1; }
-html.light .text-amber-400:not(.force-dark *) { color: #b45309; }
-html.light .text-amber-300:not(.force-dark *) { color: #b45309; }
+html.light .text-amber-400:not(.force-dark *) { color: #92400e; }
+html.light .text-amber-300:not(.force-dark *) { color: #92400e; }
 html.light .text-violet-400:not(.force-dark *) { color: #6d28d9; }
 html.light .text-purple-400:not(.force-dark *) { color: #7e22ce; }
-html.light .text-red-400:not(.force-dark *) { color: #b91c1c; }
+html.light .text-red-400:not(.force-dark *) { color: #991b1b; }
 html.light .text-blue-400:not(.force-dark *) { color: #1d4ed8; }
 html.light .text-blue-300:not(.force-dark *) { color: #1d4ed8; }
-html.light .text-cyan-300:not(.force-dark *) { color: #0e7490; }
+html.light .text-cyan-300:not(.force-dark *) { color: #155e75; }
 html.light .text-teal-300:not(.force-dark *) { color: #0f766e; }
 html.light .text-gray-400:not(.force-dark *) { color: #4b5563; }
 html.light .text-gray-300:not(.force-dark *) { color: #4b5563; }
 html.light .text-slate-300:not(.force-dark *) { color: #475569; }
-html.light .text-red-500:not(.force-dark *) { color: #b91c1c; }
-html.light .text-orange-500:not(.force-dark *) { color: #c2410c; }
-html.light .text-amber-600:not(.force-dark *) { color: #b45309; }
-html.light .text-yellow-600:not(.force-dark *) { color: #9a5e07; }
+html.light .text-red-500:not(.force-dark *) { color: #991b1b; }
+html.light .text-orange-500:not(.force-dark *) { color: #9a3412; }
+html.light .text-amber-600:not(.force-dark *) { color: #92400e; }
+html.light .text-yellow-600:not(.force-dark *) { color: #854d0e; }
 html.light .text-gray-500:not(.force-dark *) { color: #4b5563; }
 
 /* ─── Force-dark: public pages always stay in dark mode ─────────────────────

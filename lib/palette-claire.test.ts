@@ -83,6 +83,79 @@ describe("les couleurs vives restent lisibles en thème clair", () => {
     expect(fautes, fautes.join(", ")).toEqual([]);
   });
 
+  /**
+   * ⚠️⚠️ ET SUR SA PROPRE PASTILLE, PAS SEULEMENT SUR LA CARTE DERRIÈRE.
+   *
+   * Une encre corrigée vit presque toujours dans une puce teintée de SA
+   * couleur (`bg-amber-400/10 text-amber-400`). Ce voile rapproche le fond de
+   * l'encre et fait tomber le rapport : mesuré en production, en thème clair,
+   * sur quatre écrans du tableau de bord.
+   *
+   *   - « À annoter » et « NY AM » (Mes trades) : 4,37:1 et 4,25:1 ;
+   *   - « Bronze » (Classement), 10 px : 4,48:1 ;
+   *   - « EUR » et « ALL » (Calendrier éco), 10 px : 4,05:1 et 4,43:1 ;
+   *   - sept puces de la page Stratégie : 4,22:1.
+   *
+   * ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÉCRITE, POUR LES AUTRES ENCRES. La passe du
+   * 2026-09-11 avait appris exactement ça sur les jetons `--*-text`
+   * (« mesurer l'encre sur SA pastille et pas sur la carte derrière »), et ce
+   * bloc de compatibilité-ci n'avait jamais été mesuré autrement que sur le
+   * fond, les cartes et les surfaces. Une règle écrite, appliquée à une partie
+   * seulement de ce qu'elle vise.
+   *
+   * ⚠️ ON VA JUSQU'À 30 %, ce qui est au-delà des `/10` et `/20` qu'emploie le
+   * produit : une encre réglée AU PLUS JUSTE n'a aucune marge le jour où
+   * quelqu'un pose une puce un cran plus saturée, et c'est arrivé.
+   */
+  it("chaque correction passe 4.5:1 sur une pastille de sa propre teinte", () => {
+    /** Composition d'un aplat semi-transparent sur un fond opaque. */
+    function composer(dessus: string, dessous: string, alpha: number): string {
+      const d = [1, 3, 5].map((i) => parseInt(dessus.slice(i, i + 2), 16));
+      const f = [1, 3, 5].map((i) => parseInt(dessous.slice(i, i + 2), 16));
+      return (
+        "#" +
+        d
+          .map((v, i) => Math.round(v * alpha + f[i] * (1 - alpha)))
+          .map((v) => v.toString(16).padStart(2, "0"))
+          .join("")
+      );
+    }
+
+    /**
+     * Les opacites que le produit emploie VRAIMENT pour une puce de texte
+     * (releve : /5, /10, /15, /20), plus UN cran de marge.
+     *
+     * ⚠️ ON NE POUSSE PAS PLUS LOIN, et c'est un choix. Des aplats a 40 % et
+     * 55 % existent, mais ce sont les CELLULES DE LA HEATMAP, qui ont leur
+     * propre regle (on y plafonne la saturation, pas l'encre). Mesurer un cas
+     * que le produit ne produit pas ferait un garde qu'on apprend a desactiver.
+     */
+    const NIVEAUX_DE_TEINTE = [0.1, 0.15, 0.2, 0.25];
+
+    const fautes: string[] = [];
+    let mesures = 0;
+    for (const [classe, valeur] of Array.from(corrigees)) {
+      // L'aplat de la puce est la teinte D'ORIGINE, celle que la classe nomme.
+      const aplat = teinte(classe);
+      if (!aplat) continue;
+      for (const [nom, hex] of Object.entries(fonds)) {
+        for (const alpha of NIVEAUX_DE_TEINTE) {
+          mesures++;
+          const r = ratio(valeur, composer(aplat, hex, alpha));
+          if (r < 4.5) {
+            fautes.push(
+              `${classe} sur sa pastille ${Math.round(alpha * 100)} % (${nom}) : ${r.toFixed(2)}:1`,
+            );
+          }
+        }
+      }
+    }
+
+    // ⚠️ Un garde qui ne mesure rien ne protège rien.
+    expect(mesures, "aucune pastille mesurée").toBeGreaterThan(100);
+    expect(fautes, "encres illisibles sur leur propre pastille : " + fautes.join(", ")).toEqual([]);
+  });
+
   /** La valeur hexadécimale d'une teinte Tailwind, ou null si le nom n'en est pas une. */
   function teinte(classe: string): string | null {
     const sep = classe.lastIndexOf("-");
