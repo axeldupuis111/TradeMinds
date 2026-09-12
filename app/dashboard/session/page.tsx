@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 import { startOfBrowserDayIso } from "@/lib/timezone";
+import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 
 const SESSION_LABELS: Record<string, string> = {
@@ -195,6 +196,19 @@ export default function SessionPage() {
     if (premier) setSelectedAccountId(premier.id);
   }, [accountLoading, selectedAccount, activeAccounts, setSelectedAccountId]);
 
+  /**
+   * ⚠️⚠️ CETTE PAGE SE TAISAIT QUAND ELLE NE POUVAIT PLUS LIRE, et affichait
+   * deux choses fausses à la place. « Aucune stratégie définie » à un trader
+   * qui en a trois, avec le lien qui l'envoie en écrire une quatrième ; et
+   * « P&L aujourd'hui +0,00 $ » présenté comme un fait, alors que c'est le
+   * chiffre sur lequel il décide de continuer ou d'arrêter.
+   *
+   * ⚠️ La checklist, elle, retombait sur les quatre points par défaut : il
+   * cochait donc une préparation qui n'est pas la sienne, juste avant
+   * d'ouvrir une position. Mesuré en production en faisant répondre 500 aux
+   * lectures REST.
+   */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);
@@ -296,7 +310,7 @@ export default function SessionPage() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = startOfBrowserDayIso(sevenDaysAgo);
 
-    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }, { data: tradesEtats }] = await Promise.all([
+    const [{ data: strats, error: erreurStrats }, { data: session }, { data: history }, { data: recentTrades, error: erreurTrades }, { data: tradesEtats }] = await Promise.all([
       supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase
         .from("sessions")
@@ -342,19 +356,25 @@ export default function SessionPage() {
       })),
     );
 
-    const stratList = strats || [];
-    setStrategies(stratList);
+    // ⚠️ Le client Supabase ne jette pas : sans lire `error`, l'échec se
+    // confondait avec « il n'a rien ». On le retient, et on le dit.
+    setLectureRatee(!!erreurStrats || !!erreurTrades);
 
-    const firstStrat = stratList[0] ?? null;
+    const stratList = strats || [];
+    if (!erreurStrats) setStrategies(stratList);
+
+    const firstStrat = erreurStrats ? null : (stratList[0] ?? null);
     if (firstStrat) {
       setStrategy(firstStrat);
       const customChecklist = firstStrat.pretrade_checklist && firstStrat.pretrade_checklist.length > 0
         ? firstStrat.pretrade_checklist
         : DEFAULT_CHECKLIST.map((k) => t(k));
       setChecklist(customChecklist);
-    } else {
+    } else if (!erreurStrats) {
       setChecklist(DEFAULT_CHECKLIST.map((k) => t(k)));
     }
+    // ⚠️ Lecture ratée : on ne propose PAS la checklist par défaut. Cocher
+    // une préparation qui n'est pas la sienne est pire que ne rien cocher.
 
     // Les trades bruts sont conservés tels quels : le P&L par séance est dérivé
     // plus bas, en fonction du compte sélectionné (voir historyWithPnl).
@@ -743,6 +763,10 @@ export default function SessionPage() {
               )}
             </ul>
           </div>
+        ) : lectureRatee ? (
+          /* ⚠️ Surtout pas « aucune stratégie définie » : le lien qui suit
+             l'enverrait en réécrire une qu'il a déjà. */
+          <LectureRatee onReessayer={load} />
         ) : (
           <div className="bg-card border border-border rounded-xl p-5 flex items-center justify-between">
             <span className="text-sm text-muted">{t("session_active_no_strategy")}</span>

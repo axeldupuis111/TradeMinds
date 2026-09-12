@@ -327,13 +327,25 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     dateTo: "",
     account: "",
   });
-  const [globalStats, setGlobalStats] = useState({
-    count: 0,
-    wins: 0,
-    totalPnl: 0,
-    best: 0,
-    worst: 0,
-  });
+  /**
+   * ⚠️⚠️ « 0 TRADE AU TOTAL » N'ÉTAIT PAS UN CHIFFRE, C'ÉTAIT L'ÉTAT INITIAL.
+   * `loadGlobalStats` sort sans rien écrire quand la lecture paginée échoue,
+   * avec cette raison : « on garde les chiffres précédents plutôt que d'en
+   * afficher de faux ». Au PREMIER chargement, les chiffres précédents sont
+   * ces zéros-là, c'est-à-dire précisément des chiffres faux : la barre
+   * annonçait « Tous les comptes · 0 trade au total » juste à côté du
+   * bandeau qui dit que la lecture a échoué. Mesuré en production sur un
+   * journal de 85 trades.
+   *
+   * `null` = on ne sait pas encore. Trois états, pas deux.
+   */
+  const [globalStats, setGlobalStats] = useState<{
+    count: number;
+    wins: number;
+    totalPnl: number;
+    best: number;
+    worst: number;
+  } | null>(null);
   const [sort, setSort] = useState<SortState>({ column: null, direction: "desc" });
 
   /**
@@ -945,7 +957,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const allSelected =
     trades.length > 0 && (selectAllMatching || trades.every((tr) => selectedIds.has(tr.id)));
   const someSelected = selectAllMatching || selectedIds.size > 0;
-  const { count: statsCount } = globalStats;
+  const statsCount = globalStats?.count ?? null;
   const totalPages = Math.ceil(total / pageSize);
 
   // ── Panel navigation ──────────────────────────────────────────────────────────
@@ -970,7 +982,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           <p className="text-[11px] text-muted">
             {hasActiveFilters
               ? t("trades_filtered_by", { count: String(total) })
-              : t("trades_all_accounts", { count: String(statsCount) })}
+              : statsCount === null
+                ? ""
+                : t("trades_all_accounts", { count: String(statsCount) })}
           </p>
           {/* Repli disponible à TOUTE largeur : un 14 pouces a autant besoin de
               récupérer ces 150 px qu'un téléphone, et un grand écran peut
