@@ -2,6 +2,8 @@
 
 import PositionSizer from "@/components/session/PositionSizer";
 import { useLanguage } from "@/lib/LanguageContext";
+import { accountCurrency, currencySymbol, DEFAULT_CURRENCY } from "@/lib/account-currency";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -12,6 +14,13 @@ interface SizerStrategy {
 
 export default function SizerPage() {
   const { t } = useLanguage();
+  const { selectedAccount } = useActiveAccount();
+  // ⚠️ La monnaie de l'aide suit le compte, comme les libellés du calculateur
+  // juste en dessous : sans ça l'aide dit « en € » pendant que le champ dit
+  // « ($) », sur le même écran.
+  const devise = currencySymbol(
+    selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY,
+  ).trim();
   const supabase = createClient();
   const [strategy, setStrategy] = useState<SizerStrategy | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +56,7 @@ export default function SizerPage() {
         <aside className="mt-4 lg:mt-0 rounded-xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold text-foreground mb-3">{t("sizer_help_title")}</h2>
           <ul className="space-y-3 text-sm text-muted leading-relaxed">
-            <li className="flex gap-2"><span className="text-accent font-bold">1.</span><span>{t("sizer_help_1")}</span></li>
+            <li className="flex gap-2"><span className="text-accent font-bold">1.</span><span>{t("sizer_help_1", { devise })}</span></li>
             <li className="flex gap-2"><span className="text-accent font-bold">2.</span><span>{t("sizer_help_2")}</span></li>
             <li className="flex gap-2"><span className="text-accent font-bold">3.</span><span>{t("sizer_help_3")}</span></li>
           </ul>

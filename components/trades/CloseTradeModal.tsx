@@ -1,6 +1,8 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { accountCurrency, currencySymbol, DEFAULT_CURRENCY, tradeCurrency } from "@/lib/account-currency";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { estimatePnl } from "@/lib/pnl-calculator";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +18,8 @@ interface OpenTrade {
   tp: number | null;
   open_time: string;
   notes: string | null;
+  /** Le compte auquel il est rattaché : c'est lui qui donne la devise. */
+  challenge_id: string | null;
 }
 
 interface Props {
@@ -43,9 +47,28 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(true, onClose);
   const { t } = useLanguage();
+  const { accounts } = useActiveAccount();
   const supabase = createClient();
 
   const [trade, setTrade] = useState<OpenTrade | null>(null);
+  /**
+   * ⚠⚠ LE CHAMP DEMANDAIT UN P&L « (€) » SUR UN COMPTE EN DOLLARS. Le symbole
+   * était écrit DANS la traduction, donc aucune résolution de compte ne pouvait
+   * le corriger : la même faute que les quatre phrases du coach déjà réparées,
+   * dans une autre forme (symbole seul, sans trou d'interpolation, ce que le
+   * garde existant ne voyait pas). Ici le trader SAISIT un montant : lui
+   * annoncer la mauvaise unité fausse ce qu'il tape.
+   *
+   * ⚠️ La devise vient du COMPTE DU TRADE, pas du compte sélectionné : on peut
+   * clôturer depuis « tous les comptes » une position ouverte ailleurs.
+   */
+  const devise = currencySymbol(
+    tradeCurrency(
+      trade?.challenge_id,
+      new Map(accounts.map((a) => [a.id, accountCurrency(a)])),
+      DEFAULT_CURRENCY,
+    ),
+  ).trim();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -65,7 +88,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
     (async () => {
       const { data, error } = await supabase
         .from("trades")
-        .select("id, pair, direction, lot_size, entry_price, sl, tp, open_time, notes")
+        .select("id, pair, direction, lot_size, entry_price, sl, tp, open_time, notes, challenge_id")
         .eq("id", tradeId)
         .eq("status", "open")
         .maybeSingle();
@@ -265,7 +288,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="closetrademodal-close-trade-pnl" className="block text-xs text-muted">
-                {t("close_trade_pnl")} <span className="text-loss">*</span>
+                {t("close_trade_pnl", { devise })} <span className="text-loss">*</span>
               </label>
               {pnlTouched && estimated !== null && (
                 <button

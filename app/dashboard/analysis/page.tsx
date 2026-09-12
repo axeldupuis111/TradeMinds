@@ -3,6 +3,7 @@
 import { tradesConformes } from "@/lib/trades-conformes";
 import { langueCourante } from "@/lib/nombres";
 import { stripLongDashes } from "@/lib/coach-typography";
+import { PRIX_EN_CENTIMES, prixLisible } from "@/lib/prix";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
@@ -1568,7 +1569,7 @@ export default function AnalysisPage() {
                 </Link>
               ))}
             </div>
-            <p className="text-[11px] text-muted mt-2">{t("teaser_hint")}</p>
+            <p className="text-[11px] text-muted mt-2">{t("teaser_hint", { prix: prixLisible(PRIX_EN_CENTIMES.plus.mensuel) })}</p>
           </section>
         )}
 

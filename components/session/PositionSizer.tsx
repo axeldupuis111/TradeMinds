@@ -560,7 +560,7 @@ export default function PositionSizer({ strategy }: Props) {
                   {autoPip !== null ? (
                     /* Auto: read-only, the user never has to find it */
                     <>
-                      <label className="block text-xs text-muted mb-1">{t("sizer_pip_value")}</label>
+                      <label className="block text-xs text-muted mb-1">{t("sizer_pip_value", { devise: cur })}</label>
                       <div className="w-full bg-surface/60 border border-border rounded-lg px-3 py-2 flex items-center gap-2">
                         <span className="text-sm text-foreground tabular-nums">{autoPip} {cur}/lot</span>
                         <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-profit/15 text-profit">
@@ -573,7 +573,7 @@ export default function PositionSizer({ strategy }: Props) {
                     /* Manual: broker-dependent instruments (indices/crypto/custom) */
                     <>
                       <div className="flex items-center gap-1 mb-1">
-                        <label className="text-xs text-muted">{t("sizer_pip_value")}</label>
+                        <label className="text-xs text-muted">{t("sizer_pip_value", { devise: cur })}</label>
                         <button
                           type="button"
                           onClick={() => setShowPipHelp((v) => !v)}
@@ -584,7 +584,7 @@ export default function PositionSizer({ strategy }: Props) {
                           <Info className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <input aria-label={t("sizer_pip_value")}
+                      <input aria-label={t("sizer_pip_value", { devise: cur })}
                         type="number"
                         min="0"
                         step="0.01"

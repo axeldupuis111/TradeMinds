@@ -93,4 +93,70 @@ describe("les symboles monétaires dans les dictionnaires", () => {
       }
     }
   });
+
+  /**
+   * ⚠️⚠️ ET LE SYMBOLE SEUL, SANS TROU, EST LA MÊME FAUTE. Le balayage
+   * ci-dessus ne voyait que le symbole COLLÉ à une interpolation (`{lost}€`).
+   * Mesuré à l'écran sur un compte en dollars, quatre libellés lui
+   * échappaient et disaient tous « € » :
+   *
+   *   - « Valeur du pip (€/lot) », à côté d'un « Solde du compte ($) », dans
+   *     l'outil qui dit combien risquer ;
+   *   - « P&L réalisé (€) » sur la modale de clôture, c'est-à-dire le champ
+   *     où le trader SAISIT un montant : lui annoncer la mauvaise unité
+   *     fausse ce qu'il tape ;
+   *   - l'aide du calculateur, « en % ou en € » ;
+   *   - « 14,99 €/mois » dans l'encart d'abonnement, quatrième table de prix
+   *     écrite à la main après les trois que `lib/prix` avait déjà
+   *     remplacées. Le garde des prix ne balaie que `app` et `components` :
+   *     les dictionnaires lui échappaient.
+   */
+  it("aucune clé n'écrit un symbole monétaire en dur", () => {
+    /**
+     * Les exemptions, chacune avec sa raison. ⚠️ Une liste sans raisons
+     * devient une poubelle, et le garde ne garde plus rien.
+     */
+    const EXEMPTEES = new Map<string, string>([
+      ["sizer_futures_point_value", "la valeur du point d'un future est libellée par le CME, pas par le compte"],
+      ["sizer_pip_help_benchmarks", "des repères de marché, pas des montants du compte"],
+      ["sizer_pip_help_warning", "la définition du pip sur l'or, propriété de l'instrument"],
+      ["sync_tradovate_commission_hint", "le coût d'un contrat future chez un broker, libellé en dollars par le marché"],
+      ["op_demo_2_beat_2", "dialogue de démonstration de la landing, un exemple fictif"],
+      ["feature_ai_msg_1", "message d'exemple de la landing, fictif"],
+      ["mockup_challenge_prop_title", "carte de maquette de la landing, un compte fictif"],
+      ["mockup_challenge_own_title", "carte de maquette de la landing, un compte fictif"],
+    ]);
+
+    const fautes: string[] = [];
+    let vues = 0;
+    for (const [nom, dico] of Object.entries(DICTIONNAIRES)) {
+      for (const [cle, texte] of Object.entries(dico as Record<string, string>)) {
+        vues++;
+        if (EXEMPTEES.has(cle)) continue;
+        if (!/[€$£¥]/.test(texte)) continue;
+        fautes.push(`${nom}:${cle} → ${texte.slice(0, 50)}`);
+      }
+    }
+
+    expect(vues, "aucune clé lue : ce test ne cherche rien").toBeGreaterThan(2000);
+    expect(
+      fautes,
+      "traductions qui décident de la devise à la place du compte : " + fautes.join(" | "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ ET LES QUATRE LIBELLÉS RÉPARÉS PORTENT BIEN UN TROU. Retirer le symbole
+   * sans interpoler la devise donnerait « Valeur du pip (/lot) », ce qui est
+   * une autre façon de ne pas répondre à la question.
+   */
+  it("les libellés d'unité interpolent la devise", () => {
+    for (const cle of ["sizer_pip_value", "close_trade_pnl", "sizer_help_1", "teaser_hint"]) {
+      for (const [nom, dico] of Object.entries(DICTIONNAIRES)) {
+        const texte = (dico as Record<string, string>)[cle];
+        expect(texte, `${cle} manque en ${nom}`).toBeTruthy();
+        expect(texte, `${cle} n'interpole rien en ${nom}`).toMatch(/\{(devise|prix)\}/);
+      }
+    }
+  });
 });
