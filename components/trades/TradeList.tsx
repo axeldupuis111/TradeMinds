@@ -1,6 +1,7 @@
 "use client";
 
 import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { enHeure, enJourEtMois } from "@/lib/dates";
 import { enDate } from "@/lib/dates";
 import { getEmotionDisplay } from "@/lib/emotions";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
@@ -1262,9 +1263,21 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                     ? tradeChecklistItems.filter((item) => tr.ict_checklist?.[item.key]).length
                     : 0;
 
+                  /**
+                   * ⚠️⚠️ LA DATE ETAIT CONSTRUITE A LA MAIN, DONC EN FRANCAIS
+                   * POUR TOUT LE MONDE. Vu a l'ecran en allemand : « 26/08 »,
+                   * la ou l'allemand ecrit « 26.08. ». Et en anglais, le meme
+                   * gabarit donne « 05/08 » pour le 5 aout, qu'un lecteur
+                   * anglophone lit « 8 mai » : ce n'est plus une question de
+                   * style, c'est une date fausse.
+                   *
+                   * ⚠️ `enJourEtMois` existe exactement pour ca, et
+                   * `lib/dates.ts` explique depuis une passe entiere pourquoi
+                   * une date ne se fabrique pas avec `getDate()`.
+                   */
                   const dateObj = tr.open_time ? new Date(tr.open_time) : null;
                   const dateStr = dateObj
-                    ? `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")} · ${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`
+                    ? `${enJourEtMois(dateObj)} · ${enHeure(dateObj)}`
                     : "—";
 
                   const duration =

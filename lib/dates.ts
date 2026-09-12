@@ -67,3 +67,18 @@ export function enJourEtMois(valeur: Date | number | string, langue?: string): s
     month: "2-digit",
   });
 }
+
+/**
+ * L'heure seule, à la minute : « 21:00 » en français, « 9:00 PM » en anglais.
+ *
+ * ⚠️ LE FORMAT HORAIRE EST UNE PROPRIÉTÉ DE LA LANGUE, pas une constante.
+ * Un lecteur anglophone lit « 21:00 » sans difficulté, mais son produit ne
+ * l'écrit pas comme ça, et le mélange (date à l'anglaise, heure à la française)
+ * se remarque immédiatement.
+ */
+export function enHeure(valeur: Date | number | string, langue?: string): string {
+  return new Date(valeur).toLocaleTimeString(langue ?? langueCourante(), {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

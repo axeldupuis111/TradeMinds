@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sansCommentaires } from "./sans-commentaires";
 import { enDate, enDateEtHeure, enDateLongue, enJourEtMois } from "./dates";
 
 /**
@@ -24,6 +25,19 @@ import { enDate, enDateEtHeure, enDateLongue, enJourEtMois } from "./dates";
  * même fichier. C'est le signe qu'aucune règle n'était décidée.
  */
 describe("les dates suivent la langue de l'application", () => {
+  /**
+   * ⚠️ MOTIFS NOMMÉS, PAS ÉCRITS EN LIGNE. Ces trois-là ont été mangés par le
+   * shell en les écrivant (le `\r` d'un saut de ligne est devenu un vrai retour
+   * chariot, et le fichier ne compilait plus). Les poser une fois, en haut, les
+   * rend relisibles et évite de les ré-échapper à chaque usage.
+   */
+  const SAUT_DE_LIGNE = new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10));
+  const SEPARATEUR_CHEMIN = /[\\/]/;
+  /** Un jour puis un mois collés dans un gabarit : `${getDate()}/${getMonth()+1}`. */
+  const MOTIF_JOUR_MOIS = /getDate\(\)[^\n]{0,80}getMonth\(\)/;
+  /** Une clé ISO « YYYY-MM-DD » : l'année vient en premier, l'ordre est universel. */
+  const MOTIF_CLE_ISO = /getFullYear\(\)[^\n]{0,40}getMonth\(\)/;
+
   it("rendent la même date différemment selon la langue", () => {
     const quand = Date.UTC(2026, 0, 2, 10, 45);
     expect(enDate(quand, "fr-FR")).not.toBe(enDate(quand, "en-US"));
@@ -118,5 +132,41 @@ describe("les dates suivent la langue de l'application", () => {
     expect(sansLangue.test(`new Date(x).toLocaleDateString(langue)`)).toBe(false);
     expect(enDur.test(`new Date(x).toLocaleDateString("fr-FR", { day: "numeric" })`)).toBe(true);
     expect(enDur.test(`new Date(x).toLocaleDateString(lang)`)).toBe(false);
+  });
+
+  /**
+   * ── LA TROISIÈME FAÇON DE SE TROMPER DE LANGUE ──────────────────────────────
+   *
+   * ⚠️⚠️ NI `toLocaleDateString()` NU, NI « fr-FR » EN DUR : UNE DATE FABRIQUÉE
+   * À LA MAIN. « Mes Trades » écrivait `${getDate()}/${getMonth()+1}`, donc
+   * l'ordre français pour tout le monde. Vu à l'écran en allemand : « 26/08 »,
+   * là où l'allemand écrit « 26.08. ». Et en anglais le même gabarit donne
+   * « 05/08 » pour le 5 août, qu'un lecteur anglophone lit « 8 mai » : ce n'est
+   * plus une question de style, c'est une date fausse.
+   *
+   * ⚠️ LES DEUX MOTIFS EXISTANTS NE POUVAIENT PAS LA VOIR : il n'y a ni appel
+   * à `toLocaleDateString` ni chaîne de langue. C'est l'ABSENCE d'appel qui est
+   * la faute.
+   */
+  it("aucune date d'affichage n'est fabriquee a la main", () => {
+    const fautes: string[] = [];
+    for (const chemin of PORTEE.flatMap((d) => fichiers(d))) {
+      if (HORS_PORTEE.test(chemin)) continue;
+      const src = sansCommentaires(readFileSync(chemin, "utf8"));
+      const lignes = src.split(SAUT_DE_LIGNE);
+      lignes.forEach((ligne, i) => {
+        // Un jour et un mois colles par un separateur, dans un gabarit.
+        if (!MOTIF_JOUR_MOIS.test(ligne)) return;
+        // Une cle ISO « YYYY-MM-DD » est machine, pas affichage : l'annee
+        // vient en premier et l'ordre ne depend d'aucune langue.
+        if (MOTIF_CLE_ISO.test(ligne)) return;
+        fautes.push(chemin.split(SEPARATEUR_CHEMIN).slice(-2).join("/") + ":" + (i + 1));
+      });
+    }
+    expect(
+      fautes,
+      "dates fabriquees a la main, donc dans l'ordre francais pour tout le monde : " +
+        fautes.join(", "),
+    ).toEqual([]);
   });
 });
