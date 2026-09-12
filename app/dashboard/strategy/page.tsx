@@ -562,6 +562,23 @@ export default function StrategyPage() {
     return (tag[key] as string) || tag.label_fr || tag.value;
   }
 
+  /**
+   * ⚠️⚠️ LE FORMULAIRE NE S'AFFICHE PAS DU TOUT. Mesure en production :
+   * poser le bandeau au-dessus et laisser le champ vide en dessous ne corrige
+   * rien, parce que c'est le CHAMP qui ment. « 0 caracteres » presente comme sa
+   * fiche l'invite a retaper une methode qu'il a deja, et il en cree une
+   * quatrieme. Un ecran qui ne sait pas ce qu'il affiche n'affiche pas.
+   */
+  if (lectureRatee) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
+        <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
+        <LectureRatee onReessayer={() => window.location.reload()} />
+      </div>
+    );
+  }
+
   if (loading || planLoading) {
     return (
       <div>
@@ -638,10 +655,6 @@ export default function StrategyPage() {
         <div className="min-w-0">
       <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
       <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
-
-      {/* ⚠️ Le formulaire vient APRES : un champ vide presente comme sa fiche
-          l'inviterait a retaper une methode qu'il a deja. */}
-      {lectureRatee && <LectureRatee onReessayer={() => window.location.reload()} />}
 
       {/* Strategy tabs */}
       {strategies.length > 0 && (

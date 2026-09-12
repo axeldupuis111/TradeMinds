@@ -218,4 +218,26 @@ describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () =
         manquants.join(", "),
     ).toEqual([]);
   });
+
+  /**
+   * ⚠️⚠️ UN BANDEAU AU-DESSUS D'UN CHAMP QUI MENT NE CORRIGE RIEN. Ma première
+   * version posait le message en haut de la page Stratégie et laissait le
+   * formulaire vide en dessous : mesuré en production, l'écran disait « je n'ai
+   * pas pu lire » ET affichait « 0 caractères » là où vit sa méthode. C'est le
+   * CHAMP qui invite à retaper, pas le titre. Un écran qui ne sait pas ce qu'il
+   * affiche n'affiche pas.
+   */
+  it("les écrans qui portent un formulaire le cachent au lieu de l'entourer", () => {
+    for (const chemin of ["app/dashboard/strategy/page.tsx", "app/dashboard/challenge/page.tsx"]) {
+      const src = lire(chemin);
+      // ⚠️ Pas de motif multiligne ici : on mesure une DISTANCE, ce qui ne
+      // depend ni du CRLF ni de l'indentation.
+      const i = src.indexOf("if (lectureRatee) {");
+      expect(i, `${chemin} n'a pas de sortie anticipee`).toBeGreaterThan(-1);
+      expect(
+        src.slice(i, i + 60),
+        `${chemin} entoure le formulaire au lieu de le cacher`,
+      ).toContain("return (");
+    }
+  });
 });
