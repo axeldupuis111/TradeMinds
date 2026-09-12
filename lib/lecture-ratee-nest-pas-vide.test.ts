@@ -200,6 +200,7 @@ describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () =
       "app/dashboard/strategy/page.tsx",
       "app/dashboard/calendar/page.tsx",
       "app/dashboard/macro/page.tsx",
+      "app/dashboard/community/page.tsx",
       "app/dashboard/analytics/page.tsx",
       "app/dashboard/projection/page.tsx",
       "app/dashboard/leaderboard/page.tsx",

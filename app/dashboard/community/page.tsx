@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import LectureRatee from "@/components/LectureRatee";
 import { useLanguage } from "@/lib/LanguageContext";
 import { COMMUNITY_METRICS, MAX_CHALLENGE_DAYS, getMetricSpec } from "@/lib/community";
 import { Check, Copy, Crown, Flame, Pencil, Plus, Trash2, Trophy, Users } from "lucide-react";
@@ -64,6 +65,8 @@ export default function CommunityPage() {
   const { t } = useLanguage();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Vrai quand la communaute n'a pas pu etre lue : ce n'est pas « il n'en a pas ». */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<EditableChallenge | null>(null);
   const [showMembers, setShowMembers] = useState(false);
@@ -78,11 +81,20 @@ export default function CommunityPage() {
    */
   const [erreur, setErreur] = useState<string | null>(null);
 
+  /**
+   * ⚠️⚠️ `res.ok` N'ETAIT PAS REGARDE. Un 500 rend un corps JSON valide,
+   * `data.community` vaut alors `undefined`, et l'ecran affichait « Tu n'as pas
+   * encore de communaute » suivi de « demande a ton partenaire de t'ajouter » a
+   * un membre qui en fait deja partie. Il va reclamer un acces qu'il a.
+   */
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/community");
+      if (!res.ok) throw new Error(`community ${res.status}`);
       setData(await res.json());
+      setLectureRatee(false);
     } catch {
+      setLectureRatee(true);
       setData(null);
     } finally {
       setLoading(false);
@@ -139,6 +151,16 @@ export default function CommunityPage() {
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="skeleton h-20 w-full rounded-xl" />
         <div className="skeleton h-48 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  // ⚠️ « Je n'ai pas pu lire » passe AVANT « tu n'en as pas » : le second
+  // l'envoie reclamer un acces qu'il a peut-etre deja.
+  if (lectureRatee) {
+    return (
+      <div className="max-w-xl mx-auto">
+        <LectureRatee onReessayer={() => void load()} />
       </div>
     );
   }
