@@ -507,6 +507,7 @@ export default function DashboardContent({
       <StaggerItem className="mt-6">
         <KpiCards
           score={score}
+          scoreDate={lastReview?.created_at ?? null}
           weekCount={weekCount}
           weekWins={weekWins}
           useMonthFallback={useMonthFallback}

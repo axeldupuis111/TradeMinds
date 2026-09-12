@@ -36,6 +36,19 @@ interface DisplayAccount {
 export interface KpiCardsProps {
   // Score discipline
   score: number | null;
+  /**
+   * ⚠️⚠️ LA DATE DU BILAN QUI PORTE CE SCORE, parce qu'il n'a pas d'âge
+   * maximum. C'est le dernier bilan de séance, quel qu'il soit : mesuré le
+   * 2026-09-12 sur le compte d'Axel, le tableau de bord annonçait
+   * « SCORE DE DISCIPLINE 60/100 » avec un conseil au présent (« reste
+   * vigilant sur tes entrées ») pour un bilan du 6 août, vieux de 37 jours,
+   * sans un seul bilan depuis.
+   *
+   * ⚠️ ET LA CARTE VOISINE, SUR LE MÊME ÉCRAN, AFFICHE DÉJÀ CETTE DATE :
+   * « Dernière analyse · 6 août 2026 · 60/100 ». La convention du produit
+   * existait, elle était appliquée à une carte et pas à sa jumelle.
+   */
+  scoreDate?: string | null;
   // Trades this period
   weekCount: number;
   weekWins: number;
@@ -125,6 +138,7 @@ function MiniStat({
 
 export function KpiCards({
   score,
+  scoreDate,
   weekCount,
   weekWins,
   useMonthFallback,
@@ -141,7 +155,7 @@ export function KpiCards({
   deviseTotaleConnue = true,
   deviseTotale,
 }: KpiCardsProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
 
@@ -273,6 +287,25 @@ export function KpiCards({
             <p className="text-sm text-foreground-muted leading-snug max-w-sm">
               {scoreContextPhrase(score, t)}
             </p>
+
+            {/*
+              ⚠️⚠️ QUAND. Ce score est celui du DERNIER bilan de séance, sans
+              âge maximum : il peut dater de plusieurs semaines pendant que la
+              phrase au-dessus conseille au présent. La carte « Dernière
+              analyse », sur ce même écran, affiche déjà sa date : la
+              convention existait, elle manquait ici.
+            */}
+            {scoreDate && (
+              <p className="text-xs text-foreground-muted">
+                {t("dash_score_depuis", {
+                  date: new Date(scoreDate).toLocaleDateString(lang, {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }),
+                })}
+              </p>
+            )}
 
             {/* Séparateur horizontal */}
             <div

@@ -274,6 +274,7 @@ const dict: Record<string, string> = {
   "dash_welcome": "Willkommen,",
   "dash_overview": "Hier ist ein Überblick über deinen Tag.",
   "dash_discipline": "Disziplin-Score",
+  "dash_score_depuis": "Dein letztes Sitzungs-Fazit, vom {date}.",
   "dash_run_analysis": "Analyse starten →",
   "dash_week_trades": "Trades diese Woche",
   "dash_today_pnl": "Heutiger P&L",
