@@ -471,6 +471,15 @@ export default function AnalysisPage() {
   const [history, setHistory] = useState<SavedReview[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [tradeCount, setTradeCount] = useState(0);
+  /**
+   * ⚠️⚠️ TROIS ÉTATS POUR CHAQUE HISTORIQUE : je charge, je n'ai pas pu lire,
+   * il n'y a rien. Sans le deuxième, une lecture refusée s'affichait
+   * « Aucun échange enregistré. » et « Aucune analyse sauvegardée. » à un
+   * trader qui en a des dizaines. Mesuré en production en faisant répondre
+   * 500 aux lectures REST depuis le navigateur.
+   */
+  const [historyLectureRatee, setHistoryLectureRatee] = useState(false);
+  const [aiHistoryLectureRatee, setAiHistoryLectureRatee] = useState(false);
   /** `null` quand la lecture a echoue : ce n'est pas « il n'en a pas ». */
   const [hasStrategy, setHasStrategy] = useState<boolean | null>(false);
   /** Meme fait, nomme comme sur les dix autres ecrans : une convention se tient. */
@@ -582,13 +591,21 @@ export default function AnalysisPage() {
     setAIHistoryLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setAIHistoryLoading(false); return; }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("ai_analysis_history")
       .select("id, question, answer, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10);
-    setAIHistory(data || []);
+    // ⚠️ Le client Supabase ne jette pas : sans lire `error`, l'échec devenait
+    // un tableau vide, donc « aucun échange » à qui en a des dizaines.
+    if (error) {
+      console.error("[analyse] historique du coach non lu :", error.message);
+      setAiHistoryLectureRatee(true);
+    } else {
+      setAiHistoryLectureRatee(false);
+      setAIHistory(data || []);
+    }
     setAIHistoryLoading(false);
   }
 
@@ -632,8 +649,16 @@ export default function AnalysisPage() {
     ]);
 
     setTradeCount(count || 0);
-    // ⚠️ TROIS ETATS : il en a une, il n'en a pas, on ne sait pas.
-    setLectureRatee(!!erreurStrategie);
+    /**
+     * ⚠️ TROIS ETATS : il en a une, il n'en a pas, on ne sait pas.
+     *
+     * ⚠️⚠️ ET LA LECTURE DES TRADES COMPTE AUSSI. `fetchAllRows` rend `null`
+     * dès qu'une page échoue ; le `?? []` juste en dessous transformait ça en
+     * « aucun trade », et la page affichait « Aucun trade sur cette période »
+     * à un journal de 85 trades, en désactivant au passage le bouton
+     * d'analyse. Le tableau de bord avait déjà payé ce `?? []` exact.
+     */
+    setLectureRatee(!!erreurStrategie || trades === null);
     setHasStrategy(erreurStrategie ? null : !!strat);
     setAllTrades(
       (trades ?? [])
@@ -652,14 +677,21 @@ export default function AnalysisPage() {
       return;
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("session_reviews")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10);
 
-    setHistory(data || []);
+    // ⚠️ Même règle : une lecture refusée n'est pas un historique vide.
+    if (error) {
+      console.error("[analyse] historique des analyses non lu :", error.message);
+      setHistoryLectureRatee(true);
+    } else {
+      setHistoryLectureRatee(false);
+      setHistory(data || []);
+    }
     setHistoryLoading(false);
   }
 
@@ -1831,6 +1863,8 @@ export default function AnalysisPage() {
                 <div className="space-y-2">
                   {[1, 2].map((i) => <div key={i} className="skeleton h-12 rounded w-full" />)}
                 </div>
+              ) : aiHistoryLectureRatee ? (
+                <p className="text-loss text-xs">{t("lecture_impossible")}</p>
               ) : aiHistory.length === 0 ? (
                 <p className="text-muted text-xs">{t("coach_history_empty")}</p>
               ) : (
@@ -1875,6 +1909,8 @@ export default function AnalysisPage() {
                   </div>
                 ))}
               </div>
+            ) : historyLectureRatee ? (
+              <p className="text-loss text-xs">{t("lecture_impossible")}</p>
             ) : history.length === 0 ? (
               <p className="text-muted text-xs">{t("analysis_no_history")}</p>
             ) : (
@@ -2003,6 +2039,8 @@ export default function AnalysisPage() {
               </div>
             ))}
           </div>
+        ) : historyLectureRatee ? (
+          <p className="text-loss text-sm">{t("lecture_impossible")}</p>
         ) : history.length === 0 ? (
           <p className="text-muted text-sm">{t("analysis_no_history")}</p>
         ) : (

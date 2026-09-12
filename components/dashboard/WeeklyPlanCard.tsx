@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 import { Sparkles, Target, Lock } from "lucide-react";
 import NoteDeDemonstration from "@/components/NoteDeDemonstration";
+import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 
 interface WeeklyPlan {
@@ -23,29 +24,50 @@ export default function WeeklyPlanCard() {
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
+  /** La lecture a-t-elle échoué ? Voir le commentaire de `charger`. */
+  const [lectureRatee, setLectureRatee] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
+  /**
+   * ⚠️⚠️ LA PANNE SE LISAIT « TU N'AS PAS ASSEZ TRAVAILLÉ ». `res.ok` n'était
+   * pas regardé : un 500 rend un corps JSON valide, `data.plan` vaut alors
+   * `undefined`, et la carte affichait « Journalise quelques sessions et
+   * trades cette semaine pour débloquer ton plan. » Mesuré en production en
+   * faisant répondre 500 à la route, sur un compte de 85 trades et 38
+   * sessions.
+   *
+   * ⚠️ Ce n'est pas un état vide, c'est une CONSIGNE, et elle repose sur un
+   * fait faux : le trader va refaire un travail qu'il a déjà fait. C'est mot
+   * pour mot le défaut que `LectureRatee` documente pour cinq autres écrans ;
+   * cette carte-ci n'en faisait pas partie.
+   */
+  const charger = useCallback(async () => {
     // ⚠️ Compte de démonstration : aucun appel au modèle. La route refuse de
     // toute façon (`refusSiDemo`) ; sans ce retour, la carte tournait puis
     // restait vide, sans dire pourquoi.
     if (demoMode) { setLoading(false); return; }
     setLoading(true);
-    fetch("/api/weekly-plan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ language: lang }),
-    })
-      .then((r) => r.json())
-      .then((data: { locked?: boolean; plan?: WeeklyPlan | null }) => {
-        if (!alive) return;
-        setLocked(!!data.locked);
-        setPlan(data.plan ?? null);
-      })
-      .catch(() => { if (alive) setPlan(null); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+    try {
+      const r = await fetch("/api/weekly-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang }),
+      });
+      if (!r.ok) throw new Error(`weekly-plan ${r.status}`);
+      const data = (await r.json()) as { locked?: boolean; plan?: WeeklyPlan | null };
+      setLocked(!!data.locked);
+      setPlan(data.plan ?? null);
+      setLectureRatee(false);
+    } catch (e) {
+      console.error("[plan hebdo] lecture impossible :", e);
+      setLectureRatee(true);
+    } finally {
+      setLoading(false);
+    }
   }, [lang, demoMode]);
+
+  useEffect(() => {
+    charger();
+  }, [charger]);
 
   const header = (
     <div className="flex items-center gap-2 mb-3">
@@ -62,6 +84,18 @@ export default function WeeklyPlanCard() {
       <div className="rounded-xl border border-border bg-card p-5">
         {header}
         <NoteDeDemonstration />
+      </div>
+    );
+  }
+
+  if (lectureRatee) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        {header}
+        {/* ⚠️ Surtout pas « journalise quelques sessions » : le trader en a
+            peut-être fait cent. On dit ce qui s'est passé, et on propose de
+            réessayer. */}
+        <LectureRatee onReessayer={charger} />
       </div>
     );
   }
