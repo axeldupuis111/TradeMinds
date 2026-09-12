@@ -5,6 +5,7 @@ import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { DEFAULT_CURRENCY, isSupportedCurrency, money } from "@/lib/account-currency";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
+import { nomDeLangue } from "@/lib/langue-du-modele";
 
 const MAX_TRADES = 500;
 
@@ -50,14 +51,14 @@ export async function POST(request: Request) {
     }
 
     // ── 3. Parse + payload limits ──
-    const LANG_NAMES: Record<string, string> = { fr: "français", en: "English", de: "Deutsch", es: "español" };
+    // Voir lib/langue-du-modele.ts.
     const client = new Anthropic({ apiKey });
     const body: SummaryRequest & { language?: string; currency?: string } = await request.json();
-    const { trades, strategyName, language = "fr", currency } = body;
+    const { trades, strategyName, language, currency } = body;
     // ⚠️ La devise du compte importé, pas l'euro par défaut : le résumé cite
     // les chiffres du prompt, donc un euro écrit ici ressort à l'écran.
     const devise = isSupportedCurrency(currency) ? currency : DEFAULT_CURRENCY;
-    const langName = LANG_NAMES[language] ?? "français";
+    const langName = nomDeLangue(language);
 
     if (!trades || trades.length === 0) {
       return NextResponse.json({ error: "Aucun trade." }, { status: 400 });

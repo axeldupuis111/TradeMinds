@@ -102,10 +102,17 @@ describe("libellé et ton de la confirmation", () => {
     expect((r.confirm as { label: string }).label).toBe("Monatsbilanz");
   });
 
-  it("retombe sur le français pour une langue inconnue", async () => {
+  /**
+   * ⚠️⚠️ CE TEST DISAIT « FRANÇAIS », ET LA RÈGLE A CHANGÉ EXPRÈS. Le repli
+   * d'une langue inconnue est celui du PRODUIT (`defaultLocale = 'en'`), pas
+   * celui de la langue dans laquelle il a été écrit. Neuf routes IA tranchaient
+   * cette même question, cinq en français et quatre en anglais : voir
+   * lib/langue-du-modele.ts.
+   */
+  it("retombe sur la langue du produit pour une langue inconnue", async () => {
     const { client } = mockClient([{ data: null, error: null }]);
     const r = await executeCoachTool(client, USER, "run_ai_report", { kind: "monthly_review" }, undefined, "premium", "it");
-    expect((r.confirm as { label: string }).label).toBe("Bilan mensuel");
+    expect((r.confirm as { label: string }).label).toBe("Monthly review");
   });
 
   it("annonce un crédit, pas une suppression", async () => {

@@ -100,7 +100,7 @@ const CONFIRM_CTA: Record<CoachConfirmTone, Record<string, string>> = {
 };
 
 export function confirmCta(tone: CoachConfirmTone, language: string): string {
-  return CONFIRM_CTA[tone][language] ?? CONFIRM_CTA[tone].fr;
+  return CONFIRM_CTA[tone][codeDeLangue(language)];
 }
 
 /** Libellés lisibles des rapports IA, pour ne jamais afficher la clé brute. */
@@ -869,6 +869,8 @@ export const COACH_TOOLS = [
 // le bundle client (landing, matrice des plans). Réexportée par commodité.
 export { TOOL_MIN_PLAN } from "@/lib/coach-tool-plans";
 import { planAllowsTool } from "@/lib/coach-tool-plans";
+import { defaultLocale } from "@/i18n/config";
+import { codeDeLangue } from "@/lib/langue-du-modele";
 export { planAllowsTool };
 
 
@@ -987,8 +989,18 @@ export async function executeCoachTool(
   timezone?: string,
   /** Plan du trader. Recontrôlé ici même si le catalogue est déjà filtré. */
   plan: PlanType = "premium",
-  /** Langue d'affichage : sert aux libellés que le trader lit avant de valider. */
-  language = "fr",
+  /**
+   * Langue d'affichage : sert aux libellés que le trader lit avant de valider.
+   *
+   * ⚠️ TYPÉE `string`, PAS `Lang`, ET C'EST VOULU : un code inconnu doit
+   * pouvoir arriver jusqu'ici pour être ramené à la langue du produit. Le
+   * refuser à la compilation déplacerait simplement le problème chez
+   * l'appelant, qui n'a pas plus de moyen de le valider.
+   *
+   * ⚠️ Le repli est celui du produit (anglais), pas celui de la langue dans
+   * laquelle il a été écrit. Voir lib/langue-du-modele.ts.
+   */
+  language: string = defaultLocale,
 ): Promise<CoachToolResult> {
   // Défense en profondeur : le catalogue envoyé au modèle est déjà filtré par
   // coachToolsForPlan, donc ce cas ne devrait pas se produire. Il couvre le
@@ -2319,12 +2331,12 @@ export async function executeCoachTool(
         return {
           result: {
             requires_confirmation: true,
-            what: REPORT_LABELS[language]?.[kind] ?? REPORT_LABELS.fr[kind],
+            what: REPORT_LABELS[codeDeLangue(language)][kind],
             costs_credit: true,
             instruction:
               `Ne dis PAS que c'est lancé. Explique en une phrase ce que le rapport va lui apporter, précise qu'il consomme un crédit de son quota du jour, et invite-le à cliquer « ${confirmCta("credit", language)} ».`,
           },
-          confirm: { op: "run_ai_report", kind, month, session_id: sessionId, label: REPORT_LABELS[language]?.[kind] ?? REPORT_LABELS.fr[kind], tone: "credit" },
+          confirm: { op: "run_ai_report", kind, month, session_id: sessionId, label: REPORT_LABELS[codeDeLangue(language)][kind], tone: "credit" },
         };
       }
 

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { logAiCost } from "@/lib/ai-cost-log";
+import { codeDeLangue } from "@/lib/langue-du-modele";
 
 /**
  * LE VERDICT RÉDIGÉ DE LA PROJECTION.
@@ -108,7 +109,8 @@ export async function POST(req: Request) {
   if (auth.plan !== "premium") return NextResponse.json({ locked: true });
 
   const corps = (await req.json().catch(() => ({}))) as CorpsRequete;
-  const lang = corps.language && LANG_NAMES[corps.language] ? corps.language : "en";
+  // Repli et validation partagés : voir lib/langue-du-modele.ts.
+  const lang = codeDeLangue(corps.language);
 
   // ⚠️ ON REFUSE DE RÉDIGER UN VERDICT QUI N'EN EST PAS UN. Si la page envoie
   // « insuffisant » (ou n'importe quoi d'autre), il n'y a rien à commenter : le

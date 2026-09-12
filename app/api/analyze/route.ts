@@ -26,6 +26,7 @@ import { appendSnapshot, parseCoachMemory, renderCoachMemory } from "@/lib/coach
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
+import { nomDeLangue } from "@/lib/langue-du-modele";
 
 // Sonnet 5 raisonne (thinking adaptatif) avant de rendre son verdict : les
 // analyses riches peuvent dépasser la minute sur de grosses périodes.
@@ -41,12 +42,9 @@ const MAX_STRATEGY_CHARS = 10_000;
 /** Nombre de trades détaillés un par un dans le prompt (le reste passe par les stats). */
 const MAX_DETAILED_TRADES = 40;
 
-const LANG_NAMES: Record<string, string> = {
-  fr: "français",
-  en: "English",
-  de: "Deutsch",
-  es: "español",
-};
+// La table des langues et le repli vivent dans lib/langue-du-modele.ts :
+// neuf routes les recopiaient, et cinq d'entre elles repliaient sur le français
+// pendant que quatre repliaient sur l'anglais.
 
 interface AnalyzeRequest {
   language?: string;
@@ -136,8 +134,8 @@ export async function POST(request: Request) {
 
     // ── 4. Parse + payload limits ──
     const body: AnalyzeRequest = await request.json();
-    const { strategy, trades, language = "fr", periodLabel } = body;
-    const langName = LANG_NAMES[language] ?? "français";
+    const { strategy, trades, language, periodLabel } = body;
+    const langName = nomDeLangue(language);
 
     if (!trades || trades.length === 0) {
       return NextResponse.json({ code: "analyze_err_no_trades" }, { status: 400 });

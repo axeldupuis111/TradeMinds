@@ -3,6 +3,7 @@ import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
+import { nomDeLangue } from "@/lib/langue-du-modele";
 
 // A strategy description is at most a few paragraphs; cap input to keep token
 // cost bounded and prevent abuse.
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     const client = new Anthropic({ apiKey });
-    const { text, language = "fr" } = await request.json();
+    const { text, language } = await request.json();
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
@@ -45,8 +46,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const LANG_NAMES: Record<string, string> = { fr: "français", en: "English", de: "Deutsch", es: "español" };
-    const langName = LANG_NAMES[language] ?? "français";
+    // Voir lib/langue-du-modele.ts.
+    const langName = nomDeLangue(language);
 
     const prompt = `Tu es un assistant spécialisé en trading. Le trader décrit sa stratégie en langage naturel. Extrais les règles structurées.
 

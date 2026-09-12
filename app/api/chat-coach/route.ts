@@ -21,6 +21,7 @@ import { differerCatalogue } from "@/lib/coach-tool-search";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
+import { nomDeLangue } from "@/lib/langue-du-modele";
 
 const MAX_MESSAGES = 50;
 /**
@@ -101,12 +102,7 @@ const MAX_PAGE_CONTEXT_CHARS = 200;
 /** Fenêtre d'historique servant à calculer les statistiques du coach. */
 const STATS_TRADE_LIMIT = 300;
 
-const LANG_NAMES: Record<string, string> = {
-  fr: "français",
-  en: "English",
-  de: "Deutsch",
-  es: "español",
-};
+// Voir lib/langue-du-modele.ts.
 
 export async function POST(request: Request) {
   let reserved: { userId: string; plan: PlanType; timezone: string } | null = null;
@@ -129,7 +125,7 @@ export async function POST(request: Request) {
 
     // ── 4. Parse + payload limits ──
     const body: ChatRequest = await request.json();
-    const { messages, language = "fr", pageContext } = body;
+    const { messages, language, pageContext } = body;
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: "Aucun message." }, { status: 400 });
@@ -297,7 +293,7 @@ export async function POST(request: Request) {
     }).format(new Date());
 
     // ── 5. Sanitize user inputs ──
-    const langName = LANG_NAMES[language] ?? "français";
+    const langName = nomDeLangue(language);
     const sanitizedMessages = boundedMessages.map((m) => ({
       role: m.role,
       content: m.role === "user" ? sanitizeUserInput(m.content) : m.content,

@@ -3,6 +3,7 @@ import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
 import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
+import { codeDeLangue } from "@/lib/langue-du-modele";
 
 export const dynamic = "force-dynamic";
 
@@ -271,7 +272,8 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as { language?: string; month?: string };
-  const lang = body.language && LANG_NAMES[body.language] ? body.language : "en";
+  // Repli et validation partagés : voir lib/langue-du-modele.ts.
+  const lang = codeDeLangue(body.language);
 
   const { month, stats, prev, deltas, extras, calendar, trend } = await gather(auth.userId, body.month ?? null);
 

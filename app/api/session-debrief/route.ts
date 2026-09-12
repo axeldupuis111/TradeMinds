@@ -6,6 +6,7 @@ import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { appendCommitment, parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
 import { createClient } from "@supabase/supabase-js";
+import { codeDeLangue } from "@/lib/langue-du-modele";
 
 /**
  * Débrief IA de fin de session — le moment rétrospective du journaling.
@@ -129,7 +130,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const sessionId = body.sessionId;
-  const lang = body.language && LANG_NAMES[body.language] ? body.language : "en";
+  // Repli et validation partagés : voir lib/langue-du-modele.ts.
+  const lang = codeDeLangue(body.language);
   if (!sessionId || typeof sessionId !== "string") {
     return NextResponse.json({ error: "sessionId required" }, { status: 400 });
   }

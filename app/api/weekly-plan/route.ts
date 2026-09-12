@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { isoWeekKey } from "@/lib/community-challenges";
+import { codeDeLangue } from "@/lib/langue-du-modele";
 
 /**
  * "Plan for the week" — a forward-looking AI coach card. Complements the
@@ -40,7 +41,11 @@ export async function POST(req: Request) {
   if (auth.plan !== "plus" && auth.plan !== "premium") {
     return NextResponse.json({ locked: true });
   }
-  const lang = await req.json().then((b) => (b?.language && LANG_NAMES[b.language] ? b.language : "en")).catch(() => "en");
+  // Repli et validation partagés : voir lib/langue-du-modele.ts.
+  const lang = await req
+    .json()
+    .then((b) => codeDeLangue(b?.language))
+    .catch(() => codeDeLangue(undefined));
 
   const supabase = createClient();
   const weekKey = isoWeekKey();

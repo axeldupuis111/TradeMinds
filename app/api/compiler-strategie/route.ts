@@ -7,6 +7,7 @@ import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { logAiCost } from "@/lib/ai-cost-log";
 import { compilerDepuisModele } from "@/lib/backtest/compilation";
 import { instrumentParCode, INSTRUMENTS } from "@/lib/backtest/instruments";
+import { codeDeLangue } from "@/lib/langue-du-modele";
 
 /**
  * LA FICHE DEVIENT UN PLAN EXÉCUTABLE, OU ELLE DIT POURQUOI ELLE N'A PAS PU.
@@ -301,7 +302,13 @@ export async function POST(req: Request) {
     es: "espagnol",
     de: "allemand",
   };
-  const langue = LANGUES[String(corps.langue ?? "fr")] ?? LANGUES.fr;
+  /**
+   * ⚠️ LES NOMS RESTENT ÉCRITS EN FRANÇAIS ICI, volontairement : ce prompt
+   * est mis en cache, et reformuler la consigne invaliderait le cache pour
+   * tout le monde. Seul le CODE de langue vient de la source unique, avec
+   * son repli, qui était français et contredisait les quatre autres routes.
+   */
+  const langue = LANGUES[codeDeLangue(corps.langue)];
 
   const message = `LANGUE DE TES EXPLICATIONS : ${langue}. Ecris "pourquoi" et "nonTraduites" dans cette langue, quelle que soit celle de la fiche. Les citations du champ "phrase" restent VERBATIM dans la langue de la fiche : elles servent au trader a retrouver ses propres mots.
 
