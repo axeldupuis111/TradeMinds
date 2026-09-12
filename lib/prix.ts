@@ -1,5 +1,3 @@
-import { langueCourante } from "@/lib/nombres";
-
 /**
  * LES PRIX DE L'ABONNEMENT, ÉCRITS À UN SEUL ENDROIT.
  *
@@ -46,12 +44,27 @@ export const PRIX_EN_CENTIMES = {
  * que ce dépôt a déjà payé ailleurs, et un garde l'a attrapé tout de suite.
  * Une langue connue ne lève jamais : il n'y a donc plus rien à rattraper.
  */
+/**
+ * ⚠️⚠️ LA LANGUE EST OBLIGATOIRE, ET C'EST LA CORRECTION.
+ *
+ * Le paramètre était facultatif et retombait sur `langueCourante()`, qui
+ * n'a pas de document à lire côté serveur et répond « fr-FR » par un repli
+ * assumé. Les DIX appels du produit l'omettaient. Résultat : à une requête
+ * `accept-language: en`, le serveur rendait `lang="en"` et « 14,99 € »,
+ * virgule française comprise, dans la grille des tarifs de la page
+ * d'accueil. C'est le nombre que le visiteur lit AVANT de payer, et c'est
+ * aussi ce qu'indexe un moteur de recherche.
+ *
+ * Corriger les dix appels aurait laissé le onzième arriver. Le paramètre
+ * devient donc obligatoire : l'oubli ne compile plus. Et il est typé `Lang`
+ * plutôt que `string`, ce qui supprime le besoin d'un repli : une valeur
+ * hors des quatre langues ne peut plus être écrite.
+ */
 const LANGUES_CONNUES = ["fr", "en", "de", "es"] as const;
 
-export function prixLisible(centimes: number, locale?: string): string {
-  const demandee = locale ?? langueCourante();
-  const racine = demandee.slice(0, 2).toLowerCase();
-  const sure = (LANGUES_CONNUES as readonly string[]).includes(racine) ? demandee : "fr-FR";
+export function prixLisible(centimes: number, locale: string): string {
+  const racine = locale.slice(0, 2).toLowerCase();
+  const sure = (LANGUES_CONNUES as readonly string[]).includes(racine) ? locale : "fr-FR";
   return new Intl.NumberFormat(sure, { style: "currency", currency: "EUR" }).format(
     centimes / 100,
   );
@@ -64,6 +77,6 @@ export function prixLisible(centimes: number, locale?: string): string {
  * « 14.99€/mois ». Deux nombres pour le même fait, dont l'un cesse d'être vrai
  * le jour où l'autre change.
  */
-export function prixParJour(centimesParMois: number, locale?: string): string {
+export function prixParJour(centimesParMois: number, locale: string): string {
   return prixLisible(Math.round(centimesParMois / 30), locale);
 }

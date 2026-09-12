@@ -1569,7 +1569,7 @@ export default function AnalysisPage() {
                 </Link>
               ))}
             </div>
-            <p className="text-[11px] text-muted mt-2">{t("teaser_hint", { prix: prixLisible(PRIX_EN_CENTIMES.plus.mensuel) })}</p>
+            <p className="text-[11px] text-muted mt-2">{t("teaser_hint", { prix: prixLisible(PRIX_EN_CENTIMES.plus.mensuel, lang) })}</p>
           </section>
         )}
 

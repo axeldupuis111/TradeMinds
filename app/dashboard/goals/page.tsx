@@ -936,7 +936,7 @@ export default function GoalsPage() {
                         {metricLabel(r.metric)}{" "}
                         <span className="text-muted font-normal">{r.comparator === "gte" ? "≥" : "≤"} {r.target}{unit(r.metric)} · {periodLabel(r.period)}</span>
                       </p>
-                      <p className="text-xs text-muted mt-0.5">{t(r.reasonKey).replace("{v}", String(r.reasonValue))}</p>
+                      <p className="text-xs text-muted mt-0.5">{t(r.reasonKey, { v: r.reasonValue })}</p>
                     </div>
                     <button onClick={() => addMetricGoal(r.metric, r.target, r.period)} disabled={busy}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shrink-0">

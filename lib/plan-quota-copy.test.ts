@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { remplir } from "./remplir";
 import { PLAN_FEATURES, planQuotaSegments } from "./plan-features";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "./plan-limits";
 import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
@@ -190,7 +191,15 @@ describe("les quotas cités sont identiques dans les 4 langues", () => {
  * figurait pas. D'où ces tests, qui ne dépendent d'aucun motif.
  */
 describe("les cartes de paliers du coach disent les vrais chiffres", () => {
-  const t = (k: string) => (fr as Record<string, string>)[k] ?? k;
+  /**
+   * ⚠️⚠️ LA DOUBLURE PASSE PAR LE VRAI MOTEUR. Elle rendait la phrase brute du
+   * dictionnaire en ignorant les valeurs, ce qui suffisait tant que
+   * `coachQuotaText` faisait sa substitution à la main. Une doublure qui
+   * n'interpole pas ne peut pas révéler un gabarit mal interpolé : elle en
+   * fabrique un à tous les coups, ou n'en voit aucun.
+   */
+  const t = (k: string, valeurs?: Record<string, string | number>) =>
+    remplir((fr as Record<string, string>)[k] ?? k, valeurs, "fr");
 
   it("gratuit : annonce le forfait découverte, pas un nombre figé", () => {
     const texte = coachQuotaText("free", t);
@@ -211,10 +220,46 @@ describe("les cartes de paliers du coach disent les vrais chiffres", () => {
     expect(texte).not.toContain("{cap}");
   });
 
-  it("aucun palier ne laisse un gabarit non substitué", () => {
-    for (const plan of ["free", "plus", "premium"] as const) {
-      expect(coachQuotaText(plan, t)).not.toMatch(/\{\w+\}/);
+  /**
+   * ⚠️⚠️ CE TEST EXISTAIT DÉJÀ ET N'A PAS VU LA FUITE. Son motif était
+   * `/\{\w+\}/`, qui ne reconnaît que le trou simple : `\w` ne contient pas le
+   * caractère « | », donc « {count|message|messages} » lui échappait. La page
+   * d'accueil anglaise a affiché « 5 {count|message|messages} to try it,
+   * lifetime » dans sa grille des tarifs, sous un garde vert nommé « aucun
+   * palier ne laisse un gabarit non substitué ».
+   *
+   * Un garde qui ne connaît qu'une syntaxe protège la moitié du produit, et le
+   * pire est qu'il donne l'impression de protéger l'autre.
+   *
+   * ⚠️ ET ON VÉRIFIE LES QUATRE LANGUES : les dictionnaires n'accordent pas les
+   * mêmes phrases (l'espagnol et l'allemand ont leurs propres formes), donc un
+   * gabarit peut ne fuir que dans une seule langue.
+   */
+  it("aucun palier ne laisse un gabarit non substitué, dans aucune langue", () => {
+    /** Trou simple « {n} » OU forme d'accord « {n|singulier|pluriel} ». */
+    const GABARIT = /\{[^}\s]+\}/;
+    const DICOS: Record<string, Record<string, string>> = { fr, en, de, es };
+
+    for (const langue of Object.keys(DICOS)) {
+      const tLangue = (k: string, valeurs?: Record<string, string | number>) =>
+        remplir(DICOS[langue][k] ?? k, valeurs, langue);
+      for (const plan of ["free", "plus", "premium"] as const) {
+        const texte = coachQuotaText(plan, tLangue);
+        expect(
+          texte,
+          `gabarit non substitué en ${langue} pour le palier ${plan} : « ${texte} »`,
+        ).not.toMatch(GABARIT);
+      }
     }
+  });
+
+  it("le motif de fuite reconnaît bien les deux syntaxes", () => {
+    // ⚠️ Garde-fou du garde-fou : c'est précisément l'oubli de la seconde forme
+    // qui a laissé passer le défaut. On fixe les deux par l'exemple.
+    const GABARIT = /\{[^}\s]+\}/;
+    expect(GABARIT.test("5 {count} messages")).toBe(true);
+    expect(GABARIT.test("5 {count|message|messages}")).toBe(true);
+    expect(GABARIT.test("5 messages pour essayer")).toBe(false);
   });
 
   it("les gabarits existent dans les 4 langues", () => {

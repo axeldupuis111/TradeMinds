@@ -302,7 +302,7 @@ export default function UpgradePage() {
    */
   // ⚠️ La table vit dans lib/prix.ts : la landing affiche les mêmes prix, et
   // deux tables sur deux écrans finissent par diverger.
-  const prix = (centimes: number) => prixLisible(centimes);
+  const prix = (centimes: number) => prixLisible(centimes, lang);
 
   function formatMoney(cents: number, currency: string): string {
     try {

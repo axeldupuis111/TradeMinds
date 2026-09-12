@@ -1689,7 +1689,11 @@ const ROI_PAID_PLANS = [
   { nameKey: "plan_premium", centimes: PRIX_EN_CENTIMES.premium.mensuel, tone: "--warning" },
 ];
 
+// ⚠️ Ce composant écrit le coût par jour ET le prix mensuel : il lui faut la
+// langue du lecteur, qu’il lit lui-même plutôt que de la faire enfiler par
+// ROIBand, qui n’en a aucun usage.
 function RoiPayback({ t }: { t: Traduire }) {
+  const { lang } = useLanguage();
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -1760,10 +1764,10 @@ function RoiPayback({ t }: { t: Traduire }) {
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: `rgb(var(${p.tone}))` }} />
             <div className="min-w-0">
               <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t(p.nameKey)}</p>
-              <p className="text-[11px]" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_roi_perday").replace("{v}", prixParJour(p.centimes))}</p>
+              <p className="text-[11px]" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_roi_perday", { v: prixParJour(p.centimes, lang) })}</p>
             </div>
             <p className="ml-auto text-lg sm:text-xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: `rgb(var(${p.tone}))`, fontStyle: "normal" }}>
-              {prixLisible(p.centimes)}
+              {prixLisible(p.centimes, lang)}
               <span className="text-[11px] font-medium" style={{ color: COPY }}>{t("pricing_roi_permonth")}</span>
             </p>
           </motion.div>
@@ -1991,9 +1995,9 @@ function Pricing() {
     {
       name: t("plan_plus"),
       sub: t("plan_sub_plus"),
-      monthlyPrice: prixLisible(PRIX_EN_CENTIMES.plus.mensuel),
-      annualPrice: prixLisible(PRIX_EN_CENTIMES.plus.annuel),
-      annualMonthly: prixLisible(PRIX_EN_CENTIMES.plus.annuelParMois),
+      monthlyPrice: prixLisible(PRIX_EN_CENTIMES.plus.mensuel, lang),
+      annualPrice: prixLisible(PRIX_EN_CENTIMES.plus.annuel, lang),
+      annualMonthly: prixLisible(PRIX_EN_CENTIMES.plus.annuelParMois, lang),
       feats: PLUS_BENEFITS.map((k) => t(k)),
       featsLabel: "",
       includesNote: "",
@@ -2007,9 +2011,9 @@ function Pricing() {
       // à part (includesNote) pour ne jamais mélanger les deux.
       name: t("plan_premium"),
       sub: t("plan_premium_desc"),
-      monthlyPrice: prixLisible(PRIX_EN_CENTIMES.premium.mensuel),
-      annualPrice: prixLisible(PRIX_EN_CENTIMES.premium.annuel),
-      annualMonthly: prixLisible(PRIX_EN_CENTIMES.premium.annuelParMois),
+      monthlyPrice: prixLisible(PRIX_EN_CENTIMES.premium.mensuel, lang),
+      annualPrice: prixLisible(PRIX_EN_CENTIMES.premium.annuel, lang),
+      annualMonthly: prixLisible(PRIX_EN_CENTIMES.premium.annuelParMois, lang),
       feats: PREMIUM_BENEFITS.map((k) => t(k)),
       featsLabel: t("plan_premium_exclusives"),
       includesNote: t("plan_premium_includes_plus_short"),

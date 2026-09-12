@@ -265,7 +265,7 @@ function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: T
       </p>
 
       <p className="text-[13px] mb-4" style={{ color: COPY }}>
-        {t(tier.promiseKey).replace("{count}", String(toolCountForPlan(tier.plan)))}
+        {t(tier.promiseKey, { count: toolCountForPlan(tier.plan) })}
       </p>
       <ul className="space-y-2">
         {gained.map((cap) => (

@@ -54,6 +54,41 @@ describe("les prix de l'abonnement", () => {
   });
 
   /**
+   * LA LANGUE EST OBLIGATOIRE, ET C'EST CE QUI PROTÈGE LA PAGE D'ACCUEIL.
+   *
+   * ⚠️⚠️ ELLE ÉTAIT FACULTATIVE et retombait sur `langueCourante()`, qui n'a
+   * pas de document à lire côté serveur et répond « fr-FR » par un repli
+   * assumé. Les DIX appels du produit l'omettaient. À une requête
+   * `accept-language: en`, le serveur rendait donc `lang="en"` avec
+   * « 14,99 € », virgule française comprise, dans la grille des tarifs : le
+   * nombre que le visiteur lit avant de payer, et ce qu'indexe un moteur.
+   *
+   * ⚠️ Corriger les dix appels aurait laissé le onzième arriver. Le paramètre
+   * est devenu obligatoire : l'oubli ne compile plus. Ce test dit pourquoi, et
+   * échouerait si quelqu'un le rendait à nouveau facultatif « pour simplifier ».
+   */
+  it("exige la langue, elle ne se devine pas", () => {
+    /**
+     * ⚠️ SANS LES COMMENTAIRES : le commentaire qui EXPLIQUE la correction cite
+     * forcément le nom de la fonction fautive. Sans ce filtre, le garde
+     * échouait sur le fichier corrigé, c'est-à-dire qu'il constatait qu'on
+     * PARLE de `langueCourante` et non qu'on l'appelle.
+     */
+    const source = sansCommentaires(
+      readFileSync(join(process.cwd(), "lib/prix.ts"), "utf8"),
+    );
+    expect(
+      source,
+      "la langue est redevenue facultative : les appels serveur retomberont sur " +
+        "le français, et personne ne le verra en développant en français",
+    ).not.toMatch(/locale\?:/);
+    expect(
+      source,
+      "prix.ts relit la langue ambiante au lieu de la recevoir",
+    ).not.toContain("langueCourante");
+  });
+
+  /**
    * ⚠️⚠️ ET PLUS AUCUNE TABLE PARALLÈLE. Le balayage vise les écrans, pas les
    * commentaires ni les articles de blog, où citer un prix dans une phrase est
    * normal.

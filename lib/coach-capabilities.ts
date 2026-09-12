@@ -121,14 +121,30 @@ const JOURS_PAR_MOIS = 30;
  * être modifiées toutes les deux, et l'une des deux finit toujours par être
  * oubliée. Une seule fonction, deux appelants.
  */
+/**
+ * ⚠️⚠️ ON PASSE LES VALEURS À `t`, ON NE LES REMPLACE PAS À LA MAIN.
+ *
+ * `.replace("{count}", …)` ne connaît que le trou simple. Il laisse intacte la
+ * forme d'accord « {count|message|messages} », qui sortait donc TELLE QUELLE
+ * sur la page d'accueil : « 5 {count|message|messages} to try it, lifetime »,
+ * en anglais, dans la grille des tarifs, c'est-à-dire à l'endroit exact où le
+ * visiteur décide.
+ *
+ * C'est le défaut que `lib/LanguageContext.tsx` décrit dans son propre
+ * commentaire : « chaque appelant remplaçait ses trous à la main avec
+ * .replace() ». Quarante-deux composants ont été repris à ce moment-là. Cette
+ * fonction, qui venait justement d'être écrite pour centraliser la
+ * substitution des deux appelants, a gardé l'ancienne méthode.
+ */
 export function coachQuotaText(plan: CapabilityPlan, t: Traduire): string {
   const key = coachQuotaKey(plan);
   if (key === "cap_quota_taster") {
-    return t(key).replace("{count}", String(FREE_LIFETIME_CHAT_MESSAGES));
+    return t(key, { count: FREE_LIFETIME_CHAT_MESSAGES });
   }
-  return t(key)
-    .replace("{count}", String(PLAN_LIMITS.chat[plan].limit))
-    .replace("{cap}", String(PLAN_MONTHLY_CEILING.chat[plan]));
+  return t(key, {
+    count: PLAN_LIMITS.chat[plan].limit,
+    cap: PLAN_MONTHLY_CEILING.chat[plan],
+  });
 }
 
 /** Les trois paliers, dans l'ordre du récit : il lit, il corrige, il fait. */
