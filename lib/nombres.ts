@@ -1,3 +1,5 @@
+import { defaultLocale } from "@/i18n/config";
+
 /**
  * LES NOMBRES S'ÉCRIVENT DANS LA LANGUE DU LECTEUR.
  *
@@ -19,13 +21,32 @@
  *
  * ⚠️ ON LIT LE DOCUMENT, PAS UNE VARIABLE DE MODULE. `document.documentElement.lang`
  * est tenu à jour par le contexte de langue, il est propre à chaque page, et il
- * n'existe pas côté serveur : le repli français y est explicite plutôt
- * qu'accidentel. Une variable de module mêlerait les langues de deux abonnés
- * servis en même temps par le même processus (e-mails, PDF).
+ * n'existe pas côté serveur : le repli y est explicite plutôt qu'accidentel.
+ * Une variable de module mêlerait les langues de deux abonnés servis en même
+ * temps par le même processus (e-mails, PDF).
+ *
+ * ── POURQUOI LE REPLI N'EST PLUS LE FRANÇAIS ────────────────────────────────
+ *
+ * ⚠️⚠️ IL ÉTAIT « fr-FR », ET IL S'APPLIQUE À CHAQUE RENDU SERVEUR. Dans
+ * l'App Router, un composant client est AUSSI rendu sur le serveur au premier
+ * affichage : `document` n'y existe pas, donc tous les nombres du premier
+ * rendu sortaient à la française. Constaté sur le profil public, qui est la
+ * seule page qu'un inconnu voit et qu'un moteur indexe : « Win rate 45,9 % »
+ * sous un document déclaré `lang="en"`.
+ *
+ * Le repli répond à la question « je ne sais pas quelle langue » : partout
+ * ailleurs le produit y répond par `defaultLocale` (voir i18n/config,
+ * LanguageContext, les crons d'e-mails, lib/langue-du-modele). Le français
+ * était la réponse d'un produit conçu en français, pas celle du produit tel
+ * qu'il est lu.
+ *
+ * ⚠️ CE N'EST QU'UN REPLI : un appelant qui CONNAÎT la langue doit la passer.
+ * `PublicProfileView` le fait, parce qu'un repli juste « la plupart du temps »
+ * reste faux le reste du temps.
  */
 export function langueCourante(): string {
-  if (typeof document === "undefined") return "fr-FR";
-  return document.documentElement.lang || "fr-FR";
+  if (typeof document === "undefined") return defaultLocale;
+  return document.documentElement.lang || defaultLocale;
 }
 
 /**

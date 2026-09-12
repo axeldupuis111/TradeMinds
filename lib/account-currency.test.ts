@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { defaultLocale } from "@/i18n/config";
 import { accountCurrency, buildCurrencyMap, commonCurrency, currencyMismatch, currencySymbol, isSupportedCurrency, money, sumByCurrency, tradeCurrency } from "./account-currency";
 
 describe("accountCurrency", () => {
@@ -54,23 +55,32 @@ describe("currencySymbol", () => {
 const NNBSP = " ";
 
 describe("money", () => {
+  /**
+   * ⚠️ CES QUATRE TESTS PORTENT SUR LE SYMBOLE, LES DÉCIMALES ET LE SIGNE,
+   * pas sur la langue. Ils passaient la locale sous silence et dépendaient donc
+   * du repli sans le vouloir : le jour où ce repli est passé du français à la
+   * langue du produit, ils ont échoué pour une raison qui n'était pas la leur.
+   * Un test qui dépend de ce qu'il ne nomme pas devient un faux signal.
+   */
+  const FR = { locale: "fr-FR" };
+
   it("suffixe le symbole, comme partout ailleurs dans l'app", () => {
-    expect(money(1234, "EUR")).toBe(`1${NNBSP}234€`);
-    expect(money(1234, "USD")).toBe(`1${NNBSP}234$`);
+    expect(money(1234, "EUR", FR)).toBe(`1${NNBSP}234€`);
+    expect(money(1234, "USD", FR)).toBe(`1${NNBSP}234$`);
   });
 
   it("respecte le nombre de décimales demandé", () => {
-    expect(money(-250.5, "USD", { digits: 2 })).toBe("-250,50$");
+    expect(money(-250.5, "USD", { ...FR, digits: 2 })).toBe("-250,50$");
   });
 
   it("force l'entier sur les devises sans décimale", () => {
-    expect(money(12000.4, "JPY", { digits: 2 })).toBe(`12${NNBSP}000¥`);
+    expect(money(12000.4, "JPY", { ...FR, digits: 2 })).toBe(`12${NNBSP}000¥`);
   });
 
   it("préfixe le + sur demande, pour les P&L", () => {
-    expect(money(320, "USD", { digits: 2, signed: true })).toBe("+320,00$");
-    expect(money(-320, "USD", { digits: 2, signed: true })).toBe("-320,00$");
-    expect(money(0, "EUR", { signed: true })).toBe("+0€");
+    expect(money(320, "USD", { ...FR, digits: 2, signed: true })).toBe("+320,00$");
+    expect(money(-320, "USD", { ...FR, digits: 2, signed: true })).toBe("-320,00$");
+    expect(money(0, "EUR", { ...FR, signed: true })).toBe("+0€");
   });
 });
 
@@ -225,11 +235,30 @@ describe("money() et la langue", () => {
     expect(money(14607.5, "EUR", { digits: 2, locale: "en" })).toBe("14,607.50€");
   });
 
-  it("et à la française par défaut, hors navigateur", () => {
-    // ⚠️ `document` n'existe pas ici : c'est le chemin serveur, celui des
-    // e-mails et des PDF. Le repli doit rester explicite et stable.
+  /**
+   * ⚠️⚠️ CE TEST DISAIT « À LA FRANÇAISE », ET LA RÈGLE A CHANGÉ EXPRÈS.
+   *
+   * `document` n'existe pas ici : c'est le chemin SERVEUR, et dans l'App Router
+   * c'est aussi celui du PREMIER RENDU de tout composant client. Le repli
+   * français y écrivait « 45,9 % » et « 1 234,56 € » sous des documents déclarés
+   * lang="en", ce qui se voyait sur le profil public : la seule page qu'un
+   * inconnu consulte et qu'un moteur indexe.
+   *
+   * Le repli répond à « je ne sais pas quelle langue », et partout ailleurs le
+   * produit y répond par defaultLocale. Voir lib/nombres.ts.
+   *
+   * ⚠️ Il reste un REPLI : les appelants qui connaissent la langue la passent,
+   * et les e-mails comme les PDF le font déjà explicitement.
+   */
+  it("et dans la langue du produit par défaut, hors navigateur", () => {
     expect(typeof document).toBe("undefined");
-    expect(money(14607.5, "EUR", { digits: 2 })).toBe(money(14607.5, "EUR", { digits: 2, locale: "fr-FR" }));
+    expect(money(14607.5, "EUR", { digits: 2 })).toBe(
+      money(14607.5, "EUR", { digits: 2, locale: defaultLocale }),
+    );
+    // Et surtout : ce n'est plus le français.
+    expect(money(14607.5, "EUR", { digits: 2 })).not.toBe(
+      money(14607.5, "EUR", { digits: 2, locale: "fr-FR" }),
+    );
   });
 
   it("les deux formes diffèrent vraiment, sinon ce test ne prouve rien", () => {

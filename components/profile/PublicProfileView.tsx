@@ -85,7 +85,7 @@ export default function PublicProfileView({
   /** `null` quand la serie n'a pas pu etre lue : ce n'est pas zero. */
   serie: number | null;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const stats = useMemo(() => {
     const count = trades.length;
     const netPnls = trades.map(netPnl);
@@ -164,7 +164,15 @@ export default function PublicProfileView({
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_winrate")}</p>
             <p className="text-2xl font-bold mt-1 text-foreground">
-              {tradesComplets ? pourcent(stats.winrate, 1) : "—"}
+              {/*
+                ⚠️ LA LANGUE EST PASSÉE, elle n'est pas devinée. Cette page est
+                rendue sur le SERVEUR (c'est la seule qu'un inconnu voit et qu'un
+                moteur indexe) et `langueCourante()` n'y a pas de document à lire :
+                le taux sortait « 45,9 % », à la française, sous un document déclaré
+                `lang="en"`. Le repli de `lib/nombres` a été corrigé aussi, mais un
+                repli juste la plupart du temps reste faux le reste du temps.
+              */}
+              {tradesComplets ? pourcent(stats.winrate, 1, lang) : "—"}
             </p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
