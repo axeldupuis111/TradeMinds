@@ -15,6 +15,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Trash2, Plus, Target, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock, X, Trophy, Activity } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { pourcent, langueCourante } from "@/lib/nombres";
+import { bornesDePeriode, cleDePeriode } from "@/lib/periode-objectif";
+import { browserTimezone } from "@/lib/timezone";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
@@ -45,53 +47,29 @@ interface Insights {
   hasReviews: boolean;
 }
 
+/**
+ * ⚠️⚠️ CETTE FONCTION ÉCRIVAIT UNE CLÉ QUE LE SERVEUR NE RECONNAISSAIT PAS.
+ * Elle posait minuit LOCAL (`setHours(0,0,0,0)`) puis écrivait la date UTC de
+ * cet instant : à l'est de Greenwich, minuit local tombe la VEILLE en UTC, donc
+ * la clé était décalée d'un jour tous les jours, pas seulement aux bords. La
+ * reconduction côté serveur voyait une clé inconnue et reconduisait aussitôt
+ * l'objectif : coché remis à zéro, série remise à zéro. Une seule définition
+ * désormais, partagée avec le serveur (`lib/periode-objectif`).
+ */
 function periodKeyClient(p: Period): string {
-  const now = new Date();
-  if (p === "day") {
-    const d = new Date(now); d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  }
-  if (p === "week") {
-    const day = now.getDay();
-    const d = new Date(now);
-    d.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  }
-  if (p === "quarter") {
-    return new Date(now.getFullYear(), now.getMonth() - (now.getMonth() % 3), 1).toISOString().slice(0, 10);
-  }
-  if (p === "year") {
-    return new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
-  }
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  return cleDePeriode(p, browserTimezone());
 }
 
-// Bornes de la période courante (pour jours restants + fraction écoulée).
+/**
+ * Bornes de la période courante (jours restants + fraction écoulée).
+ *
+ * ⚠️ MÊME SOURCE QUE LA CLÉ ÉCRITE EN BASE. Cette copie-ci calculait ses bornes
+ * à la main sur un `Date` : la barre d'avancement et les « jours restants »
+ * pouvaient donc décrire une période différente de celle que le serveur
+ * évaluait, sur le même objectif.
+ */
 function periodBounds(p: Period): { start: Date; end: Date } {
-  const now = new Date();
-  if (p === "day") {
-    const start = new Date(now); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 1);
-    return { start, end };
-  }
-  if (p === "week") {
-    const day = now.getDay();
-    const start = new Date(now);
-    start.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 7);
-    return { start, end };
-  }
-  if (p === "quarter") {
-    const start = new Date(now.getFullYear(), now.getMonth() - (now.getMonth() % 3), 1);
-    return { start, end: new Date(start.getFullYear(), start.getMonth() + 3, 1) };
-  }
-  if (p === "year") {
-    return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear() + 1, 0, 1) };
-  }
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { start, end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+  return bornesDePeriode(p, 0, browserTimezone());
 }
 function daysLeftIn(p: Period): number {
   const { end } = periodBounds(p);

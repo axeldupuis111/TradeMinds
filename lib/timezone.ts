@@ -119,6 +119,51 @@ export function startOfLocalDayUtc(tz?: string | null, at: Date = new Date()): D
 }
 
 /**
+ * LA CLÉ DE REMISE À ZÉRO D'UN QUOTA. Une seule définition, les deux bords.
+ *
+ * ⚠️⚠️ ELLE N'EST PAS UN AFFICHAGE : le NAVIGATEUR l'écrit dans
+ * `profiles.daily_ai_reset` / `daily_chat_reset`, et le SERVEUR compare la
+ * colonne à la clé qu'il recalcule (`lib/api-auth` → `getQuotaFromProfile`).
+ * Deux conventions sur une seule colonne, et le serveur conclut « nouveau
+ * jour » : le compteur repart à zéro, donc le quota d'analyse, qui coûte de
+ * l'argent à chaque appel, se recharge tout seul.
+ *
+ * ⚠️ C'est exactement ce qui se passait : le serveur calculait déjà la clé dans
+ * le fuseau du trader, le client la calculait en UTC. Pour le plan gratuit,
+ * pire encore, le client mélangeait deux horloges dans la même fonction
+ * (`getDay()` local, `toISOString()` UTC) et pouvait rendre un DIMANCHE là où
+ * le serveur rend toujours un lundi : une clé impossible à reconnaître.
+ *
+ * Le fuseau à passer est celui du PROFIL, jamais celui de la machine : c'est
+ * celui que lit le serveur, et le trader peut en avoir choisi un autre.
+ */
+export function quotaResetKey(mode: "day" | "week", tz?: string | null): string {
+  return mode === "week" ? weekStartLocalKey(tz) : localDateKey(tz);
+}
+
+/**
+ * The instant the trader's own day started, ready to bound a timestamptz query.
+ *
+ * ⚠️⚠️ CETTE FONCTION EXISTE PARCE QUE LA RÈGLE N'ÉTAIT APPLIQUÉE QU'À MOITIÉ.
+ * Six écrans client bornaient déjà « aujourd'hui » sur le minuit du trader, et
+ * quatre autres le bornaient encore sur minuit UTC : le tableau de bord, la
+ * page Séance, la page Comptes et le bandeau « tu n'as pas fait ta séance ».
+ * Ces deux définitions se croisaient sur le MÊME écran, la carte « État du
+ * jour » contredisant le total « Aujourd'hui » rendu quinze pixels plus haut.
+ *
+ * ⚠️ Le trader le plus loin de Greenwich est celui qui paie : à Sydney la
+ * fenêtre entre les deux minuits fait dix heures, donc la séance ouverte à 9 h
+ * se refermait toute seule vers 11 h, et le bandeau redemandait une séance
+ * déjà faite. Mesuré en base : deux trades du journal réel tombent déjà entre
+ * les deux minuits, et les profils couvrent 22 fuseaux, de Chicago à Sydney.
+ *
+ * Un seul appel, un seul minuit : c'est tout l'intérêt.
+ */
+export function startOfBrowserDayIso(at: Date = new Date()): string {
+  return startOfLocalDayUtc(browserTimezone(), at).toISOString();
+}
+
+/**
  * The UTC instant at which the local day `key` ("YYYY-MM-DD") starts in `tz`.
  *
  * Sert à traduire une date parlée (« hier ») en borne de requête sur une

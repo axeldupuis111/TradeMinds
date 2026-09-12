@@ -9,7 +9,7 @@ import {
 import { alertAiCeiling } from "@/lib/cron-alert";
 import type { PlanType } from "@/lib/PlanContext";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
-import { localDateKey, weekStartLocalKey } from "@/lib/timezone";
+import { localDateKey, quotaResetKey } from "@/lib/timezone";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -101,7 +101,7 @@ export async function checkQuota({ userId, plan, feature, timezone }: QuotaCheck
   }
 
   const supabase = createSupabaseServer();
-  const resetKey = config.resetMode === "week" ? weekStartLocalKey(timezone) : localDateKey(timezone);
+  const resetKey = quotaResetKey(config.resetMode, timezone);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -127,7 +127,7 @@ export async function incrementQuota(userId: string, plan: PlanType, feature: "a
   if (!config) return;
 
   const supabase = createSupabaseServer();
-  const resetKey = config.resetMode === "week" ? weekStartLocalKey(timezone) : localDateKey(timezone);
+  const resetKey = quotaResetKey(config.resetMode, timezone);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -151,9 +151,7 @@ export async function incrementQuota(userId: string, plan: PlanType, feature: "a
 }
 
 function resetKeyFor(config: { resetMode: "day" | "week" }, timezone?: string): string {
-  return config.resetMode === "week"
-    ? weekStartLocalKey(timezone)
-    : localDateKey(timezone);
+  return quotaResetKey(config.resetMode, timezone);
 }
 
 /**

@@ -25,6 +25,7 @@ import { pourcent } from "@/lib/nombres";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
+import { browserTimezone, localDateKey, startOfBrowserDayIso } from "@/lib/timezone";
 
 interface Challenge {
   id: string;
@@ -967,7 +968,14 @@ export default function ChallengePage() {
 
     // Calculate stats for each active account
     const statsMap: Record<string, AccountStats> = {};
-    const today = new Date().toISOString().split("T")[0];
+    /**
+     * ⚠️⚠️ LA PERTE DU JOUR EST CELLE DU JOUR DU TRADER. Coupée à minuit
+     * UTC, elle repartait de zéro à 20 h pour un trader à Chicago et à 10 h du
+     * matin pour un trader à Sydney : le garde-fou de perte journalière, celui
+     * qui dit d'arrêter, rouvrait donc en pleine séance. Le tableau de bord et
+     * la carte « État du jour » comptaient déjà en heure locale, cet écran non.
+     */
+    const today = startOfBrowserDayIso();
 
     for (const ac of actives || []) {
       // ⚠️⚠️ LECTURE PAGINÉE, ET ICI C'EST LE PLUS GRAVE : ce total est ÉCRIT
@@ -1101,7 +1109,7 @@ export default function ChallengePage() {
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       market_type: marketType,
       max_daily_loss_pct: maxDailyLoss.trim() ? parseFloat(maxDailyLoss) : null,
-      start_date: startDate || new Date().toISOString().split("T")[0],
+      start_date: startDate || localDateKey(browserTimezone()),
       end_date: accountType === "prop" ? (endDate || null) : null,
       balance: size,
       status: "active",

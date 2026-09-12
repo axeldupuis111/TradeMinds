@@ -18,6 +18,7 @@ import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "@/lib/plan-limits";
 import { PLAN_MONTHLY_CEILING } from "@/lib/ai-ceilings";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { trierParOuverture } from "@/lib/trades-du-compte";
+import { browserTimezone, normalizeTimezone, quotaResetKey, startOfLocalDayUtc } from "@/lib/timezone";
 import type { PlanType } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -317,6 +318,13 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   /** Messages du trader déjà en base avant aujourd'hui (forfait découverte). */
   const [freeOlderUserCount, setFreeOlderUserCount] = useState(0);
   const loadedRef = useRef(false);
+  /**
+   * Le fuseau qui sert de référence aux clés de quota, retenu dès la première
+   * lecture : l'écriture du compteur a lieu bien plus tard, et elle doit poser
+   * EXACTEMENT la clé que le serveur relira. Tant que le profil n'a pas été lu,
+   * le navigateur fait office de repli (`TimezoneSync` les aligne de toute façon).
+   */
+  const fuseauRef = useRef<string>(normalizeTimezone(null));
   // Miroir de `loading` : `refresh` doit pouvoir se refuser pendant un flux en
   // cours sans dépendre de l'état, ce qui changerait son identité à chaque
   // rendu et déclencherait des relectures en boucle chez l'appelant.
@@ -342,27 +350,56 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const fetchToday = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const today = new Date().toISOString().split("T")[0];
     // Le mois se calcule dans le fuseau du trader, exactement comme côté
     // serveur (lib/ai-ceilings → monthKey) : à cheval sur un changement de
     // mois, deux conventions donneraient deux compteurs différents et le
     // trader verrait son quota « repartir » ou « disparaître » sans raison.
     const month = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" })
       .format(new Date()).slice(0, 7);
-    const [{ data: profile }, { data: todayRows }, { count: olderCount }, { count: olderUserCount }, { data: monthRow }] = await Promise.all([
-      supabase.from("profiles").select("daily_chat_count, daily_chat_reset").eq("id", user.id).maybeSingle(),
+
+    /**
+     * ⚠️⚠️ LA RÈGLE ÉTAIT ÉCRITE JUSTE AU-DESSUS, POUR LE MOIS SEULEMENT.
+     * Le jour, lui, se calculait en UTC trois lignes plus bas, et cette clé-là
+     * n'est pas décorative : le client l'ÉCRIT dans `daily_chat_reset`, la
+     * colonne que le serveur COMPARE à sa propre clé locale
+     * (`lib/api-auth` → `getQuotaFromProfile`). Deux conventions sur une seule
+     * colonne : entre les deux minuits, le serveur ne reconnaissait plus la
+     * clé du client et remettait le compteur du jour à zéro. À Sydney cette
+     * fenêtre fait dix heures, donc le quota du chat repartait à neuf chaque
+     * matin, et le compteur affiché sautait en arrière sous les yeux du trader.
+     *
+     * ⚠️ LE FUSEAU VIENT DU PROFIL, pas du navigateur : c'est celui que lit le
+     * serveur, et un trader peut avoir choisi dans Réglages un fuseau autre que
+     * celui de sa machine. Prendre le navigateur ici recréerait l'écart.
+     */
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("daily_chat_count, daily_chat_reset, timezone")
+      .eq("id", user.id)
+      .maybeSingle();
+    const fuseau = normalizeTimezone((profile?.timezone as string | null) ?? browserTimezone());
+    fuseauRef.current = fuseau;
+    /**
+     * La clé de quota, dérivée de la MÊME table que le serveur : le mode de
+     * remise à zéro appartient au plan, pas à l'appelant.
+     */
+    const today = quotaResetKey(PLAN_LIMITS.chat[plan].resetMode, fuseau);
+    /** La borne des messages du jour : un INSTANT, comparé à un timestamptz. */
+    const debutDuJour = startOfLocalDayUtc(fuseau).toISOString();
+
+    const [{ data: todayRows }, { count: olderCount }, { count: olderUserCount }, { data: monthRow }] = await Promise.all([
       supabase.from("chat_messages").select("id, role, content, created_at")
-        .eq("user_id", user.id).gte("created_at", today).order("created_at", { ascending: true }).limit(50),
+        .eq("user_id", user.id).gte("created_at", debutDuJour).order("created_at", { ascending: true }).limit(50),
       // Strictement AVANT aujourd'hui : un free qui vient de consommer ses
       // messages découverte garde le chat visible pour relire les réponses, et
       // ne voit la bannière d'upgrade qu'à partir du lendemain.
       supabase.from("chat_messages").select("id", { count: "exact", head: true })
-        .eq("user_id", user.id).lt("created_at", today),
+        .eq("user_id", user.id).lt("created_at", debutDuJour),
       // Compteur du forfait découverte. `role = "user"` est ESSENTIEL : chaque
       // échange écrit DEUX lignes, la question et la réponse. C'est le même
       // filtre que la porte serveur, sinon les deux comptent différemment.
       supabase.from("chat_messages").select("id", { count: "exact", head: true })
-        .eq("user_id", user.id).eq("role", "user").lt("created_at", today),
+        .eq("user_id", user.id).eq("role", "user").lt("created_at", debutDuJour),
       // Compteur mensuel. La table n'a qu'une policy de LECTURE sur ses propres
       // lignes (migration 20260814) : les écritures restent le monopole des
       // fonctions SECURITY DEFINER du disjoncteur.
@@ -378,7 +415,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       // Absent = aucun message ce mois-ci, pas une erreur.
       monthlyCount: (monthRow as { count?: number } | null)?.count ?? 0,
     };
-  }, [supabase]);
+  }, [supabase, plan]);
 
   /** Charge le compteur du jour et les messages du jour. Une seule fois. */
   const loadHistory = useCallback(async () => {
@@ -559,7 +596,12 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       // suit ici en local pour que l'affichage ne mente pas jusqu'au prochain
       // rechargement. `refresh` le resynchronisera sur la vraie valeur.
       setMonthlyCount((c) => c + 1);
-      const today = new Date().toISOString().split("T")[0];
+      // ⚠️⚠️ LA MÊME CLÉ QUE LE SERVEUR, sinon cette écriture EFFACE le quota :
+      // le serveur compare `daily_chat_reset` à sa clé locale et, ne la
+      // reconnaissant pas, repart de zéro. Une clé UTC posée ici rendait donc
+      // le compteur remettable à neuf chaque matin pour tout trader loin de
+      // Greenwich. Voir le commentaire de `fetchToday`.
+      const today = quotaResetKey(PLAN_LIMITS.chat[plan].resetMode, fuseauRef.current);
       // Le vrai décompte est tenu SERVEUR par le disjoncteur ; celui-ci n'est
       // qu'un miroir d'affichage. Un échec ne coûte donc rien au trader, mais il
       // laisse une trace : c'est le même symptôme qu'une panne d'écriture plus

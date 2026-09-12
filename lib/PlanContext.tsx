@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { browserTimezone, normalizeTimezone, quotaResetKey } from "@/lib/timezone";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import {
   createContext,
@@ -10,12 +11,22 @@ import {
   useState,
 } from "react";
 
-function getWeekStart(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  return d.toISOString().split("T")[0];
+/**
+ * ⚠️⚠️ LES CLÉS DE QUOTA DOIVENT ÊTRE CELLES DU SERVEUR, À LA LETTRE.
+ * `daily_ai_reset` n'est pas un affichage : le client l'ÉCRIT et le serveur la
+ * COMPARE à sa propre clé (`lib/api-auth` → `getQuotaFromProfile`). Quand les
+ * deux ne se ressemblent pas, le serveur conclut « nouveau jour » et remet le
+ * compteur à zéro : le quota d'analyse, qui coûte de l'argent à chaque appel,
+ * repartait à neuf.
+ *
+ * ⚠️ L'ANCIEN `getWeekStart` MÉLANGEAIT DEUX HORLOGES EN QUATRE LIGNES :
+ * `getDay()`/`setDate()` lisent l'heure LOCALE, `toISOString()` rend la date
+ * UTC. Pour un trader à Paris un lundi à 00 h 30, il rendait donc le DIMANCHE
+ * précédent, c'est-à-dire une clé que le serveur, qui rend toujours un lundi,
+ * ne pouvait reconnaître aucun jour de l'année.
+ */
+function clesDuQuota(fuseau: string, plan: PlanType): string {
+  return quotaResetKey(PLAN_LIMITS.analyze[plan].resetMode, fuseau);
 }
 
 export type PlanType = "free" | "plus" | "premium";
@@ -72,6 +83,13 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState<Date | null>(null);
   const [demoMode, setDemoMode] = useState(false);
+  /**
+   * Le fuseau du PROFIL, celui que lit le serveur. Le navigateur ne sert que de
+   * repli tant que le profil n'est pas chargé : un trader peut avoir choisi
+   * dans Réglages un fuseau autre que celui de sa machine, et c'est son choix
+   * qui fait foi des deux côtés.
+   */
+  const [fuseau, setFuseau] = useState<string>(normalizeTimezone(null));
 
   /** La lecture elle-même. Elle a le droit d'échouer ; c'est son appelant qui range. */
   const chargerLePlan = useCallback(async () => {
@@ -85,7 +103,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     // n'est pas encore passee. Sans ce repli, un select en echec ferait lire
     // « free » a un abonne payant (la colonne inconnue renvoie une erreur, pas
     // une valeur nulle) — regression bien plus grave que l'absence du mode demo.
-    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset, email";
+    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset, email, timezone";
     let { data, error: profileError } = await supabase
       .from("profiles")
       .select(`${BASE_COLS}, demo_mode`)
@@ -122,10 +140,12 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       // la colonne est absente du retour et le mode demo reste simplement off.
       setDemoMode(!!(data as Record<string, unknown>).demo_mode);
 
-      const today = new Date().toISOString().split("T")[0];
-      const weekStart = getWeekStart(new Date());
+      const zone = normalizeTimezone(
+        ((data as Record<string, unknown>).timezone as string | null) ?? browserTimezone(),
+      );
+      setFuseau(zone);
       // Free plan tracks weekly usage; plus/premium tracks daily
-      const resetKey = effectivePlan === "free" ? weekStart : today;
+      const resetKey = clesDuQuota(zone, effectivePlan);
       if (data.daily_ai_reset !== resetKey) {
         setDailyAiCount(0);
         setDailyAiReset(resetKey);
@@ -248,9 +268,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const today = new Date().toISOString().split("T")[0];
-    const weekStart = getWeekStart(new Date());
-    const resetKey = plan === "free" ? weekStart : today;
+    const resetKey = clesDuQuota(fuseau, plan);
     const newCount = dailyAiReset === resetKey ? dailyAiCount + 1 : 1;
 
     await supabase
@@ -260,7 +278,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
     setDailyAiCount(newCount);
     setDailyAiReset(resetKey);
-  }, [supabase, dailyAiCount, dailyAiReset, plan]);
+  }, [supabase, dailyAiCount, dailyAiReset, plan, fuseau]);
 
   // Derived permissions.
   // Depuis 2026-07 : la boucle cœur (stratégie + analyse IA) est ouverte à tous
@@ -269,9 +287,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const canUseStrategy = true;
   const canUseAI = true;
 
-  const today = new Date().toISOString().split("T")[0];
-  const weekStart = getWeekStart(new Date());
-  const effectiveResetKey = plan === "free" ? weekStart : today;
+  const effectiveResetKey = clesDuQuota(fuseau, plan);
   const effectiveCount = dailyAiReset === effectiveResetKey ? dailyAiCount : 0;
 
   const aiLimit = PLAN_LIMITS.analyze[plan].limit;

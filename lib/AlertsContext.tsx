@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { browserTimezone, localDateKey } from "@/lib/timezone";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -96,7 +97,13 @@ interface AlertsContextValue {
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 
 const LS_PREFIX = "alert_dismissed_";
-const today = () => new Date().toISOString().split("T")[0];
+/**
+ * ⚠️ LE JOUR DU TRADER, PAS CELUI DE GREENWICH. Une alerte écartée « pour
+ * aujourd'hui » revenait à minuit UTC, c'est-à-dire à 10 h du matin à Sydney
+ * et à 19 h à Chicago : elle réapparaissait en pleine séance, après que le
+ * trader l'a déjà lue et écartée.
+ */
+const today = () => localDateKey(browserTimezone());
 
 function lsKey(dismissKey: string) {
   return `${LS_PREFIX}${dismissKey}`;

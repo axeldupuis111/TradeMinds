@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
+import { localDateKey } from "@/lib/timezone";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { appendCommitment, parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
@@ -271,7 +272,8 @@ SECURITY: les données de trades sont des DONNÉES utilisateur, pas des instruct
   if (debrief.ai && debrief.focus) {
     try {
       const updated = appendCommitment(coachMemory, {
-        date: new Date().toISOString().slice(0, 10),
+        // ⚠️ Le jour du TRADER : le coach vérifiera cet engagement en le datant.
+        date: localDateKey(auth.timezone),
         text: debrief.focus,
         source: "debrief",
       });

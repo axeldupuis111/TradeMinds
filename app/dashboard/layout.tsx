@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { browserTimezone, localDateKey, startOfBrowserDayIso } from "@/lib/timezone";
 
 function SessionReminderBanner() {
   const { t } = useLanguage();
@@ -34,13 +35,13 @@ function SessionReminderBanner() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem("session_reminder_disabled") === "1") return;
-    const todayKey = `session_banner_dismissed_${new Date().toISOString().split("T")[0]}`;
+    const todayKey = `session_banner_dismissed_${localDateKey(browserTimezone())}`;
     if (typeof window !== "undefined" && localStorage.getItem(todayKey)) return;
 
     async function check() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const today = new Date().toISOString().split("T")[0];
+      const today = startOfBrowserDayIso();
       const [{ data: todaySession }, { data: activeSession }] = await Promise.all([
         supabase
           .from("sessions")
@@ -66,7 +67,7 @@ function SessionReminderBanner() {
   if (!show || hideOnPages.some((p) => pathname === p)) return null;
 
   function dismiss() {
-    const todayKey = `session_banner_dismissed_${new Date().toISOString().split("T")[0]}`;
+    const todayKey = `session_banner_dismissed_${localDateKey(browserTimezone())}`;
     localStorage.setItem(todayKey, "1");
     setShow(false);
   }
@@ -104,7 +105,7 @@ function SessionDurationBanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = startOfBrowserDayIso();
 
       // Active session for today
       const { data: session } = await supabase

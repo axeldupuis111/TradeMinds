@@ -40,6 +40,7 @@ import {
 } from "@/lib/position-sizing";
 import type { PlanType } from "@/lib/PlanContext";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cleDePeriode } from "@/lib/periode-objectif";
 import { localDateKey as localDateKeyFor, startOfDateKeyUtc } from "@/lib/timezone";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
@@ -957,19 +958,12 @@ function extractNumRules(input: Record<string, unknown>): Record<string, number>
 }
 
 /** Clé de période courante (début de période, date locale serveur) pour la récurrence. */
-function periodKeyFor(period: Period): string {
-  const now = new Date();
-  let start: Date;
-  if (period === "day") { start = new Date(now); start.setHours(0, 0, 0, 0); }
-  else if (period === "week") {
-    const day = now.getDay();
-    start = new Date(now);
-    start.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
-    start.setHours(0, 0, 0, 0);
-  } else if (period === "quarter") start = new Date(now.getFullYear(), now.getMonth() - (now.getMonth() % 3), 1);
-  else if (period === "year") start = new Date(now.getFullYear(), 0, 1);
-  else start = new Date(now.getFullYear(), now.getMonth(), 1);
-  return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+/**
+ * ⚠️ Troisième copie de la même clé, supprimée : ici « minuit local » voulait
+ * dire minuit à Vercel, donc UTC. Voir `lib/periode-objectif`.
+ */
+function periodKeyFor(period: Period, timezone?: string): string {
+  return cleDePeriode(period, timezone);
 }
 
 // ── CSV ──────────────────────────────────────────────────────────────────────
@@ -1057,7 +1051,7 @@ export async function executeCoachTool(
           if (error) return fail("Création impossible.");
           // Récurrence en 2e temps, comme la page Objectifs (best-effort si colonnes absentes).
           if (recurring && inserted?.id) {
-            const { error: recurrenceError } = await supabase.from("goals").update({ recurring: true, period_key: periodKeyFor(period) }).eq("id", inserted.id);
+            const { error: recurrenceError } = await supabase.from("goals").update({ recurring: true, period_key: periodKeyFor(period, timezone) }).eq("id", inserted.id);
             // L'objectif existe, sa recurrence non : il ne se reconduira pas et
             // le coach l'aura pourtant annonce comme recurrent.
             if (recurrenceError) console.error("[coach] recurrence non posee :", recurrenceError.message);
@@ -1494,7 +1488,11 @@ export async function executeCoachTool(
         if (!text) return fail("text requis.");
         const { data: row } = await supabase.from("profiles").select("coach_memory").eq("id", userId).single();
         const memory = appendCommitment(parseCoachMemory(row?.coach_memory), {
-          date: new Date().toISOString().slice(0, 10),
+          // ⚠️ LA DATE DU TRADER, PAS CELLE DU SERVEUR. Cette date, le coach la
+          // relit et la cite (« le 11 septembre tu t'étais engagé à… ») : datée
+          // en UTC, un engagement pris à 9 h du matin à Sydney lui revenait au
+          // nom de la veille.
+          date: localDateKeyFor(timezone),
           text,
           source: "chat",
         });
@@ -2505,7 +2503,7 @@ export async function executeCoachTool(
           currency,
           market_type: input.market_type === "futures" ? "futures" : "cfd",
           status: "active",
-          start_date: new Date().toISOString().split("T")[0],
+          start_date: localDateKeyFor(timezone),
           profit_target_pct: type === "prop" ? (asNumber(input.profit_target_pct, 0, 100) ?? 8) : 0,
           max_daily_dd_pct: type === "prop" ? (asNumber(input.max_daily_dd_pct, 0, 100) ?? 5) : 0,
           max_total_dd_pct: type === "prop" ? (asNumber(input.max_total_dd_pct, 0, 100) ?? 10) : 0,

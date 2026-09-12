@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
+import { startOfBrowserDayIso } from "@/lib/timezone";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -265,7 +266,18 @@ export default function SessionPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const today = new Date().toISOString().split("T")[0];
+    /**
+     * ⚠️⚠️ LA SÉANCE D'UN TRADER À SYDNEY SE REFERMAIT TOUTE SEULE EN MILIEU DE
+     * MATINÉE. « Aujourd'hui » se coupait ici à minuit UTC : à Sydney (UTC+10)
+     * ce couperet tombe à 10 h du matin, donc la séance ouverte à 9 h devenait
+     * « antérieure à aujourd'hui » deux heures plus tard et le ménage juste en
+     * dessous la fermait, sans rien dire. Le trader perdait sa checklist, son
+     * état émotionnel de départ et son bilan de fin.
+     *
+     * ⚠️ Et le reste de l'écran, lui, comptait déjà en heure locale : c'est la
+     * même contradiction que sur le tableau de bord. Voir `startOfBrowserDayIso`.
+     */
+    const today = startOfBrowserDayIso();
 
     // Auto-close any session older than today that is still flagged active
     // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : c'est un ménage, refait à chaque
@@ -273,14 +285,14 @@ export default function SessionPage() {
     // tout seul la fois d'après.
     await supabase
       .from("sessions")
-      .update({ active: false, ended_at: new Date(today + "T00:00:00").toISOString() })
+      .update({ active: false, ended_at: today })
       .eq("user_id", user.id)
       .eq("active", true)
       .lt("created_at", today);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+    const sevenDaysAgoStr = startOfBrowserDayIso(sevenDaysAgo);
 
     const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }, { data: tradesEtats }] = await Promise.all([
       supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { localDateKey, startOfDateKeyUtc, startOfLocalDayUtc, weekStartLocalKey } from "@/lib/timezone";
 
 /** Colonnes de la courbe d'équité (voir la lecture paginée plus bas). */
 interface EquityTradeRow {
@@ -16,15 +17,6 @@ interface EquityTradeRow {
   lot_size: number | null;
   entry_price: number | null;
   exit_price: number | null;
-}
-
-function getMonday(d: Date): Date {
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d);
-  monday.setDate(diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
 }
 
 export default async function DashboardPage() {
@@ -45,9 +37,37 @@ export default async function DashboardPage() {
   const displayName = rawName;
   const userId = user?.id;
 
-  const today = new Date().toISOString().split("T")[0];
-  const monday = getMonday(new Date()).toISOString().split("T")[0];
-  const monthStart = today.slice(0, 7) + "-01";
+  /**
+   * ⚠️⚠️ DEUX « AUJOURD'HUI » COEXISTAIENT SUR CET ÉCRAN. Cette page est un
+   * composant SERVEUR : `new Date()` y donne l'heure de Vercel, c'est-à-dire
+   * UTC. « Aujourd'hui », « cette semaine » et « ce mois » se coupaient donc à
+   * MINUIT UTC, pendant que la carte « État du jour » rendue juste en dessous
+   * (`DayState`), la garde d'arrêt et le calculateur de taille se coupent tous
+   * à MINUIT LOCAL. Deux chiffres pour le même fait, l'un sous l'autre.
+   *
+   * ⚠️ CE N'EST PAS THÉORIQUE : mesuré en base, deux trades du journal réel
+   * tombent déjà entre les deux minuits (un à 00h52 à Paris, un à 00h42 à
+   * Johannesburg). Et les profils couvrent 22 fuseaux, de Chicago à Sydney :
+   * pour un trader australien la fenêtre fait dix heures, donc presque toute
+   * sa séance du soir change de jour selon la carte qu'il regarde.
+   *
+   * ⚠️ LE FUSEAU VIENT DU PROFIL, pas du serveur : c'est la même colonne que
+   * lisent les crons (rappel 8h, rapport hebdo, quotas IA), et `TimezoneSync`
+   * la remplit depuis le navigateur. Les deux bords du produit s'accordent
+   * donc sur une seule définition du jour.
+   */
+  const { data: profilFuseau } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", userId!)
+    .maybeSingle();
+  const fuseau = (profilFuseau?.timezone as string | null) || "UTC";
+
+  const today = startOfLocalDayUtc(fuseau).toISOString();
+  const monday = (startOfDateKeyUtc(weekStartLocalKey(fuseau), fuseau) ?? new Date(0)).toISOString();
+  const monthStart = (
+    startOfDateKeyUtc(localDateKey(fuseau).slice(0, 7) + "-01", fuseau) ?? new Date(0)
+  ).toISOString();
 
   const [
     { data: lastReview },

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { bornesDePeriode } from "@/lib/periode-objectif";
+import { addDaysToDateKey as decalerJours, localDateKey, normalizeTimezone } from "@/lib/timezone";
 import { createClient } from "@/lib/supabase/server";
 import { serieDepuisLesTrades } from "@/lib/discipline-streak-source";
 import { fetchAllRows } from "@/lib/supabase-paginate";
@@ -15,9 +17,14 @@ interface TradeRow { pnl: number; commission: number | null; swap: number | null
 interface ReviewRow { discipline_score: number | null; created_at: string }
 
 function netPnl(t: TradeRow): number { return t.pnl + (t.commission || 0) + (t.swap || 0); }
-function monthStartISO(offset = 0): string {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth() + offset, 1).toISOString();
+/**
+ * ⚠️ LE MOIS DU TRADER. Cette borne se posait sur l'horloge du serveur, donc
+ * UTC : le « mois en cours » commençait le 31 à 14 h pour un trader à Sydney,
+ * et les trades de cette soirée-là étaient comptés dans le mois précédent.
+ * Même définition que partout ailleurs désormais (`lib/periode-objectif`).
+ */
+function monthStartISO(fuseau: string, offset = 0): string {
+  return bornesDePeriode("month", -offset, fuseau).start.toISOString();
 }
 
 interface EdgeSide { count: number; winRate: number; avgNet: number }
@@ -33,6 +40,13 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const { data: profil } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", user.id)
+    .maybeSingle();
+  const fuseau = normalizeTimezone((profil?.timezone as string | null) ?? null);
 
   // ⚠️ LECTURE PAGINÉE : non bornée, elle rend exactement mille lignes avec un
   // statut 200 (voir lib/supabase-paginate.ts). Tout ce qui suit agrège sur
@@ -74,8 +88,8 @@ export async function GET() {
   const edge = composed.count >= 3 && impulsive.count >= 2 ? { composed, impulsive } : null;
 
   // ── Tableau de bord du mois : métriques clés mois en cours vs mois précédent.
-  const thisM = monthStartISO(0);
-  const lastM = monthStartISO(-1);
+  const thisM = monthStartISO(fuseau, 0);
+  const lastM = monthStartISO(fuseau, -1);
   function metricsFor(startISO: string, endISO: string | null) {
     const rv = reviews.filter((r) => r.created_at >= startISO && (endISO == null || r.created_at < endISO));
     const tr = trades.filter((t) => t.open_time != null && t.open_time >= startISO && (endISO == null || t.open_time < endISO));
@@ -105,9 +119,8 @@ export async function GET() {
 
   // ── Heatmap : score de discipline moyen par jour sur ~12 semaines.
   const HEATMAP_DAYS = 84;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - (HEATMAP_DAYS - 1));
-  const cutoffIso = cutoff.toISOString().slice(0, 10);
+  // ⚠️ La fenêtre de la heatmap se compte en jours DU TRADER.
+  const cutoffIso = decalerJours(localDateKey(fuseau), -(HEATMAP_DAYS - 1));
   const dayAgg = new Map<string, { sum: number; n: number }>();
   for (const r of reviews) {
     const d = r.created_at.slice(0, 10);

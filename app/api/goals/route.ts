@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { bornesDePeriode, cleDePeriode, debutDePeriodeIso } from "@/lib/periode-objectif";
+import { normalizeTimezone } from "@/lib/timezone";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -24,44 +26,27 @@ interface GoalRow {
   period: Period;
 }
 
-function periodKey(period: Period): string {
-  return periodStart(period).slice(0, 10);
+/**
+ * ⚠️⚠️ LA CLÉ ET LES BORNES VIENNENT DU MÊME ENDROIT QUE CÔTÉ CLIENT.
+ * Il en existait TROIS versions (cette route, la page Objectifs, les outils du
+ * coach), avec trois conventions : la reconduction comparait donc une clé écrite
+ * par le navigateur à une clé recalculée ici, et ne les reconnaissait pas. Un
+ * objectif récurrent créé depuis l'écran était reconduit aussitôt : coché remis
+ * à zéro, série remise à zéro, sans que le trader ait rien manqué.
+ *
+ * ⚠️ Et une période appartient au calendrier du TRADER : évaluée sur l'horloge
+ * de Vercel, la « journée » d'un objectif quotidien commençait à 10 h du matin
+ * pour un trader à Sydney.
+ */
+function periodKey(period: Period, fuseau: string): string {
+  return cleDePeriode(period, fuseau);
 }
 
 // Nombre de périodes d'historique évaluées rétroactivement (dont la courante).
 const HISTORY_LEN: Record<Period, number> = { day: 7, week: 8, month: 6, quarter: 4, year: 3 };
 
-/** Bornes [start, end) de la période décalée de `offset` périodes dans le passé (0 = courante). */
-function periodBoundsAt(period: Period, offset: number): { start: Date; end: Date } {
-  const now = new Date();
-  if (period === "day") {
-    const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - offset);
-    const end = new Date(start); end.setDate(end.getDate() + 1);
-    return { start, end };
-  }
-  if (period === "week") {
-    const day = now.getDay();
-    const start = new Date(now);
-    start.setDate(now.getDate() - day + (day === 0 ? -6 : 1) - offset * 7);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 7);
-    return { start, end };
-  }
-  if (period === "quarter") {
-    const qMonth = now.getMonth() - (now.getMonth() % 3) - offset * 3;
-    const start = new Date(now.getFullYear(), qMonth, 1);
-    return { start, end: new Date(start.getFullYear(), start.getMonth() + 3, 1) };
-  }
-  if (period === "year") {
-    const start = new Date(now.getFullYear() - offset, 0, 1);
-    return { start, end: new Date(start.getFullYear() + 1, 0, 1) };
-  }
-  const start = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-  return { start, end: new Date(start.getFullYear(), start.getMonth() + 1, 1) };
-}
-
-function periodStart(period: Period): string {
-  return periodBoundsAt(period, 0).start.toISOString();
+function periodStart(period: Period, fuseau: string): string {
+  return debutDePeriodeIso(period, fuseau);
 }
 
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }): number {
@@ -74,6 +59,13 @@ export async function GET() {
   if (authError || !user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  const { data: profil } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", user.id)
+    .maybeSingle();
+  const fuseau = normalizeTimezone((profil?.timezone as string | null) ?? null);
 
   // select("*") : tolère l'absence des nouvelles colonnes (kind/title/done) tant que
   // la migration n'est pas appliquée → merge sûr.
@@ -97,9 +89,9 @@ export async function GET() {
   const broadest = goals.reduce<Period>((acc, g) => (PERIOD_RANK[g.period] > PERIOD_RANK[acc] ? g.period : acc), "day");
   const since = metricGoals.length
     ? metricGoals
-        .map((g) => periodBoundsAt(g.period, HISTORY_LEN[g.period] - 1).start.toISOString())
+        .map((g) => bornesDePeriode(g.period, HISTORY_LEN[g.period] - 1, fuseau).start.toISOString())
         .reduce((a, b) => (a < b ? a : b))
-    : periodStart(broadest);
+    : periodStart(broadest, fuseau);
   const [reviewsRes, tradesRes] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).gte("created_at", since).limit(10000),
     supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since).order("open_time", { ascending: true }).limit(10000),
@@ -140,7 +132,7 @@ export async function GET() {
   }
 
   function currentValue(g: GoalRow): number {
-    const { start, end } = periodBoundsAt(g.period, 0);
+    const { start, end } = bornesDePeriode(g.period, 0, fuseau);
     return rangeValue(g, start.toISOString(), end.toISOString());
   }
 
@@ -159,14 +151,14 @@ export async function GET() {
     const len = HISTORY_LEN[g.period];
     const out: { key: string; value: number; met: boolean; current: boolean; hadData: boolean }[] = [];
     for (let offset = len - 1; offset >= 0; offset--) {
-      const { start, end } = periodBoundsAt(g.period, offset);
+      const { start, end } = bornesDePeriode(g.period, offset, fuseau);
       const startIso = start.toISOString(), endIso = end.toISOString();
       const value = rangeValue(g, startIso, endIso);
       const hadData =
         (reviews ?? []).some((r) => r.created_at >= startIso && r.created_at < endIso) ||
         (trades ?? []).some((t) => t.open_time >= startIso && t.open_time < endIso);
-      // Clé lisible = date locale du début de période (pas l'ISO UTC, décalé d'un jour).
-      const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+      // Clé lisible = la date du trader, jamais celle du serveur.
+      const key = cleDePeriode(g.period, fuseau, start);
       out.push({ key, value, met: isMet(g, value), current: offset === 0, hadData });
     }
     return out;
@@ -193,7 +185,7 @@ export async function GET() {
   // remet à zéro pour la nouvelle période. Best-effort (ignore si colonnes absentes).
   for (const g of goals) {
     if (g.kind !== "custom" || !g.recurring) continue;
-    const curKey = periodKey(g.period);
+    const curKey = periodKey(g.period, fuseau);
     if (g.period_key !== curKey) {
       const wasDone = !!g.done;
       const newStreak = wasDone ? (g.streak ?? 0) + 1 : 0;

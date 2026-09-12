@@ -14,6 +14,7 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { browserTimezone, localDateKey } from "@/lib/timezone";
 import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 import { DEMO_MACRO } from "@/lib/demo-fixtures";
@@ -99,7 +100,9 @@ export default function MacroPage() {
     // puisque tout l'intérêt de la démo est de montrer ce que le plan apporte.
     if (demoMode) {
       const fx = DEMO_MACRO[lang] ?? DEMO_MACRO.en;
-      const today = new Date().toISOString().slice(0, 10);
+      // ⚠️ La date que le trader voit sur le briefing est SA date : en UTC, un
+      // trader à Sydney lisait « briefing du 11 » un 12 au matin.
+      const today = localDateKey(browserTimezone());
       setLocked(false);
       setAnalyses([{ analysis_date: today, ...fx }]);
       setSelectedDate(today);
