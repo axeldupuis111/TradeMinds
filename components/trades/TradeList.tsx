@@ -61,18 +61,28 @@ function ConformityRing({ score, total }: { score: number; total: number }) {
   );
 }
 
+/**
+ * ⚠️⚠️ « HORS SESSION » ÉTAIT À 4,48:1, sous le seuil AA, en thème sombre.
+ * Mesuré au DOM en production : la puce pose `bg-muted/10` ET `text-muted`,
+ * c'est-à-dire l'encre sur un voile de sa PROPRE teinte, ce qui rapproche le
+ * fond de l'encre.
+ *
+ * ⚠️ LA RÈGLE EXISTE DEPUIS LONGTEMPS : la copy passe par `--foreground-muted`,
+ * jamais par `--muted`, qui est sous AA. Elle était appliquée à la copy des
+ * pages et pas à cette puce-ci. Le rapport passe de 4,48:1 à 6,56:1.
+ */
 const KILLZONE_STYLES: Record<string, string> = {
   asia:        "bg-violet-500/10 text-violet-400 border-violet-500/20",
   london_open: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   ny_am:       "bg-amber-500/10 text-amber-400 border-amber-500/20",
   ny_pm:       "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  off_session: "bg-muted/10 text-muted border-border",
+  off_session: "bg-muted/10 text-foreground-muted border-border",
 };
 
 function KillzonePill({ kz }: { kz: string }) {
   const { t } = useLanguage();
   const label = KILLZONE_LABELS[kz] ? t(`da_kz_${kz}`) : kz;
-  const style = KILLZONE_STYLES[kz] ?? "bg-muted/10 text-muted border-border";
+  const style = KILLZONE_STYLES[kz] ?? "bg-muted/10 text-foreground-muted border-border";
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-md text-xs border whitespace-nowrap ${style}`}>
       {label}
