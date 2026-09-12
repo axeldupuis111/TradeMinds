@@ -667,6 +667,56 @@ async function handleInvoicePaid(
     }
   }
 
+  /**
+   * ⚠️⚠️ ENREGISTRER L'ABONNEMENT, PAS SEULEMENT L'ACCÈS.
+   *
+   * Ce handler accordait le plan, posait l'emblème fondateur, enregistrait la
+   * commission et envoyait l'email de félicitations sans jamais écrire NI
+   * `stripe_customer_id` NI la ligne `subscriptions`. Il s'en remettait à
+   * `checkout.session.completed`, qui a une sortie anticipée quand la session
+   * n'a pas de `supabase_user_id` : or `invoice.paid` lit cet identifiant sur
+   * l'ABONNEMENT, pas sur la session. Les deux ne sont pas toujours peuplés
+   * ensemble (un abonnement repris à la main depuis le tableau de bord Stripe
+   * n'a pas de session du tout).
+   *
+   * Quand ce chemin s'ouvre, le client paie, reçoit son mail de félicitations,
+   * obtient son Premium, et `/api/stripe/portal` lui répond
+   * « No Stripe customer found. Please subscribe to a plan first. » : il ne
+   * peut plus ni changer de palier ni résilier depuis le site.
+   *
+   * La règle « on garde trace de ce qu'on facture » existait déjà dans
+   * `checkout.session.completed` et `subscription.updated`. Elle manquait sur
+   * le seul handler qui, par son propre commentaire, ACCORDE l'accès.
+   *
+   * ⚠️ APRÈS l'octroi, jamais avant : `upsertSubscription` lève sur erreur
+   * base, et un client qui a payé ne doit pas attendre un réessai Stripe pour
+   * entrer.
+   */
+  await upsertSubscription(subscription, userId, supabase)
+
+  // Le client Stripe s'écrit quel que soit le palier : il dit QUI paie, pas
+  // combien. Le conditionner au palier le perdrait sur le renouvellement d'un
+  // abonnement inférieur à l'accès déjà accordé.
+  const invoiceCustomerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id
+  if (invoiceCustomerId) {
+    const { error: customerErr } = await supabase
+      .from('profiles')
+      .update({ stripe_customer_id: invoiceCustomerId })
+      .eq('id', userId)
+    if (customerErr) {
+      // Non bloquant pour l'accès (le client a payé), mais jamais silencieux :
+      // sans ce champ le portail de facturation lui est fermé.
+      console.error('[Webhook] Error saving stripe_customer_id:', customerErr)
+      await alertWebhookFailure(
+        'Stripe',
+        `invoice.paid ${invoice.id} : stripe_customer_id non enregistré pour ${userId}. ` +
+          `Le client paie et ne peut plus ouvrir son portail de facturation.`
+      )
+    }
+  }
+
   // Membre fondateur : posé à vie quand la PREMIÈRE facture porte une remise
   // fondateur (≥ 5 €). On lit le montant réellement remisé sur la facture, ce qui
   // couvre le code pré-rempli (lien ?ref=) ET le code saisi à la main au checkout.

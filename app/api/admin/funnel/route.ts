@@ -43,7 +43,8 @@ export async function GET(req: NextRequest) {
     { data: activationEvents, error: eventsErr },
     { data: analysisEvents },
     { data: checkoutEvents },
-    { count: payingNow },
+    { count: payingNow, error: payingErr },
+    { count: billedNow, error: billedErr },
     { data: tasterEvents },
     { data: upgradeCtaEvents },
     { data: signupSourceEvents },
@@ -58,6 +59,25 @@ export async function GET(req: NextRequest) {
     admin.from("product_events").select("user_id")
       .eq("event", "checkout_started").gte("created_at", since).limit(10000),
     admin.from("profiles").select("id", { count: "exact", head: true }).neq("plan", "free"),
+    /**
+     * ⚠️⚠️ « PAYANTS » ET « FACTURÉS » NE SONT PAS LE MÊME FAIT.
+     *
+     * Le compteur au-dessus répond à « combien de comptes ont un accès
+     * payant ». Il compte aussi les accès accordés à la main : partenaires,
+     * testeurs, gestes commerciaux. Au 2026-09-12, sur 13 comptes à plan
+     * payant, 3 seulement avaient un client Stripe.
+     *
+     * Présenter les 13 sous l'étiquette « Payants » fait décider sur un
+     * chiffre de revenus qui n'en est pas un : c'est l'écran sur lequel le
+     * modèle de marge, les projections de commission et les décisions de
+     * quota IA se prennent.
+     *
+     * `stripe_customer_id` est la trace qu'une facture a été payée (posée
+     * par checkout.session.completed ET par invoice.paid). Les deux nombres
+     * s'affichent donc côte à côte, jamais fusionnés.
+     */
+    admin.from("profiles").select("id", { count: "exact", head: true })
+      .neq("plan", "free").not("stripe_customer_id", "is", null),
     admin.from("product_events").select("user_id")
       .eq("event", "taster_used").gte("created_at", since).limit(10000),
     admin.from("product_events").select("user_id, meta")
@@ -137,6 +157,14 @@ export async function GET(req: NextRequest) {
     analyzed: distinct(analysisEvents),
     checkoutStarted: distinct(checkoutEvents),
     payingNow: payingNow ?? 0,
+    billedNow: billedNow ?? 0,
+    /**
+     * ⚠️ UNE LECTURE RATÉE N'EST PAS UN ZÉRO. `count` vaut `null` aussi bien
+     * quand la requête échoue que quand elle ne trouve rien : sans ce
+     * drapeau, une panne s'afficherait comme « 0 payant », en vert, sur le
+     * tableau de bord de décision.
+     */
+    revenueCountsFailed: !!payingErr || !!billedErr,
     // Échelle d'upgrade free→plus (2026-07-09)
     tasterUsed: distinct(tasterEvents),
     upgradeCtaUsers: distinct((upgradeCtaEvents ?? []) as { user_id: string }[]),

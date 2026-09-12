@@ -42,6 +42,7 @@ export default function AdminPage() {
   const [funnel, setFunnel] = useState<{
     days: number; eventsTableMissing: boolean; signups: number;
     activated: number; analyzed: number; checkoutStarted: number; payingNow: number;
+    billedNow?: number; revenueCountsFailed?: boolean;
     tasterUsed: number; upgradeCtaUsers: number; upgradeCtaBySource: Record<string, number>;
     signupsBySource: Record<string, number>;
     aiCost?: {
@@ -825,10 +826,39 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 pt-3 mt-2 border-t border-border">
-                <span className="text-sm text-muted flex-1">Payants actuellement (global)</span>
-                <span className="text-sm font-bold text-profit tabular-nums">{funnel.payingNow}</span>
-                <span className="w-14" />
+              {/*
+                Deux faits distincts, jamais fusionnés : l'accès accordé (qui
+                inclut partenaires et gestes commerciaux) et l'abonnement
+                réellement facturé. Le second est celui des revenus.
+              */}
+              <div className="pt-3 mt-2 border-t border-border space-y-2">
+                {funnel.revenueCountsFailed ? (
+                  <p className="text-sm text-loss">
+                    Comptage des abonnés indisponible : lecture refusée, ce n&apos;est pas un zéro.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted flex-1">Abonnements facturés (Stripe)</span>
+                      <span className="text-sm font-bold text-profit tabular-nums">{funnel.billedNow ?? 0}</span>
+                      <span className="w-14" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted flex-1">
+                        dont accès accordés sans facture (partenaires, gestes commerciaux)
+                      </span>
+                      <span className="text-xs font-semibold text-foreground tabular-nums">
+                        {Math.max(0, funnel.payingNow - (funnel.billedNow ?? 0))}
+                      </span>
+                      <span className="w-14" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted flex-1">Comptes à plan payant (total)</span>
+                      <span className="text-xs font-semibold text-foreground tabular-nums">{funnel.payingNow}</span>
+                      <span className="w-14" />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Échelle d'upgrade free→plus : quel déclencheur convertit ? */}
