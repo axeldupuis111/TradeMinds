@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtPrice } from "@/lib/prix-instrument";
+import { stripLongDashes } from "@/lib/coach-typography";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import EquityCurve from "@/components/charts/EquityCurve";
 import TradingCalendar from "@/components/charts/TradingCalendar";
@@ -281,7 +282,7 @@ export default function DashboardContent({
      * prose est ENREGISTREE : sans nettoyage a l'affichage, les analyses deja
      * en base garderaient leur code pour toujours.
      */
-    return items.slice(0, 4).map(sansCodesInternes);
+    return items.slice(0, 4).map((x) => stripLongDashes(sansCodesInternes(x)));
   }, [lastReview]);
 
   // ── Date & salutation selon l'heure ───────────────────────────────────────

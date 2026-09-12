@@ -67,8 +67,10 @@ describe("les codes internes", () => {
       expect(page, `${champ} n'est pas nettoyé`).toMatch(new RegExp(champ + ":"));
     }
     const dash = lire("components/dashboard/DashboardContent.tsx");
+    // ⚠️ Le nettoyage porte DEUX règles depuis qu'on y a joint les tirets
+    // longs : on vérifie qu'il passe, pas la forme exacte de l'appel.
     expect(dash, "les insights du tableau de bord ne sont pas nettoyés").toContain(
-      "items.slice(0, 4).map(sansCodesInternes)",
+      "sansCodesInternes(x)",
     );
   });
 

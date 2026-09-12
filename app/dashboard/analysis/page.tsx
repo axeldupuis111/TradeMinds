@@ -1,6 +1,7 @@
 "use client";
 
 import { tradesConformes } from "@/lib/trades-conformes";
+import { stripLongDashes } from "@/lib/coach-typography";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
@@ -135,23 +136,30 @@ interface DataFields {
  * phrase, et l'ecran la traduit deja par `t(\`violation_${type}\`)`.
  */
 function nettoyerLAnalyse(a: Analysis): Analysis {
-  const texte = (v: string | null | undefined) => (v ? sansCodesInternes(v) : v);
+  /**
+   * ⚠️ DEUX REGLES, UN SEUL PASSAGE. Le code interne et le tiret long sont
+   * deux defauts differents avec la meme cause : un texte de modele ENREGISTRE,
+   * donc qu'une regle de prompt ne peut plus atteindre. Les corriger au meme
+   * endroit evite qu'un futur champ n'obtienne que la moitie du traitement.
+   */
+  const propre = (v: string) => stripLongDashes(sansCodesInternes(v));
+  const texte = (v: string | null | undefined) => (v ? propre(v) : v);
   return {
     ...a,
     headline: texte(a.headline),
     summary: texte(a.summary),
-    strengths: (a.strengths ?? []).map(sansCodesInternes),
-    recommendations: (a.recommendations ?? []).map(sansCodesInternes),
-    patterns: (a.patterns ?? []).map((p: Pattern) => ({ ...p, description: sansCodesInternes(p.description) })),
+    strengths: (a.strengths ?? []).map(propre),
+    recommendations: (a.recommendations ?? []).map(propre),
+    patterns: (a.patterns ?? []).map((p: Pattern) => ({ ...p, description: propre(p.description) })),
     violations: (a.violations ?? []).map((v: Violation | LegacyViolation) => ({
       ...v,
-      explanation: v.explanation ? sansCodesInternes(v.explanation) : v.explanation,
+      explanation: v.explanation ? propre(v.explanation) : v.explanation,
     })),
     trade_reviews: a.trade_reviews?.map((r: TradeReview) => ({
       ...r,
-      comment: r.comment ? sansCodesInternes(r.comment) : r.comment,
+      comment: r.comment ? propre(r.comment) : r.comment,
     })),
-    action_plan: a.action_plan?.map((x: ActionItem) => ({ ...x, title: sansCodesInternes(x.title) })),
+    action_plan: a.action_plan?.map((x: ActionItem) => ({ ...x, title: propre(x.title) })),
   };
 }
 

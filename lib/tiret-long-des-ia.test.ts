@@ -97,4 +97,23 @@ describe("le tiret long des réponses IA", () => {
       k: "sl_too_wide",
     });
   });
+
+  /**
+   * ⚠️⚠️ ET CE QUI EST DÉJÀ ÉCRIT. Une règle de prompt ne peut plus rien pour
+   * les analyses ENREGISTRÉES : mesuré après le correctif des routes, le
+   * tableau de bord affichait toujours « +394,68 € net sur 3 trades — un signal
+   * positif isolé », parce que ce texte date d'avant. Les deux écrans qui
+   * rendent une analyse la nettoient donc à l'affichage, au même endroit que
+   * les codes internes : deux défauts, une seule cause, un seul passage.
+   */
+  it("les analyses déjà en base sont nettoyées à l'affichage", () => {
+    const page = lire("app/dashboard/analysis/page.tsx");
+    expect(page, "la page ne retire plus les tirets").toContain(
+      "const propre = (v: string) => stripLongDashes(sansCodesInternes(v));",
+    );
+    const dash = lire("components/dashboard/DashboardContent.tsx");
+    expect(dash, "le tableau de bord ne retire plus les tirets").toContain(
+      "stripLongDashes(sansCodesInternes(x))",
+    );
+  });
 });
