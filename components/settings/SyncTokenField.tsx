@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
+import { etatDuJeton } from "@/lib/etat-du-jeton";
 
 interface Props {
   /** Token push universel (`mt_sync_token`), null tant qu'il n'est pas généré. */
   token: string | null;
+  /**
+   * La lecture du jeton a-t-elle échoué ?
+   *
+   * ⚠️⚠️ SANS CE DRAPEAU, CETTE CARTE DIT « GÉNÈRE UN JETON » À QUELQU'UN QUI
+   * EN A DÉJÀ UN. Le parent ne savait pas distinguer « pas de jeton » de « je
+   * n'ai pas pu le lire », et trois cartes répétaient la même consigne fausse.
+   * Le trader qui la suit régénère son jeton et casse l'EA déjà installé.
+   */
+  lectureRatee?: boolean;
 }
 
 /**
@@ -27,13 +37,21 @@ interface Props {
  * la section MetaTrader mène à jour toutes les cartes du même coup, sans
  * rechargement.
  */
-export default function SyncTokenField({ token }: Props) {
+export default function SyncTokenField({ token, lectureRatee }: Props) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
+  // ⚠️ L'ordre des trois états n'est pas décidé ici : voir `etatDuJeton`.
+  // « Je n'ai pas pu lire » passe avant « tu n'en as pas », parce que la
+  // consigne de génération est destructrice pour qui en a déjà un.
+  const etat = etatDuJeton(token, lectureRatee);
+  if (etat === "lecture-ratee") {
+    return <p className="text-xs text-loss mt-3">{t("lecture_impossible")}</p>;
+  }
+
   // Sans token, le renvoyer vers l'endroit qui sait le créer est le seul
   // message utile : cette carte ne sait pas en générer.
-  if (!token) {
+  if (etat === "absent" || !token) {
     return <p className="text-xs text-muted mt-3">{t("sync_token_missing")}</p>;
   }
 

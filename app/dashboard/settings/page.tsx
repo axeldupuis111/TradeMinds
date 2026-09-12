@@ -1,6 +1,7 @@
 "use client";
 
 import { lienPartageable } from "@/lib/seo";
+import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
 import SyncGuide from "@/components/settings/SyncGuide";
@@ -88,6 +89,8 @@ export default function SettingsPage() {
   const [mtLoading, setMtLoading] = useState(true);
   const [mtGenerating, setMtGenerating] = useState(false);
   const [showMtRegenModal, setShowMtRegenModal] = useState(false);
+  /** La lecture du jeton a-t-elle échoué ? Voir `fetchMtToken`. */
+  const [mtLectureRatee, setMtLectureRatee] = useState(false);
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(showMtRegenModal, () => setShowMtRegenModal(false));
   const [isDeleting, setIsDeleting] = useState(false);
@@ -97,16 +100,32 @@ export default function SettingsPage() {
     publicProfile !== originalPublicProfile ||
     timezone !== originalTimezone;
 
+  /**
+   * ⚠️⚠️ UNE LECTURE RATÉE FAISAIT CROIRE À L'ABSENCE DE JETON, ET LA SUITE
+   * COÛTAIT LA SYNCHRO. Quand cette lecture échouait, `mtToken` restait `null`
+   * et l'écran affichait le bouton « Générer un jeton », exactement comme pour
+   * un trader qui n'en a jamais eu. Il cliquait, un NOUVEAU jeton était écrit,
+   * et l'EA déjà installé sur sa machine (le jeton y est recopié en dur)
+   * cessait d'envoyer ses trades : plus rien n'arrivait dans le journal, sans
+   * message, sans erreur.
+   *
+   * ⚠️ Et le `catch` muet ne pouvait rien rattraper de plus : un 500 ne lève
+   * pas, `res.ok` n'était pas regardé. Les deux chemins tombaient donc dans le
+   * même silence.
+   *
+   * Trois états, pas deux : je charge, je n'ai pas pu lire, il n'y en a pas.
+   */
   async function fetchMtToken() {
     setMtLoading(true);
     try {
       const res = await fetch("/api/mt/token");
-      if (res.ok) {
-        const data = await res.json();
-        setMtToken(data.token);
-      }
-    } catch {
-      // silent — token section will show generate button
+      if (!res.ok) throw new Error(`mt/token ${res.status}`);
+      const data = await res.json();
+      setMtToken(data.token);
+      setMtLectureRatee(false);
+    } catch (e) {
+      console.error("[reglages] jeton de synchro non lu :", e);
+      setMtLectureRatee(true);
     } finally {
       setMtLoading(false);
     }
@@ -605,6 +624,7 @@ export default function SettingsPage() {
             downloadLabel="NinjaTrader AddOn (.cs)"
             tokenNote={t("sync_ninja_token_note")}
             token={mtToken}
+            lectureRatee={mtLectureRatee}
             guideTitle={t("sync_ninja_guide_title")}
           />
 
@@ -629,6 +649,10 @@ export default function SettingsPage() {
           </div>
         ) : mtLoading ? (
           <div className="skeleton h-10 w-full rounded-lg" />
+        ) : mtLectureRatee ? (
+          /* ⚠️ Surtout pas le bouton « Générer » : régénérer casserait l'EA
+             déjà installé. On le dit, et on propose de relire. */
+          <LectureRatee onReessayer={fetchMtToken} />
         ) : mtToken ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -744,10 +768,11 @@ export default function SettingsPage() {
             downloadLabel="cTrader cBot (.cs)"
             tokenNote={t("sync_uses_token_above")}
             token={mtToken}
+            lectureRatee={mtLectureRatee}
             guideTitle={t("sync_ctrader_guide_title")}
           />
 
-          <TradingViewCard token={mtToken} />
+          <TradingViewCard token={mtToken} lectureRatee={mtLectureRatee} />
         </>
       )}
 

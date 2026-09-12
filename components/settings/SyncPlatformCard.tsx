@@ -14,6 +14,8 @@ interface Props {
   tokenNote: string;
   /** Token push universel, affiché ici plutôt que renvoyé vers une autre section. */
   token: string | null;
+  /** La lecture du jeton a-t-elle échoué ? Voir SyncTokenField. */
+  lectureRatee?: boolean;
   guideTitle: string;
 }
 
@@ -30,6 +32,7 @@ export default function SyncPlatformCard({
   downloadLabel,
   tokenNote,
   token,
+  lectureRatee,
   guideTitle,
 }: Props) {
   return (
@@ -53,7 +56,7 @@ export default function SyncPlatformCard({
         {downloadLabel}
       </a>
 
-      <SyncTokenField token={token} />
+      <SyncTokenField token={token} lectureRatee={lectureRatee} />
 
       <p className="text-xs text-muted mt-2">{tokenNote}</p>
 

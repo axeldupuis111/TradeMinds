@@ -1,12 +1,15 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { etatDuJeton } from "@/lib/etat-du-jeton";
 import { useState } from "react";
 import SyncGuide from "./SyncGuide";
 
 interface Props {
   /** Token push universel (mt_sync_token) — null tant que non généré. */
   token: string | null;
+  /** La lecture du jeton a-t-elle échoué ? Voir SyncTokenField. */
+  lectureRatee?: boolean;
 }
 
 /**
@@ -15,13 +18,15 @@ interface Props {
  * API directement — la carte fournit l'URL de webhook (token inclus) et le
  * snippet Pine à coller dans la stratégie.
  */
-export default function TradingViewCard({ token }: Props) {
+export default function TradingViewCard({ token, lectureRatee }: Props) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   // Toujours www : les EA/cBots postent sur ce même hôte en dur, et une
   // éventuelle redirection de domaine casserait le POST (voir incident 405).
-  const webhookUrl = token
+  // ⚠️ Trois états, décidés au même endroit que partout ailleurs.
+  const etat = etatDuJeton(token, lectureRatee);
+  const webhookUrl = etat === "present"
     ? `https://www.tradediscipline.app/api/sync/tradingview?token=${token}`
     : null;
 
@@ -53,6 +58,10 @@ export default function TradingViewCard({ token }: Props) {
             </button>
           </div>
         </div>
+      ) : etat === "lecture-ratee" ? (
+        /* ⚠️ « Je n'ai pas pu lire » avant « tu n'en as pas » : la consigne de
+           génération casserait la synchro de qui en a déjà un. */
+        <p className="text-xs text-loss">{t("lecture_impossible")}</p>
       ) : (
         <p className="text-xs text-muted">{t("sync_tv_no_token")}</p>
       )}
