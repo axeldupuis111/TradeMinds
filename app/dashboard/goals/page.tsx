@@ -14,7 +14,7 @@ import GrowBar from "@/components/animations/GrowBar";
 import { AnimatePresence, motion } from "framer-motion";
 import { Trash2, Plus, Target, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock, X, Trophy, Activity } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, langueCourante } from "@/lib/nombres";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
@@ -212,7 +212,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
   const monthLabels = cols.map((week, wi) => {
     const m = new Date(week[0].iso + "T00:00:00").getMonth();
     const prev = wi > 0 ? new Date(cols[wi - 1][0].iso + "T00:00:00").getMonth() : -1;
-    return m !== prev ? new Date(week[0].iso + "T00:00:00").toLocaleDateString(undefined, { month: "short" }) : "";
+    return m !== prev ? new Date(week[0].iso + "T00:00:00").toLocaleDateString(langueCourante(), { month: "short" }) : "";
   });
 
   // Stats de synthèse.
@@ -249,7 +249,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
                   <span key={di} className={CELL} />
                 ) : (
                   <span key={di}
-                    title={`${new Date(cell.iso + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })} · ${cell.score != null ? `${cell.score}/100` : t("goals_heatmap_no_data")}`}
+                    title={`${new Date(cell.iso + "T00:00:00").toLocaleDateString(langueCourante(), { weekday: "short", day: "numeric", month: "short" })} · ${cell.score != null ? `${cell.score}/100` : t("goals_heatmap_no_data")}`}
                     className={`${CELL} rounded-[3px] transition-transform hover:scale-125 ${heatCls(cell.score)} ${cell.score == null ? "border border-border/60" : ""} ${cell.isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card" : ""}`}
                   />
                 ),
@@ -852,7 +852,7 @@ export default function GoalsPage() {
               </div>
               {milestoneDate && streak.current > 0 && (
                 <p className="text-[11px] text-muted mt-1.5">
-                  {t("goals_milestone_forecast").replace("{m}", String(nextMilestone)).replace("{date}", milestoneDate.toLocaleDateString(undefined, { day: "numeric", month: "long" }))}
+                  {t("goals_milestone_forecast").replace("{m}", String(nextMilestone)).replace("{date}", milestoneDate.toLocaleDateString(langueCourante(), { day: "numeric", month: "long" }))}
                 </p>
               )}
             </div>

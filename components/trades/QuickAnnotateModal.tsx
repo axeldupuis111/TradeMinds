@@ -11,6 +11,7 @@
  */
 
 import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { langueCourante } from "@/lib/nombres";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -198,10 +199,10 @@ export default function QuickAnnotateModal({
                         </span>
                       </p>
                       <p className="text-xs text-foreground-muted mt-0.5 tabular-nums">
-                        {new Date(current.open_time).toLocaleDateString(undefined, {
+                        {new Date(current.open_time).toLocaleDateString(langueCourante(), {
                           day: "2-digit", month: "2-digit", year: "numeric",
                         })}{" · "}
-                        {new Date(current.open_time).toLocaleTimeString(undefined, {
+                        {new Date(current.open_time).toLocaleTimeString(langueCourante(), {
                           hour: "2-digit", minute: "2-digit",
                         })}
                       </p>

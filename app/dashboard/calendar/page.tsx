@@ -9,6 +9,7 @@
  */
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import { langueCourante } from "@/lib/nombres";
 import LectureRatee from "@/components/LectureRatee";
 import { createClient } from "@/lib/supabase/client";
 import { usePersistentState } from "@/lib/hooks/usePersistentState";
@@ -138,7 +139,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
     return () => { alive = false; };
   }, [ev.id, glossaryLang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const time = new Date(ev.event_time).toLocaleString(undefined, {
+  const time = new Date(ev.event_time).toLocaleString(langueCourante(), {
     weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
   });
   const style = impactStyle(ev.impact);
@@ -508,7 +509,7 @@ export default function CalendarPage() {
           </div>
           <div className="text-right shrink-0">
             <p className="text-sm font-bold tabular-nums text-foreground">
-              {new Date(nextHigh.event_time).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+              {new Date(nextHigh.event_time).toLocaleString(langueCourante(), { weekday: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
             <p className="text-[11px] text-red-400 tabular-nums font-medium">{relativeLabel(nextHigh, t)}</p>
           </div>
@@ -544,7 +545,7 @@ export default function CalendarPage() {
               </h2>
               <ul className="space-y-1.5 mt-2">
                 {g.events.map((ev, idx) => {
-                  const time = new Date(ev.event_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                  const time = new Date(ev.event_time).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" });
                   const style = impactStyle(ev.impact);
                   const dir = surprise(ev);
                   const passed = minutesUntil(ev.event_time) < -5;

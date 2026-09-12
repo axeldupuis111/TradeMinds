@@ -84,8 +84,21 @@ describe("les dates suivent la langue de l'application", () => {
           .forEach((ligne, i) => {
             const nu = ligne.trim();
             if (nu.startsWith("*") || nu.startsWith("//")) return;
-            // `toLocale…()` sans le moindre argument.
-            if (/\.toLocale(Date|Time)?String\(\s*\)/.test(ligne)) {
+            /**
+             * `toLocale…()` sans le moindre argument, OU avec `undefined`.
+             *
+             * ⚠️⚠️ LA DEUXIÈME ORTHOGRAPHE PASSAIT, ET ELLE ÉTAIT LA PLUS
+             * RÉPANDUE : TRENTE-CINQ appels écrivaient
+             * `toLocaleDateString(undefined, { … })`, ce qui demande la langue
+             * du NAVIGATEUR exactement comme l'appel nu. Le motif ne cherchait
+             * qu'une parenthèse vide, et il a laissé passer cinq fois plus de
+             * cas qu'il n'en avait attrapé.
+             *
+             * ⚠️ C'est encore un garde qui ne connaissait qu'une façon d'écrire
+             * la même faute.
+             */
+            if (/\.toLocale(Date|Time)?String\(\s*(?:undefined\s*[,)])?\s*\)?/.test(ligne)
+                && /\.toLocale(Date|Time)?String\(\s*(?:\)|undefined\b)/.test(ligne)) {
               fautes.push(`${nom}:${i + 1} langue du navigateur`);
             }
           });
@@ -125,11 +138,15 @@ describe("les dates suivent la langue de l'application", () => {
    * exactes qui existaient, sinon ce test resterait vert pour toujours.
    */
   it("les deux motifs reconnaissent ce qu'ils cherchent", () => {
-    const sansLangue = /\.toLocale(Date|Time)?String\(\s*\)/;
+    const sansLangue = /\.toLocale(Date|Time)?String\(\s*(?:\)|undefined\b)/;
     const enDur = /\.toLocale(Date|Time)?String\(\s*["'`](fr|en|es|de)/;
     expect(sansLangue.test(`new Date(x).toLocaleDateString()`)).toBe(true);
     expect(sansLangue.test(`n.toLocaleString()`)).toBe(true);
     expect(sansLangue.test(`new Date(x).toLocaleDateString(langue)`)).toBe(false);
+    // ⚠️ La deuxième orthographe, celle qui passait : trente-cinq appels.
+    expect(sansLangue.test(`d.toLocaleDateString(undefined, { day: "2-digit" })`)).toBe(true);
+    expect(sansLangue.test(`d.toLocaleTimeString(undefined, { hour: "2-digit" })`)).toBe(true);
+    expect(sansLangue.test(`d.toLocaleDateString(langueCourante(), { day: "2-digit" })`)).toBe(false);
     expect(enDur.test(`new Date(x).toLocaleDateString("fr-FR", { day: "numeric" })`)).toBe(true);
     expect(enDur.test(`new Date(x).toLocaleDateString(lang)`)).toBe(false);
   });

@@ -1,6 +1,7 @@
 "use client";
 
 import { tradesConformes } from "@/lib/trades-conformes";
+import { langueCourante } from "@/lib/nombres";
 import { stripLongDashes } from "@/lib/coach-typography";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
@@ -898,7 +899,7 @@ export default function AnalysisPage() {
           grade: r.grade,
           pair: r.pair,
           direction: r.direction,
-          date: new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+          date: new Date(r.open_time).toLocaleDateString(langueCourante(), { day: "numeric", month: "short" }),
           pnl: r.net_pnl,
           comment: r.comment,
         })),
@@ -1415,7 +1416,7 @@ export default function AnalysisPage() {
                         <span className="text-foreground text-sm font-medium">{r.pair}</span>
                         <span className="text-muted text-xs uppercase">{r.direction}</span>
                         <span className="text-muted text-xs">
-                          {new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                          {new Date(r.open_time).toLocaleDateString(langueCourante(), { day: "numeric", month: "short" })}
                         </span>
                         <span className={`ml-auto text-xs font-bold tabular-nums ${r.net_pnl >= 0 ? "text-profit" : "text-loss"}`}>
                           {fmtEuro(r.net_pnl, displayCurrency)}
@@ -1692,7 +1693,7 @@ export default function AnalysisPage() {
                     )}
                     {msg.created_at && (
                       <p className={`text-[10px] text-muted ${msg.role === "user" ? "text-right" : "text-left"}`}>
-                        {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(msg.created_at).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     )}
                   </div>
@@ -1899,7 +1900,7 @@ export default function AnalysisPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-foreground text-xs font-medium">
-                        {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(r.created_at).toLocaleDateString(langueCourante(), { day: "numeric", month: "short", year: "numeric" })}
                         {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                       </p>
                       <p className="text-muted text-[11px]">
@@ -1926,10 +1927,10 @@ export default function AnalysisPage() {
             {/* Dates */}
             <div />
             <div className="text-center text-sm text-muted font-medium">
-              {new Date(compareA.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+              {new Date(compareA.created_at).toLocaleDateString(langueCourante(), { day: "numeric", month: "short" })}
             </div>
             <div className="text-center text-sm text-muted font-medium">
-              {new Date(compareB.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+              {new Date(compareB.created_at).toLocaleDateString(langueCourante(), { day: "numeric", month: "short" })}
             </div>
 
             {/* Score */}
@@ -2014,7 +2015,7 @@ export default function AnalysisPage() {
               >
                 <div>
                   <p className="text-foreground text-sm font-medium">
-                    {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                    {new Date(r.created_at).toLocaleDateString(langueCourante(), { day: "numeric", month: "long", year: "numeric" })}
                     {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                   </p>
                   {/* ⚠️ Borné à l'affichage aussi : deux analyses déjà enregistrées portent

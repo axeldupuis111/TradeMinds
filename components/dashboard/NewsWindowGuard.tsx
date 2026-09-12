@@ -12,6 +12,7 @@
  */
 
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
+import { langueCourante } from "@/lib/nombres";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { loadTodayNews } from "@/lib/economic-calendar-client";
@@ -47,7 +48,7 @@ export default function NewsWindowGuard() {
         setSourceAlerts(SOURCE_KEY, []);
         return;
       }
-      const time = new Date(active.event_time).toLocaleTimeString(undefined, {
+      const time = new Date(active.event_time).toLocaleTimeString(langueCourante(), {
         hour: "2-digit",
         minute: "2-digit",
       });

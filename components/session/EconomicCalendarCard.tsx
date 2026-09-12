@@ -11,6 +11,7 @@
  */
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import { langueCourante } from "@/lib/nombres";
 import { createClient } from "@/lib/supabase/client";
 import { loadTodayNews } from "@/lib/economic-calendar-client";
 import { impactEmoji, minutesUntil, type EconomicEvent, type Impact } from "@/lib/economic-calendar";
@@ -66,7 +67,7 @@ export default function EconomicCalendarCard() {
 
       <ul className="space-y-1.5">
         {events.map((ev, i) => {
-          const time = new Date(ev.event_time).toLocaleTimeString(undefined, {
+          const time = new Date(ev.event_time).toLocaleTimeString(langueCourante(), {
             hour: "2-digit",
             minute: "2-digit",
           });

@@ -38,7 +38,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, langueCourante } from "@/lib/nombres";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -286,7 +286,7 @@ export default function DashboardContent({
   }, [lastReview]);
 
   // ── Date & salutation selon l'heure ───────────────────────────────────────
-  const dateStr = new Date().toLocaleDateString(undefined, {
+  const dateStr = new Date().toLocaleDateString(langueCourante(), {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
   const hourNow = new Date().getHours();
@@ -602,7 +602,7 @@ export default function DashboardContent({
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-foreground-muted text-xs tabular-nums w-12 shrink-0">
                         {tr.open_time
-                          ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
+                          ? new Date(tr.open_time).toLocaleDateString(langueCourante(), { day: "2-digit", month: "2-digit" })
                           : "—"}
                       </span>
                       <span className="text-foreground text-sm font-medium truncate">{tr.pair}</span>
@@ -621,7 +621,7 @@ export default function DashboardContent({
                         {/* Ligne 1 — heure + taille de lot */}
                         <p className="text-[10px] text-foreground-muted tabular-nums leading-none">
                           {tr.open_time
-                            ? new Date(tr.open_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+                            ? new Date(tr.open_time).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })
                             : "—"}
                           {tr.lot_size != null && tr.lot_size > 0
                             ? ` · ${tr.lot_size}`
@@ -673,7 +673,7 @@ export default function DashboardContent({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-foreground-muted text-xs">
-                        {new Date(lastReview.created_at).toLocaleDateString(undefined, {
+                        {new Date(lastReview.created_at).toLocaleDateString(langueCourante(), {
                           day: "numeric", month: "long", year: "numeric",
                         })}
                       </span>

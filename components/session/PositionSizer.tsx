@@ -24,7 +24,7 @@ import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { Info, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { nombre, pourcent } from "@/lib/nombres";
+import { nombre, pourcent, langueCourante } from "@/lib/nombres";
 
 interface Props {
   strategy: {
@@ -652,7 +652,7 @@ export default function PositionSizer({ strategy }: Props) {
                           <div>
                             <p className="text-[11px] text-muted uppercase tracking-wider">{t("sizer_units_label")}</p>
                             <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
-                              {units !== null ? units.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
+                              {units !== null ? units.toLocaleString(langueCourante(), { maximumFractionDigits: 0 }) : "—"}
                             </p>
                             {unitsPerLot !== null && (
                               <p className="text-[10px] text-muted mt-0.5">

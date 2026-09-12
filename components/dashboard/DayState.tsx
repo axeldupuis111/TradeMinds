@@ -19,7 +19,7 @@ import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { cn } from "@/lib/cn";
 import { Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, langueCourante } from "@/lib/nombres";
 
 interface Strategy {
   max_trades_per_day: number | null;
@@ -216,7 +216,7 @@ export default function DayState() {
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-profit/10 border border-profit/30 text-profit text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
             {t("day_session_active_since")}{" "}
-            {new Date(activeSessionStartedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+            {new Date(activeSessionStartedAt).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
+import { langueCourante } from "@/lib/nombres";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
@@ -349,7 +350,7 @@ export default function GoalsStreaks() {
               <p className="text-xs text-muted mt-0.5">
                 {t("freeze_cta_body").replace(
                   "{date}",
-                  new Date(freezeCandidate).toLocaleDateString(undefined, { day: "numeric", month: "long" }),
+                  new Date(freezeCandidate).toLocaleDateString(langueCourante(), { day: "numeric", month: "long" }),
                 )}
               </p>
               {freezeRemaining > 0 ? (

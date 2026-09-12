@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardTitle } from "@/components/ui/Card";
+import { langueCourante } from "@/lib/nombres";
 import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -213,7 +214,7 @@ export default function EmotionalTrendChart({
               return (
                 <div style={tooltipStyle}>
                   <p style={{ fontWeight: 600, marginBottom: 4, color: c.tooltipText || "inherit" }}>
-                    {new Date(label as string).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                    {new Date(label as string).toLocaleDateString(langueCourante(), { day: "numeric", month: "short" })}
                   </p>
                   {emotionEntry?.value != null && (
                     <p style={{ color: c.accent }}>{emoji} Emotion: {String(emotionEntry.value)}/5</p>

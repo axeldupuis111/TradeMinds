@@ -1,6 +1,7 @@
 "use client";
 
 import DayStatus from "@/components/DayStatus";
+import { langueCourante } from "@/lib/nombres";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import SessionDebriefModal, { type SessionDebrief } from "@/components/session/SessionDebriefModal";
 import EconomicCalendarCard from "@/components/session/EconomicCalendarCard";
@@ -624,7 +625,7 @@ export default function SessionPage() {
                 <h2 className="text-lg font-semibold text-foreground">{t("session_in_progress")}</h2>
                 <p className="text-muted text-sm mt-0.5">
                   {t("day_session_active_since")}{" "}
-                  {new Date(activeSession.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(activeSession.created_at).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
             </div>
@@ -662,7 +663,7 @@ export default function SessionPage() {
             <div>
               <p className="text-sm font-semibold text-orange-500">{t("session_paused")}</p>
               <p className="text-xs text-muted">
-                {t("session_paused_at")} {new Date(pausedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                {t("session_paused_at")} {new Date(pausedAt).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>
           </div>
@@ -1068,7 +1069,7 @@ export default function SessionPage() {
               <div className="space-y-2">
                 {historyWithPnl.map((s) => {
                   const emotion = EMOTIONS.find((e) => e.key === s.emotion_before);
-                  const date = new Date(s.created_at).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+                  const date = new Date(s.created_at).toLocaleDateString(langueCourante(), { weekday: "short", day: "numeric", month: "short" });
                   return (
                     <div key={s.id} className="flex items-center gap-2 py-2 border-b border-border last:border-0">
                       <span className="text-lg shrink-0">{emotion?.emoji ?? "—"}</span>
@@ -1082,7 +1083,7 @@ export default function SessionPage() {
                             {money(s.pnl, historyCurrency, { digits: 2, signed: true })}
                           </span>
                         ) : s.ended_at ? (
-                          <span className="text-xs text-muted">{new Date(s.ended_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span className="text-xs text-muted">{new Date(s.ended_at).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })}</span>
                         ) : (
                           <span className="text-xs text-profit">En cours</span>
                         )}

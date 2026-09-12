@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import { langueCourante } from "@/lib/nombres";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -55,11 +56,11 @@ function formatOpenLabel(openTime: string, t: Traduire) {
   const sameDay = opened.toDateString() === today.toDateString();
   const isYesterday = opened.toDateString() === yesterday.toDateString();
 
-  const time = opened.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const time = opened.toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" });
 
   if (sameDay) return `${t("open_trades_today")} ${time}`;
   if (isYesterday) return `${t("open_trades_yesterday")} ${time}`;
-  return opened.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + ` ${time}`;
+  return opened.toLocaleDateString(langueCourante(), { day: "numeric", month: "short" }) + ` ${time}`;
 }
 
 export default function OpenTradesSection({ refreshKey, onCloseTrade }: Props) {

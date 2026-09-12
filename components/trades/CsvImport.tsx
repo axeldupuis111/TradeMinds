@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { messageDErreurSupabase } from "@/lib/erreurs-de-base";
 import { useCallback, useEffect, useState } from "react";
-import { nombre } from "@/lib/nombres";
+import { nombre, langueCourante } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface ActiveAccount {
@@ -240,7 +240,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const cooldownEnd = lastImportDate ? new Date(lastImportDate.getTime() + 24 * 60 * 60 * 1000) : null;
   const isCooldownActive = !planLoading && plan === "free" && cooldownEnd !== null && cooldownEnd > now;
   const nextImportDate = cooldownEnd
-    ? cooldownEnd.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+    ? cooldownEnd.toLocaleDateString(langueCourante(), { day: "numeric", month: "long", year: "numeric" })
     : null;
 
   const applyResult = useCallback((result: { trades: ParsedTrade[]; accountNumber: string | null; needsMapping?: boolean; rawHeaders?: string[]; rawRows?: Record<string, string>[] }) => {

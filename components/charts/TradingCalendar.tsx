@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtPrice } from "@/lib/prix-instrument";
+import { langueCourante } from "@/lib/nombres";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -67,7 +68,7 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 function fmtTime(iso: string | null | undefined): string | null {
   if (!iso) return null;
   try {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" });
   } catch {
     return null;
   }
@@ -381,7 +382,7 @@ export default function TradingCalendar({
       {displayDayData && displayDay && (() => {
         const isPinnedPanel = pinnedDay !== null;
         const panelDate = new Date(year, month, parseInt(displayDay))
-          .toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+          .toLocaleDateString(langueCourante(), { weekday: "long", day: "numeric", month: "long" });
         const topPairs = Array.from(
           new Set(displayDayData.trades.map((tr) => tr.pair))
         ).slice(0, 2);
