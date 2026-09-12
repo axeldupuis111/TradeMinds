@@ -361,6 +361,19 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
        * `continue` reste juste (un trade en échec ne doit pas faire tomber le
        * lot), mais il ne dispense pas de le dire.
        */
+      /**
+       * ⚠️⚠️ ET `skipped` COMPTE AUSSI, sinon le message n'arrive pas. L'EA ne
+       * regarde PAS `errors` : il cherche `"skipped":0` dans la réponse et
+       * n'imprime le corps entier que si ce n'est pas zéro
+       * (`public/TradeDiscipline_MT5.mq5`, ligne 520). Verser l'échec dans
+       * `errors` sans toucher `skipped` le laissait donc imprimer « OK » et
+       * cacher l'erreur qu'on venait d'ajouter. Vérifié en lisant le client.
+       *
+       * ⚠️ Corollaire : `received = synced + skipped` redevient vrai, ce sur
+       * quoi repose la seule vérification que fait le client déjà installé chez
+       * le trader, et qu'on ne peut pas mettre à jour à distance.
+       */
+      skipped++;
       if (errors.length < 20) {
         errors.push({
           ticket: String(row.external_id),
