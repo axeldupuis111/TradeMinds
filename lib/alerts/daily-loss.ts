@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
 import { startOfLocalDayUtc } from "@/lib/timezone";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { alertGardeFouMuet } from "@/lib/cron-alert";
 
 type AlertLang = "fr" | "en" | "de" | "es";
 
@@ -98,11 +99,26 @@ export async function checkDailyLossAlert(
     if (pref && (pref as { push_notif_alerts?: boolean }).push_notif_alerts === false) return;
     const timezone = (pref as { timezone?: string } | null)?.timezone || "UTC";
 
-    const { data: challenges } = await admin
+    const { data: challenges, error: erreurChallenges } = await admin
       .from("prop_challenges")
       .select("account_size, max_daily_loss_pct, max_daily_dd_pct")
       .eq("user_id", userId)
       .eq("status", "active");
+
+    /**
+     * ⚠️⚠️ « AUCUN CHALLENGE » ET « JE N'AI PAS PU LIRE » DONNAIENT LE MÊME
+     * SILENCE. Le premier est normal (le trader n'a pas de challenge prop),
+     * le second veut dire que le garde-fou ne s'est pas prononcé pendant que
+     * quelqu'un dépassait peut-être sa limite. Côté trader les deux sont
+     * indiscernables : rien ne sonne.
+     */
+    if (erreurChallenges) {
+      await alertGardeFouMuet(
+        "perte-journaliere",
+        `Lecture des challenges impossible pour ${userId} : ${erreurChallenges.message}`,
+      );
+      return;
+    }
 
     if (!challenges || challenges.length === 0) return;
 
@@ -117,11 +133,25 @@ export async function checkDailyLossAlert(
     // Start of the trader's local day (not UTC midnight) so the daily-loss
     // window matches the trading day they actually experience.
     const todayStart = startOfLocalDayUtc(timezone).toISOString();
-    const { data: todayTrades } = await admin
+    const { data: todayTrades, error: erreurTrades } = await admin
       .from("trades")
       .select("pnl, commission, swap")
       .eq("user_id", userId)
       .gte("open_time", todayStart);
+
+    /**
+     * ⚠️⚠️ LE PIRE DES DEUX. Sans ce contrôle, `todayTrades ?? []` donnait
+     * une perte du jour de ZÉRO : aucun seuil ne pouvait être franchi, et
+     * l'alerte se taisait au moment précis où elle sert. Une lecture ratée
+     * devenait « tu n'as rien perdu aujourd'hui ».
+     */
+    if (erreurTrades) {
+      await alertGardeFouMuet(
+        "perte-journaliere",
+        `Lecture des trades du jour impossible pour ${userId} : ${erreurTrades.message}`,
+      );
+      return;
+    }
 
     const afterPnl = (todayTrades ?? []).reduce(
       (s, t) => s + t.pnl + (t.commission || 0) + (t.swap || 0),
@@ -236,11 +266,21 @@ export async function checkDrawdownAlert(
       .maybeSingle();
     if (pref && (pref as { push_notif_alerts?: boolean }).push_notif_alerts === false) return;
 
-    const { data: challenge } = await admin
+    const { data: challenge, error: erreurChallenge } = await admin
       .from("prop_challenges")
       .select("account_size, max_total_dd_pct, trailing_drawdown")
       .eq("id", challengeId)
       .maybeSingle();
+
+    // Même règle que pour la perte journalière : un challenge introuvable et
+    // un challenge illisible ne sont pas le même fait.
+    if (erreurChallenge) {
+      await alertGardeFouMuet(
+        "drawdown",
+        `Lecture du challenge ${challengeId} impossible : ${erreurChallenge.message}`,
+      );
+      return;
+    }
 
     if (!challenge) return;
     const accountSize = challenge.account_size as number | null;
@@ -268,8 +308,16 @@ export async function checkDrawdownAlert(
         .order("id", { ascending: true })
         .range(from, to),
     );
-    // Lecture incomplète : mieux vaut ne pas alerter que d'alerter faux.
-    if (rows === null) return;
+    // Lecture incomplète : mieux vaut ne pas alerter que d'alerter faux. Mais
+    // se taire sans le dire transforme une panne en absence de danger : ce
+    // silence-là était déjà correct, il était seulement invisible.
+    if (rows === null) {
+      await alertGardeFouMuet(
+        "drawdown",
+        `Courbe d'équité illisible pour le challenge ${challengeId} (utilisateur ${userId}).`,
+      );
+      return;
+    }
 
     const trades = rows.slice().sort((a, b) => {
       const ta = a.close_time ? new Date(a.close_time).getTime() : 0;

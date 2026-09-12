@@ -66,6 +66,30 @@ export async function alertAiCeiling(
   );
 }
 
+/**
+ * Alerte quand un GARDE-FOU n'a pas pu se prononcer.
+ *
+ * ⚠️⚠️ UNE ALERTE DE RISQUE QUI NE PART PAS RESSEMBLE À « TOUT VA BIEN ». Les
+ * alertes de perte journalière et de drawdown sont la promesse centrale du
+ * produit : prévenir le trader avant qu'il ne fasse sauter son challenge.
+ * Quand la lecture qui les alimente échoue, se taire est le bon choix (alerter
+ * faux serait pire), mais se taire SANS RIEN DIRE À PERSONNE transforme une
+ * panne en absence de danger.
+ *
+ * Ici c'est l'exploitant qu'on prévient, pas le trader : lui n'a rien à faire
+ * d'un message qui dit qu'on ne sait pas.
+ */
+export async function alertGardeFouMuet(garde: string, detail: string): Promise<void> {
+  return sendAdminAlert(
+    `garde-fou:${garde}`,
+    `🔇 Garde-fou muet : ${garde}`,
+    `Le garde-fou « ${garde} » n'a pas pu se prononcer le ${new Date().toISOString()}.\n\n` +
+      `Il ne s'est PAS déclenché, et le trader n'a rien vu : côté utilisateur, ` +
+      `ça ressemble exactement à « aucun seuil franchi ».\n\nDétail :\n${detail}`,
+    detail,
+  );
+}
+
 async function sendAdminAlert(
   label: string,
   subject: string,
