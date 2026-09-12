@@ -31,8 +31,26 @@ describe("le bandeau de la landing", () => {
     "utf8",
   );
 
+  /**
+   * Le bandeau, découpé entre son composant et le suivant.
+   *
+   * ⚠️ ON S'ANCRE SUR LE COMPOSANT, PAS SUR LE NOM D'UNE CONSTANTE. La
+   * première version de ce garde cherchait `const TICKER_INSTRUMENTS` : le
+   * jour où la liste est passée DANS le composant (pour être traduite, `t`
+   * n'existant pas au niveau module), trois tests sur quatre sont tombés alors
+   * que la règle était intacte. Un garde attaché à une orthographe crie sur les
+   * corrections.
+   */
+  function bandeau(): string {
+    const debut = source.indexOf("function MarketTicker");
+    const fin = source.indexOf("function PlatformMarquee");
+    expect(debut, "le bandeau a disparu").toBeGreaterThan(-1);
+    expect(fin, "la borne de fin a disparu").toBeGreaterThan(debut);
+    return source.slice(debut, fin);
+  }
+
   it("tire sa liste du registre d'instruments, pas d'un tableau écrit à la main", () => {
-    expect(source).toMatch(/const TICKER_INSTRUMENTS = INSTRUMENTS\.map\(/);
+    expect(bandeau()).toMatch(/INSTRUMENTS\.map\(/);
     expect(INSTRUMENTS.length, "le registre s'est vidé").toBeGreaterThan(10);
   });
 
@@ -43,13 +61,8 @@ describe("le bandeau de la landing", () => {
    * cotation dans le bandeau : une variation signée en pourcentage.
    */
   it("n'affiche aucune variation de marché inventée", () => {
-    const debut = source.indexOf("const TICKER_INSTRUMENTS");
-    const fin = source.indexOf("function PlatformMarquee");
-    expect(debut, "le bandeau a disparu").toBeGreaterThan(-1);
-    expect(fin).toBeGreaterThan(debut);
-    const bandeau = source.slice(debut, fin);
-
-    const variations = bandeau.match(/["'`][+-]\d+[.,]\d+\s*%["'`]/g) ?? [];
+    const bloc = bandeau();
+    const variations = bloc.match(/["'`][+-]\d+[.,]\d+\s*%["'`]/g) ?? [];
     expect(
       variations,
       "des variations de marché écrites en dur sont revenues dans le bandeau : " +
@@ -57,19 +70,37 @@ describe("le bandeau de la landing", () => {
     ).toEqual([]);
 
     expect(
-      /\bchg\b|\bup:\s*(true|false)/.test(bandeau),
+      /\bchg\b|\bup:\s*(true|false)/.test(bloc),
       "le bandeau reprend une hausse ou une baisse qu'il ne mesure pas",
     ).toBe(false);
   });
 
-  /** ⚠️ Et il ne nomme que des marchés que le produit connaît vraiment. */
-  it("ne nomme que des marchés réellement couverts", () => {
-    const debut = source.indexOf("const TICKER_INSTRUMENTS");
-    const fin = source.indexOf("function PlatformMarquee");
-    const bandeau = source.slice(debut, fin);
-    const connus = new Set(INSTRUMENTS.flatMap((i) => [i.code, i.nom]));
-    const cites = (bandeau.match(/sym:\s*"([^"]+)"/g) ?? []).map((m) => m.slice(6, -1));
-    const inconnus = cites.filter((c) => !connus.has(c));
-    expect(inconnus, "marchés annoncés que le produit ne couvre pas : " + inconnus.join(", ")).toEqual([]);
+  /**
+   * ⚠️ ET IL NE NOMME AUCUN MARCHÉ À LA MAIN.
+   *
+   * La version d'avant listait les symboles cités et vérifiait qu'ils
+   * existaient dans le registre. Depuis que les noms viennent de `t()`, plus
+   * aucun littéral n'apparaît : ce test ne trouvait plus rien à vérifier et
+   * serait resté vert quoi qu'on écrive. On inverse donc la règle, qui est
+   * plus forte : aucun symbole ne doit être écrit en dur, puisqu'un symbole
+   * écrit en dur est précisément ce qui permet d'annoncer un marché que le
+   * produit ne couvre pas (SOL/USD, à l'origine de ce garde).
+   */
+  it("n'écrit aucun symbole de marché en dur", () => {
+    const enDur = bandeau().match(/sym:\s*["'`]/g) ?? [];
+    expect(
+      enDur,
+      "un symbole est écrit à la main dans le bandeau : il peut annoncer un " +
+        "marché que le produit ne couvre pas, et il ne se traduira jamais",
+    ).toEqual([]);
+  });
+
+  /** Les noms affichés passent par la table de traduction, pas par le registre. */
+  it("affiche des noms traduits, pas le nom français du registre", () => {
+    expect(
+      bandeau(),
+      "le bandeau lit `i.nom` : « Or », « Argent », « Pétrole WTI » sortiront " +
+        "tels quels sur la page d'accueil anglaise",
+    ).toMatch(/bt_instr_/);
   });
 });

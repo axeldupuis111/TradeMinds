@@ -830,10 +830,26 @@ function HeroStoryChart() {
    reste, la promesse devient vérifiable, et elle se met à jour toute seule le
    jour où un instrument s'ajoute.
 ───────────────────────────────────────────── */
-const TICKER_INSTRUMENTS = INSTRUMENTS.map((i) => ({ sym: i.nom, code: i.code }));
-
+/**
+ * ⚠️⚠️ `instrument.nom` EST UN NOM FRANÇAIS, PAS UN LIBELLÉ D'ÉCRAN. Le
+ * registre porte « Or (XAU/USD) », « Argent (XAG/USD) », « Pétrole WTI » :
+ * c'est la langue dans laquelle le produit a été écrit, pas celle du lecteur.
+ * Ces trois noms sortaient tels quels sur la page d'accueil ANGLAISE, servie à
+ * la racine. « Or » y est pire qu'une traduction manquante : un lecteur anglais
+ * lit la conjonction « or », donc une coquille, sur la première ligne de
+ * produit qu'il voit.
+ *
+ * ⚠️ LA RÈGLE EXISTAIT DÉJÀ, APPLIQUÉE AILLEURS. Les clés `bt_instr_<CODE>`
+ * sont posées dans les quatre langues pour les 19 instruments, et la page de
+ * backtest les utilise. Le bandeau, lui, lisait la valeur brute.
+ *
+ * ⚠️ Le calcul entre dans le composant : `t` n'existe pas au niveau module, et
+ * une constante figée au chargement ne changerait pas de langue.
+ */
 function MarketTicker() {
-  const items = [...TICKER_INSTRUMENTS, ...TICKER_INSTRUMENTS];
+  const { t } = useLanguage();
+  const instruments = INSTRUMENTS.map((i) => ({ sym: t(`bt_instr_${i.code}`), code: i.code }));
+  const items = [...instruments, ...instruments];
   return (
     <section
       className="relative py-3 border-y overflow-hidden"

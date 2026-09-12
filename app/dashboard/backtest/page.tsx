@@ -2275,9 +2275,16 @@ export default function BacktestPage() {
                 >
                   {categoriesOrdonnees().map((cat) => (
                     <optgroup key={cat} label={tr(`bt_cat_${cat}`)}>
+                      {/*
+                        ⚠️ `i.nom` est le nom FRANÇAIS du registre. Les groupes
+                        de cette liste étaient traduits et pas leurs entrées :
+                        un lecteur anglais choisissait « Or (XAU/USD) » sous
+                        « Metals ». Le reste de la page passe déjà par
+                        `nomDuMarche`.
+                      */}
                       {INSTRUMENTS.filter((i) => i.categorie === cat).map((i) => (
                         <option key={i.code} value={i.code}>
-                          {i.nom}
+                          {nomDuMarche(i.code, i.nom, tr)}
                         </option>
                       ))}
                     </optgroup>
