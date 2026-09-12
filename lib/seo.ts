@@ -18,7 +18,7 @@ export const SITE_URL = "https://tradediscipline.app";
 // ancre l'entité TradeDiscipline (sans quoi Google corrige la recherche
 // « tradediscipline » en « trade discipline »). L'accroche transformation
 // reste dans la description et le hero de la landing.
-const LANDING_META: Record<Locale, { title: string; description: string }> = {
+export const LANDING_META: Record<Locale, { title: string; description: string }> = {
   en: {
     title: "TradeDiscipline: AI trading journal & discipline coach",
     description:
@@ -267,6 +267,34 @@ export const MOT_DE_PASSE_META: Record<Locale, TextesDePage> = {
  * traduit côté client, et `/fr/legal/terms` redirige en 301 vers
  * `/legal/terms`. Leur titre suit donc la langue du visiteur, pas l'URL.
  */
+/**
+ * LE TITRE D'UN ONGLET SUIT LA LANGUE DE CE QUI EST AFFICHE DESSOUS.
+ *
+ * ⚠️⚠️ SUR `/`, LE CONTENU ETAIT EN FRANCAIS ET LE TITRE EN ANGLAIS. Vu a
+ * l'ecran : « TradeDiscipline: AI trading journal & discipline coach » dans
+ * l'onglet, « Arrete de repeter les memes erreurs » dans la page. La cause tient
+ * a deux mecaniques differentes pour une seule question : les METADONNEES sont
+ * rendues par le serveur pour la langue de la ROUTE (l'anglais a la racine),
+ * tandis que le CONTENU est rendu par le navigateur dans la langue detectee.
+ *
+ * ⚠️ CINQ PAGES SONT CONCERNEES, et seulement celles-la : ce sont les pages
+ * dont le contenu passe par le contexte de langue. `/trading-journal` et le blog
+ * servent un contenu ANGLAIS a la racine, donc leur titre anglais est juste ;
+ * leurs versions traduites vivent sous `/fr`, `/de`, `/es`.
+ *
+ * ⚠️ LE SERVEUR N'EST PAS TOUCHE. Un robot d'indexation ne lit ni le stockage
+ * local ni la langue du navigateur : il continue de voir la version anglaise a
+ * la racine, la francaise sur `/fr`, et les liens alternates qui les relient.
+ * Ce qui change est ce qu'un HUMAIN lit dans son onglet.
+ */
+export const META_PAR_CHEMIN: Record<string, Record<Locale, TextesDePage>> = {
+  "/": LANDING_META,
+  "/faq": FAQ_META,
+  "/contact": CONTACT_META,
+  "/login": LOGIN_META,
+  "/auth/reset-password": MOT_DE_PASSE_META,
+};
+
 export const LEGAL_META: Record<string, Record<Locale, TextesDePage>> = {
   terms: {
     en: { title: "Terms of use - TradeDiscipline", description: "The terms of use of TradeDiscipline: what the service does, what it does not do, and what each party commits to." },

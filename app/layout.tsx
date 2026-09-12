@@ -1,4 +1,5 @@
 import { LanguageProvider } from "@/lib/LanguageContext";
+import TitreLocalise from "@/components/TitreLocalise";
 import { PlanProvider } from "@/lib/PlanContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
 import AttributionCapture from "@/components/AttributionCapture";
@@ -102,6 +103,9 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           <LanguageProvider ssrLang={ssrLang} ssrDict={ssrDict}>
+            {/* ⚠️ DANS le fournisseur de langue : il lit la langue active pour
+                accorder le titre de l'onglet au contenu de la page. */}
+            <TitreLocalise />
             <PlanProvider>{children}</PlanProvider>
           </LanguageProvider>
         </ThemeProvider>
