@@ -289,24 +289,61 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       return;
     }
 
+    /**
+     * ⚠️⚠️ TROIS ÉCHECS DIFFÉRENTS, TROIS MESSAGES DIFFÉRENTS.
+     *
+     * Un fichier qu'on n'a pas pu LIRE, un fichier lu qu'on n'a pas su
+     * ANALYSER et un fichier compris qui ne contient AUCUN trade sont trois
+     * situations sans rapport, et le trader n'a pas les mêmes choses à faire.
+     *
+     * Avant : toute exception de lecture d'un .xlsx devenait « Aucun trade
+     * détecté dans le fichier », c'est-à-dire qu'on annonçait à quelqu'un
+     * que son historique était vide alors qu'on n'avait pas su l'ouvrir. Et
+     * la branche CSV n'avait AUCUNE gestion d'erreur : ni `reader.onerror`,
+     * ni garde autour de l'analyse. Un fichier illisible ne produisait donc
+     * rien du tout, pas même un message : le trader déposait son fichier et
+     * l'écran ne bougeait pas.
+     *
+     * ⚠️ C'EST LE PREMIER GESTE DE VALEUR DU PRODUIT. Au 2026-09-12, 18 des
+     * 21 inscrits du mois n'ont jamais importé un seul trade.
+     */
     const isXlsx = /\.xlsx$/i.test(file.name);
     if (isXlsx) {
+      let buf: ArrayBuffer;
       try {
-        const buf = await file.arrayBuffer();
-        const result = await parseXlsx(buf);
-        applyResult(result);
+        buf = await file.arrayBuffer();
+      } catch (err) {
+        console.error("[CsvImport] fichier illisible", err);
+        setMessage({ type: "error", text: t("csv_unreadable") });
+        return;
+      }
+      try {
+        applyResult(await parseXlsx(buf));
       } catch (err) {
         console.error("[CsvImport] XLSX parse error", err);
-        setMessage({ type: "error", text: t("csv_no_trades") });
+        setMessage({ type: "error", text: t("csv_parse_failed") });
       }
     } else {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        const result = parseCSV(text);
-        applyResult(result);
+      reader.onerror = () => {
+        console.error("[CsvImport] FileReader error", reader.error);
+        setMessage({ type: "error", text: t("csv_unreadable") });
       };
-      reader.readAsText(file);
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string ?? "";
+          applyResult(parseCSV(text));
+        } catch (err) {
+          console.error("[CsvImport] CSV parse error", err);
+          setMessage({ type: "error", text: t("csv_parse_failed") });
+        }
+      };
+      try {
+        reader.readAsText(file);
+      } catch (err) {
+        console.error("[CsvImport] readAsText a levé", err);
+        setMessage({ type: "error", text: t("csv_unreadable") });
+      }
     }
   }, [t, applyResult]);
 

@@ -630,6 +630,8 @@ const dict: Record<string, string> = {
   "csv_all_duplicates": "Tous les trades existent déjà. Aucun doublon importé.",
   "csv_dedupe_unreadable": "Import annulé : impossible de vérifier tes trades déjà enregistrés. Sans cette vérification, l'import créerait des doublons. Réessaie dans un instant.",
   "csv_file_too_large": "Fichier trop volumineux (max 5 Mo).",
+  "csv_unreadable": "Impossible de lire ce fichier. Il est peut-être ouvert dans un autre logiciel, ou le transfert s'est interrompu : referme-le et réessaie.",
+  "csv_parse_failed": "Le fichier a bien été lu, mais son contenu n'a pas pu être analysé. Réexporte ton historique depuis ta plateforme sans le modifier, puis réessaie.",
   "api_error_unauthorized": "Vous devez être connecté.",
   "api_error_forbidden": "Cette fonctionnalité n'est pas disponible avec votre plan.",
   "api_error_payload_too_large": "Trop de données : réduisez la sélection.",
