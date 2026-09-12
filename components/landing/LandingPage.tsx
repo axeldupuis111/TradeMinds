@@ -1,6 +1,7 @@
 "use client";
 
 import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
+import { PRIX_EN_CENTIMES, prixLisible, prixParJour } from "@/lib/prix";
 import LiveDemo from "@/components/landing/LiveDemo";
 import CoachOperator from "@/components/landing/CoachOperator";
 import PublicHeader from "@/components/PublicHeader";
@@ -1661,9 +1662,15 @@ function AIDetection() {
    « 1 erreur évitée ❯❯ des mois remboursés », puis les DEUX forfaits payants à
    leur vrai prix + coût ramené au jour (dérivé, honnête). But : vendre les plans
    payants en montrant qu'ils sont remboursés dès la première erreur évitée. */
+/**
+ * ⚠️ LES PRIX SE DEMANDENT, ILS NE S'ECRIVENT PAS. Ils etaient ici en dur
+ * (« 14.99€ », point anglais) sur une page servie en francais, et le cout par
+ * jour etait RECOPIE a cote plutot que derive : deux nombres pour le meme fait,
+ * dont l'un cesse d'etre vrai le jour ou l'autre change.
+ */
 const ROI_PAID_PLANS = [
-  { nameKey: "plan_plus", price: "14.99€", perDay: "0.49€", tone: "--accent" },
-  { nameKey: "plan_premium", price: "29.99€", perDay: "0.99€", tone: "--warning" },
+  { nameKey: "plan_plus", centimes: PRIX_EN_CENTIMES.plus.mensuel, tone: "--accent" },
+  { nameKey: "plan_premium", centimes: PRIX_EN_CENTIMES.premium.mensuel, tone: "--warning" },
 ];
 
 function RoiPayback({ t }: { t: Traduire }) {
@@ -1737,10 +1744,10 @@ function RoiPayback({ t }: { t: Traduire }) {
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: `rgb(var(${p.tone}))` }} />
             <div className="min-w-0">
               <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t(p.nameKey)}</p>
-              <p className="text-[11px]" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_roi_perday").replace("{v}", p.perDay)}</p>
+              <p className="text-[11px]" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_roi_perday").replace("{v}", prixParJour(p.centimes))}</p>
             </div>
             <p className="ml-auto text-lg sm:text-xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: `rgb(var(${p.tone}))`, fontStyle: "normal" }}>
-              {p.price}
+              {prixLisible(p.centimes)}
               <span className="text-[11px] font-medium" style={{ color: COPY }}>{t("pricing_roi_permonth")}</span>
             </p>
           </motion.div>
@@ -1968,9 +1975,9 @@ function Pricing() {
     {
       name: t("plan_plus"),
       sub: t("plan_sub_plus"),
-      monthlyPrice: "14.99€",
-      annualPrice: "134.90€",
-      annualMonthly: "11.24€",
+      monthlyPrice: prixLisible(PRIX_EN_CENTIMES.plus.mensuel),
+      annualPrice: prixLisible(PRIX_EN_CENTIMES.plus.annuel),
+      annualMonthly: prixLisible(PRIX_EN_CENTIMES.plus.annuelParMois),
       feats: PLUS_BENEFITS.map((k) => t(k)),
       featsLabel: "",
       includesNote: "",
@@ -1984,9 +1991,9 @@ function Pricing() {
       // à part (includesNote) pour ne jamais mélanger les deux.
       name: t("plan_premium"),
       sub: t("plan_premium_desc"),
-      monthlyPrice: "29.99€",
-      annualPrice: "269.90€",
-      annualMonthly: "22.49€",
+      monthlyPrice: prixLisible(PRIX_EN_CENTIMES.premium.mensuel),
+      annualPrice: prixLisible(PRIX_EN_CENTIMES.premium.annuel),
+      annualMonthly: prixLisible(PRIX_EN_CENTIMES.premium.annuelParMois),
       feats: PREMIUM_BENEFITS.map((k) => t(k)),
       featsLabel: t("plan_premium_exclusives"),
       includesNote: t("plan_premium_includes_plus_short"),

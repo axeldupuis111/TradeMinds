@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { PRIX_EN_CENTIMES, prixLisible } from "@/lib/prix";
 import { usePlan } from "@/lib/PlanContext";
 import { track } from "@/lib/track";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
@@ -280,13 +281,28 @@ export default function UpgradePage() {
 
   // Libellé du montant récurrent après changement de plan, selon plan + intervalle courant du toggle.
   function recurringPriceLabel(plan: "plus" | "premium"): string {
-    const amounts = {
-      plus: { monthly: "14,99 €", yearly: "134,90 €" },
-      premium: { monthly: "29,99 €", yearly: "269,90 €" },
-    } as const;
+    // ⚠️ Les memes centimes que les cartes, formates du meme cote : deux
+    // tables de prix sur un ecran finissent par diverger.
+    const centimes =
+      changeInterval === "monthly" ? PRIX_EN_CENTIMES[plan].mensuel : PRIX_EN_CENTIMES[plan].annuel;
     const unit = changeInterval === "monthly" ? t("plan_month") : t("plan_year");
-    return `${amounts[plan][changeInterval]}/${unit}`;
+    return `${prix(centimes)}/${unit}`;
   }
+
+  /**
+   * ⚠️⚠️ LES PRIX DES CARTES ETAIENT ECRITS A LA MAIN, ET PAS DE LA MEME
+   * FACON D'UNE CARTE A L'AUTRE : « 14.99€ » sur Plus (point anglais) et
+   * « 29,99€ » sur Premium (virgule francaise), sur le MEME ecran. Le prix
+   * annuel s'ecrivait « 134.90€ » sous un mensuel « 11.24€ ». C'est le nombre
+   * que le trader lit AVANT de payer.
+   *
+   * ⚠️ Un seul chemin pour tous les prix de cette page : celui qui servait
+   * deja aux montants venus de Stripe. Deux facons d'ecrire un prix sur une page
+   * de tarifs, c'est deux occasions de se tromper et une de perdre la confiance.
+   */
+  // ⚠️ La table vit dans lib/prix.ts : la landing affiche les mêmes prix, et
+  // deux tables sur deux écrans finissent par diverger.
+  const prix = (centimes: number) => prixLisible(centimes);
 
   function formatMoney(cents: number, currency: string): string {
     try {
@@ -428,7 +444,7 @@ export default function UpgradePage() {
               <p className="text-muted text-xs mt-0.5">{t("plan_sub_free")}</p>
               <div className="mt-3">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-foreground">0€</span>
+                  <span className="text-3xl font-bold text-foreground">{prix(0)}</span>
                   <span className="text-muted text-sm">/{t("plan_month")}</span>
                 </div>
                 <div className="h-8" />
@@ -486,23 +502,23 @@ export default function UpgradePage() {
               {annual ? (
                 <div className="mt-3">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-muted text-sm line-through">14.99€/{t("plan_month")}</span>
+                    <span className="text-muted text-sm line-through">{prix(PRIX_EN_CENTIMES.plus.mensuel)}/{t("plan_month")}</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-foreground">11.24€</span>
+                    <span className="text-3xl font-bold text-foreground">{prix(PRIX_EN_CENTIMES.plus.annuelParMois)}</span>
                     <span className="text-muted text-sm">/{t("plan_month")}</span>
                   </div>
                   <span className="inline-block mt-1 px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
                     {t("plan_two_months_free")}
                   </span>
                   <p className="text-muted text-xs mt-1">
-                    {t("plan_billed_annual").replace("{price}", "134.90€")}
+                    {t("plan_billed_annual").replace("{price}", prix(PRIX_EN_CENTIMES.plus.annuel))}
                   </p>
                 </div>
               ) : (
                 <div className="mt-3">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-foreground">14.99€</span>
+                    <span className="text-3xl font-bold text-foreground">{prix(PRIX_EN_CENTIMES.plus.mensuel)}</span>
                     <span className="text-muted text-sm">/{t("plan_month")}</span>
                   </div>
                   <div className="h-8" />
@@ -566,23 +582,23 @@ export default function UpgradePage() {
           {annual ? (
             <div className="mt-3">
               <div className="flex items-baseline gap-2">
-                <span className="text-muted text-sm line-through">29,99€/{t("plan_month")}</span>
+                <span className="text-muted text-sm line-through">{prix(PRIX_EN_CENTIMES.premium.mensuel)}/{t("plan_month")}</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">22,49€</span>
+                <span className="text-3xl font-bold text-foreground">{prix(PRIX_EN_CENTIMES.premium.annuelParMois)}</span>
                 <span className="text-muted text-sm">/{t("plan_month")}</span>
               </div>
               <span className="inline-block mt-1 px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
                 {t("plan_two_months_free")}
               </span>
               <p className="text-muted text-xs mt-1">
-                {t("plan_billed_annual").replace("{price}", "269.90€")}
+                {t("plan_billed_annual").replace("{price}", prix(PRIX_EN_CENTIMES.premium.annuel))}
               </p>
             </div>
           ) : (
             <div className="mt-3">
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">29,99€</span>
+                <span className="text-3xl font-bold text-foreground">{prix(PRIX_EN_CENTIMES.premium.mensuel)}</span>
                 <span className="text-muted text-sm">/{t("plan_month")}</span>
               </div>
               <div className="h-8" />
