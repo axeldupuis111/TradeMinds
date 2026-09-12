@@ -204,6 +204,16 @@ namespace cAlgo.Robots
                 var res = Http.PostAsync(ApiUrl, content).Result;
                 if (res.IsSuccessStatusCode)
                 {
+                    // ATTENTION : un 200 ne veut pas dire que le trade est entre.
+                    // Le serveur accepte le lot et rend `skipped` > 0 quand une
+                    // ligne a ete refusee (symbole absent, volume nul, prix
+                    // d'ouverture introuvable...), avec le motif dans `errors`.
+                    // Sans cette lecture, le trade etait marque envoye, jamais
+                    // renvoye, et rien n'apparaissait dans le journal.
+                    string payload = res.Content.ReadAsStringAsync().Result;
+                    if (payload.IndexOf("\"skipped\":0", StringComparison.Ordinal) < 0)
+                        Print("TradeDiscipline ATTENTION : le trade {0} a ete refuse par le serveur. " +
+                              "Motif : {1}", trade.PositionId, payload);
                     _sent.Add(trade.PositionId);
                     return true;
                 }

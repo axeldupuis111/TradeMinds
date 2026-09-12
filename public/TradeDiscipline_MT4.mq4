@@ -392,8 +392,16 @@ bool PostTrade(string tradeJson, int ticket)
       return(false);
    }
 
-   Print("TradeDiscipline OK : trade ", ticket,
-         " - reponse serveur : ", CharArrayToString(result));
+   // ATTENTION : un 200 ne veut pas dire que le trade est entre. Le serveur
+   // rend `skipped` > 0 quand la ligne a ete refusee, avec le motif dans
+   // `errors`. Le corps etait bien imprime, mais sous l'etiquette « OK » :
+   // le trader lisait « OK » et passait a la suite.
+   string reponse = CharArrayToString(result);
+   if(StringFind(reponse, "\"skipped\":0") < 0)
+      Print("TradeDiscipline ATTENTION : le trade ", ticket,
+            " a ete refuse par le serveur. Motif : ", reponse);
+   else
+      Print("TradeDiscipline OK : trade ", ticket, " - reponse serveur : ", reponse);
    return(true);
 }
 //+------------------------------------------------------------------+

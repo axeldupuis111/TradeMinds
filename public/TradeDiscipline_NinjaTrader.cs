@@ -354,6 +354,13 @@ namespace NinjaTrader.NinjaScript.AddOns
                     else if (isAccountState && payload.IndexOf("\"account\":\"ok\"", StringComparison.Ordinal) < 0)
                         Print("TradeDiscipline ATTENTION : solde non pris en compte (" + label +
                               "). Motif renvoye par le serveur : " + payload);
+                    // ATTENTION : un 200 ne veut pas dire que le trade est entre.
+                    // Le serveur rend `skipped` > 0 quand une ligne a ete refusee,
+                    // avec le motif dans `errors`. Sans cette lecture, un trade
+                    // refuse disparaissait sans un mot dans le journal.
+                    else if (!isAccountState && payload.IndexOf("\"skipped\":0", StringComparison.Ordinal) < 0)
+                        Print("TradeDiscipline ATTENTION : " + label +
+                              " a ete refuse par le serveur. Motif : " + payload);
                 }
             }
             catch (WebException wex)

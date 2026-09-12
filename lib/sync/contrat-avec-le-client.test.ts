@@ -25,17 +25,56 @@ import { describe, expect, it } from "vitest";
  * ligne n'est pas passée doit rendre `skipped > 0`.
  */
 describe("le contrat avec le client de synchro", () => {
-  const ea = readFileSync(join(process.cwd(), "public/TradeDiscipline_MT5.mq5"), "utf8");
   const handler = readFileSync(join(process.cwd(), "lib/sync/push-handler.ts"), "utf8");
 
-  it("l'EA signale un refus en regardant `skipped`, et rien d'autre", () => {
-    expect(ea, "l'EA ne teste plus `skipped` : le contrat a changé côté client").toContain(
-      'StringFind(response, "\\"skipped\\":0")',
-    );
+  /**
+   * ⚠️⚠️ LES QUATRE CLIENTS, PAS SEULEMENT CELUI QUI AVAIT RAISON. Le serveur
+   * renvoie soigneusement le motif de chaque ligne refusée ; un seul client
+   * sur quatre le regardait.
+   *
+   *   - MT5 testait bien `"skipped":0` ;
+   *   - MT4 imprimait le corps entier… sous l'étiquette « OK », donc le
+   *     trader lisait OK et passait à la suite ;
+   *   - cTrader marquait le trade ENVOYÉ et ne disait rien : la ligne refusée
+   *     ne repartait jamais et rien n'apparaissait dans le journal ;
+   *   - NinjaTrader ne lisait le corps que pour l'état de compte.
+   *
+   * Sur deux rails, un trade refusé disparaissait donc définitivement et en
+   * silence. C'est la même règle que côté serveur (« un trade refusé n'est
+   * jamais silencieux »), appliquée à un client sur quatre.
+   */
+  it("les quatre clients signalent un lot refusé", () => {
+    const CLIENTS = [
+      "public/TradeDiscipline_MT5.mq5",
+      "public/TradeDiscipline_MT4.mq4",
+      "public/TradeDiscipline_cTrader.cs",
+      "public/TradeDiscipline_NinjaTrader.cs",
+    ];
+    const muets: string[] = [];
+    for (const chemin of CLIENTS) {
+      const src = readFileSync(join(process.cwd(), chemin), "utf8");
+      /**
+       * ⚠️ DANS LE FICHIER CLIENT, LA CHAINE EST ECHAPPEE : le source MQL/C#
+       * contient `skipped\":0` et non `skipped":0`. Ma premiere version
+       * cherchait la forme non echappee et accusait les QUATRE clients, dont
+       * celui qui avait raison depuis le debut.
+       */
+      if (!/skipped\\":0/.test(src)) muets.push(chemin);
+    }
     expect(
-      ea.includes('"errors"'),
-      "si l'EA se met à lire `errors`, ce garde doit être revu",
-    ).toBe(false);
+      muets,
+      "clients qui ne signalent pas un trade refusé : " + muets.join(", "),
+    ).toEqual([]);
+
+    // ⚠️ Et le contrat reste bien `skipped`, pas `errors` : aucun client ne
+    // sait lire le tableau, donc le serveur doit continuer de compter.
+    for (const chemin of CLIENTS) {
+      const src = readFileSync(join(process.cwd(), chemin), "utf8");
+      expect(
+        /errors\\"/.test(src),
+        `${chemin} lit désormais \`errors\` : ce garde doit être revu`,
+      ).toBe(false);
+    }
   });
 
   /**

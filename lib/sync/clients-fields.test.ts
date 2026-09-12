@@ -24,13 +24,31 @@ import { join } from "node:path";
 
 const CLIENTS = ["TradeDiscipline_NinjaTrader.cs", "TradeDiscipline_cTrader.cs"] as const;
 
+/**
+ * Les champs de la RÉPONSE, que le client LIT au lieu de les émettre.
+ *
+ * ⚠️⚠️ SANS CETTE DISTINCTION, LE GARDE ACCUSE UNE CORRECTION. Un client qui
+ * cherche `\\"skipped\\":0` dans la réponse du serveur écrit exactement le même
+ * littéral qu'un client qui ÉMETTRAIT un champ `skipped` : la regex ne peut
+ * pas les distinguer. C'est arrivé le jour où cTrader et NinjaTrader ont
+ * appris à signaler un trade refusé, et le garde a déclaré qu'ils émettaient
+ * un champ inconnu.
+ *
+ * La liste est écrite à la main, comme celle des champs émis, et pour la même
+ * raison : elle doit rester un choix conscient.
+ */
+const CHAMPS_DE_REPONSE = new Set(["skipped", "synced", "received", "errors", "account_error"]);
+
 /** Noms de champs JSON émis par un client, extraits de ses littéraux `\"nom\":`. */
 function champsEmis(fichier: string): Set<string> {
   const src = readFileSync(join(process.cwd(), "public", fichier), "utf8");
   const noms = new Set<string>();
   let m: RegExpExecArray | null;
   const re = /\\"([a-z_]+)\\":/g;
-  while ((m = re.exec(src)) !== null) noms.add(m[1]);
+  while ((m = re.exec(src)) !== null) {
+    if (CHAMPS_DE_REPONSE.has(m[1])) continue;
+    noms.add(m[1]);
+  }
   return noms;
 }
 
