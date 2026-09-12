@@ -638,6 +638,7 @@ const dict: Record<string, string> = {
   "api_error_monthly_limit": "Tu as atteint ta limite de messages pour ce mois-ci. Elle repart à zéro le 1er. Écris-nous si tu as besoin de plus, on peut l'ajuster sur ton compte.",
   "analyze_err_unavailable": "Le service d'analyse est momentanément indisponible. Écris-nous si ça dure.",
   "analyze_err_no_trades": "Aucun trade à analyser.",
+  "analyze_err_demo_mode": "En mode démonstration, l'analyse affichée est un exemple : aucune analyse réelle n'est lancée.",
   "analyze_err_truncated": "L'analyse a été coupée avant la fin. Relance-la : ton crédit n'a pas été décompté.",
   "analyze_err_unexpected": "Réponse inattendue de l'IA. Relance l'analyse : ton crédit n'a pas été décompté.",
   "analyze_err_malformed": "La réponse de l'IA est arrivée tronquée. Relance l'analyse : ton crédit n'a pas été décompté.",

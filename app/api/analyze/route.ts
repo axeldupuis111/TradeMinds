@@ -105,6 +105,26 @@ export async function POST(request: Request) {
     if (auth instanceof NextResponse) return auth;
     const { userId, plan, timezone } = auth;
 
+    /**
+     * ── 1 bis. Compte en mode démonstration ──
+     *
+     * ⚠️⚠️ LA RÈGLE ÉTAIT ÉCRITE SUR UN SEUL DES DEUX APPELANTS. La page
+     * Analyse sort avant d'appeler le modèle quand le compte est en démo, avec
+     * ce commentaire : « cette table alimente le classement public, une ligne
+     * démo y ferait entrer un compte fictif dans le vrai classement ». L'import
+     * CSV, lui, déclenche la MÊME analyse automatiquement après chaque import,
+     * sans aucun garde : un compte de démonstration faisait donc partir un
+     * appel au modèle (facturé, hors quota prévu) et écrivait un
+     * `session_reviews` noté sur des trades FICTIFS, qui entrait au classement.
+     *
+     * ⚠️ LE GARDE EST ICI, PAS DANS L'ÉCRAN : un garde placé dans un composant
+     * ne protège que ce composant, et c'est précisément ce qui vient
+     * d'arriver. La porte est celle que tout le monde doit franchir.
+     */
+    if (auth.demoMode) {
+      return NextResponse.json({ code: "analyze_err_demo_mode" }, { status: 409 });
+    }
+
     // ── 2. API key ──
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {

@@ -525,11 +525,18 @@ async function rankMembers(
       admin.from("profiles").select("id, username, timezone").in("id", lot).order("id"),
     ),
     fetchAllByIds<TradeRow>(ids, (lot) =>
+        // ⚠️⚠️ AUCUNE LIGNE DE DÉMONSTRATION DANS UN CLASSEMENT. La règle est
+        // écrite et tenue sur le profil public, le rapport hebdo, le solde
+        // synchronisé et la série de discipline ; elle manquait ICI, sur le seul
+        // écran où des membres se comparent entre eux. Le mode démo sème une
+        // cinquantaine de trades fictifs : ils classaient leur auteur devant des
+        // gens qui tradent pour de vrai.
       admin
         .from("trades")
         .select("user_id, emotion, open_time")
         .in("user_id", lot)
         .eq("status", "closed")
+        .eq("is_demo", false)
         .gte("open_time", since)
         .order("id"),
     ),
@@ -564,6 +571,9 @@ async function rankOne(
         .select("user_id, emotion, open_time")
         .eq("user_id", userId)
         .eq("status", "closed")
+        // ⚠️ Même périmètre que le classement ci-dessus : sinon le membre lit
+        // son propre chiffre plus haut que celui qui le classe.
+        .eq("is_demo", false)
         .gte("open_time", since),
     ),
     fetchAllRows<ReviewRow>(() =>

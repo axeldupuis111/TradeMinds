@@ -76,7 +76,8 @@ export async function GET() {
   const sinceReviews = new Date(weekStartUtc(prevPrevKey).getTime() - 86_400_000).toISOString();
   const [{ data: profs }, { data: trades }, { data: reviews }] = await Promise.all([
     admin.from("profiles").select("id, username, timezone").in("id", allIds),
-    admin.from("trades").select("user_id, emotion, open_time").in("user_id", allIds).eq("status", "closed").gte("open_time", sinceTrades),
+    // ⚠️ Aucune ligne de démonstration dans un classement : voir api/community.
+    admin.from("trades").select("user_id, emotion, open_time").in("user_id", allIds).eq("status", "closed").eq("is_demo", false).gte("open_time", sinceTrades),
     admin.from("session_reviews").select("user_id, discipline_score, created_at").in("user_id", allIds).gte("created_at", sinceReviews),
   ]);
 

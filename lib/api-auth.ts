@@ -38,6 +38,16 @@ interface AuthResult {
   plan: PlanType;
   /** The trader's IANA timezone (falls back to "UTC"), for day-boundary math. */
   timezone: string;
+  /**
+   * Le compte est-il en mode démonstration ?
+   *
+   * ⚠️⚠️ ÇA SE LIT ICI, PAS DANS CHAQUE ROUTE. Un compte en démonstration ne
+   * doit déclencher aucun appel facturé ni écrire quoi que ce soit qui alimente
+   * un classement : la page Analyse le savait, l'import CSV non, et il faisait
+   * partir la même analyse. Une porte commune vaut mieux que deux gardes dont
+   * un seul existe.
+   */
+  demoMode: boolean;
 }
 
 export async function requireAuth(): Promise<AuthResult | NextResponse> {
@@ -51,7 +61,7 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan, plan_expires_at, timezone")
+    .select("plan, plan_expires_at, timezone, demo_mode")
     .eq("id", user.id)
     .single();
 
@@ -59,7 +69,12 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
   if (profile?.plan_expires_at && new Date(profile.plan_expires_at) < new Date()) {
     plan = "free";
   }
-  return { userId: user.id, plan, timezone: (profile?.timezone as string) || "UTC" };
+  return {
+    userId: user.id,
+    plan,
+    timezone: (profile?.timezone as string) || "UTC",
+    demoMode: (profile as Record<string, unknown> | null)?.demo_mode === true,
+  };
 }
 
 interface QuotaCheckParams {
