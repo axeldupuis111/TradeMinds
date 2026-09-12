@@ -243,13 +243,54 @@ export async function middleware(request: NextRequest) {
   }
 
   // ────────────────────────────────────────────────────────────────
-  // 4. Si l'URL a déjà un préfixe de locale (autre que défaut), on laisse passer
+  // 4. L'URL porte déjà un préfixe de locale : c'est ELLE qui fait foi
   // ────────────────────────────────────────────────────────────────
-  const hasLocalePrefix = (locales as readonly string[])
+  const localeDuChemin = (locales as readonly string[])
     .filter((l) => l !== defaultLocale)
-    .some((l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`));
+    .find((l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`));
 
-  if (hasLocalePrefix) {
+  if (localeDuChemin) {
+    /**
+     * ⚠️⚠️ LE SERVEUR RENDAIT `/fr` EN ANGLAIS. La langue du rendu serveur vient
+     * du cookie `NEXT_LOCALE` (`app/layout.tsx` → `resolveServerLang`), et ce
+     * cookie n'était posé QUE sur le chemin de détection automatique, juste en
+     * dessous. Un visiteur qui arrive directement sur `/fr` (résultat Google,
+     * lien partagé, lien partenaire) n'en a pas : on sortait ici sans rien
+     * poser, le serveur retombait sur l'anglais, et le français n'arrivait
+     * qu'à l'hydratation.
+     *
+     * Trois conséquences, mesurées sur le HTML réellement servi :
+     *
+     *   - `<html lang="en">` sur une page française : une synthèse vocale la
+     *     prononce en anglais tant que le JavaScript n'a pas tourné ;
+     *   - le corps du document est en anglais (« Stop repeating the same
+     *     mistake ») sur `/fr`, donc pour tout lecteur qui n'exécute pas de
+     *     JavaScript : aperçus de partage, robots secondaires, extraits ;
+     *   - un éclair d'anglais à chaque première visite sur `/fr`, `/de`, `/es`.
+     *
+     * ⚠️ LA RÈGLE EXISTAIT, APPLIQUÉE À L'AUTRE MOITIÉ : le bloc du dessous
+     * pose le cookie quand il DEVINE la langue, et celui-ci ne le posait pas
+     * quand elle est ÉCRITE dans l'URL, c'est-à-dire dans le cas certain.
+     */
+    if (request.cookies.get(COOKIE_NAME)?.value !== localeDuChemin) {
+      /**
+       * ⚠️⚠️ LE COOKIE SE POSE SUR LA REQUÊTE, PAS SEULEMENT SUR LA RÉPONSE.
+       * Un cookie posé sur la réponse n'est lu qu'à la requête SUIVANTE : le
+       * rendu de CETTE page-ci, qui se fait juste après ce middleware,
+       * continuerait de lire l'ancien (ou rien) et de rendre en anglais. Le
+       * réécrire aussi sur `request` puis reconstruire la réponse est le même
+       * geste que fait déjà le bloc Supabase au-dessus, pour la même raison.
+       */
+      request.cookies.set(COOKIE_NAME, localeDuChemin);
+      const avecLangue = NextResponse.next({ request });
+      recopierLesCookies(supabaseResponse.cookies.getAll(), avecLangue.cookies);
+      avecLangue.cookies.set(COOKIE_NAME, localeDuChemin, {
+        maxAge: COOKIE_MAX_AGE,
+        path: "/",
+        sameSite: "lax",
+      });
+      return avecLangue;
+    }
     return supabaseResponse;
   }
 
