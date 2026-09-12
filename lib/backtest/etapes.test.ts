@@ -772,4 +772,34 @@ describe("aucune phrase n'envoie le trader sur une autre étape", () => {
     const mortes = Object.keys(DECLAREES).filter((c) => !vivantes.has(c));
     expect(mortes, "déclarations mortes : " + mortes.join(", ")).toEqual([]);
   });
+
+  /**
+   * ⚠️⚠️ « CES ÉTAPES LISENT TES TRADES, ET IL N'Y EN A PAS ENCORE » se lisait
+   * comme une affirmation sur le JOURNAL du trader. Vu à l'écran sur un compte
+   * de 85 trades : la phrase est fausse telle qu'elle se lit, alors que ce
+   * qu'elle veut dire est vrai (le REJEU n'a encore rien produit).
+   *
+   * ⚠️ ET LA RÈGLE ÉTAIT ÉCRITE JUSTE À CÔTÉ : la clé voisine dit « LE REJEU a
+   * produit trop peu de trades ». Elle nomme le rejeu, ces deux-là ne le
+   * faisaient pas. Encore une règle posée puis appliquée à une partie de ce
+   * qu'elle vise.
+   */
+  it("les blocages nomment le rejeu, pas le journal du trader", () => {
+    const NOMME_LE_REJEU: Record<string, RegExp> = {
+      fr: /rejeu/i,
+      en: /replay/i,
+      es: /backtest/i,
+      de: /backtest/i,
+    };
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      for (const cle of ["bt_par_bloque_sans_test", "bt_par_bloque_sans_test_ici"]) {
+        const texte = (dico as Record<string, string>)[cle];
+        expect(texte, `${cle} manque en ${nom}`).toBeTruthy();
+        expect(
+          NOMME_LE_REJEU[nom].test(texte),
+          `${cle} en ${nom} laisse croire que le journal du trader est vide : « ${texte} »`,
+        ).toBe(true);
+      }
+    }
+  });
 });
