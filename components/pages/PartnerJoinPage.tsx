@@ -89,7 +89,16 @@ export default function PartnerJoinPage() {
   return (
     <>
       <PublicHeader />
-      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
+      {/**
+        * ⚠️ `lang="fr"` SUR LE CONTENU, PAS SEULEMENT DANS LE COMMENTAIRE.
+        * Cette page est rédigée en français par exception (voir l'en-tête),
+        * mais elle vit sous une racine dont la langue suit le VISITEUR :
+        * mesuré avec un navigateur en anglais, `<html lang="en">` coiffait du
+        * texte français. Un lecteur d'écran le prononce alors avec la voix et
+        * les règles de l'anglais, et Chrome propose de « traduire » la page,
+        * ce qui transforme jusqu'au nom du produit.
+        */}
+      <main lang="fr" id="main-content" tabIndex={-1} className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
         <div className="max-w-lg mx-auto">
           {result ? (
             <div>

@@ -2,7 +2,7 @@
 
 import { tradesConformes } from "@/lib/trades-conformes";
 import { langueCourante } from "@/lib/nombres";
-import { stripLongDashes } from "@/lib/coach-typography";
+import { enTextePlat, stripLongDashes } from "@/lib/coach-typography";
 import { PRIX_EN_CENTIMES, prixLisible } from "@/lib/prix";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
@@ -1884,7 +1884,10 @@ export default function AnalysisPage() {
                   {aiHistory.map((item) => (
                     <div key={item.id} className="border border-border rounded-lg p-2.5">
                       <p className="text-xs text-accent font-medium truncate">Q: {item.question}</p>
-                      <p className="text-[11px] text-muted mt-1 line-clamp-2">{item.answer}</p>
+                      {/* ⚠️ APERÇU, DONC TEXTE PLAT. Le fil de discussion rend le
+                          markdown ; ici la réponse était recopiée telle quelle et le
+                          trader lisait « **Demain, mercredi 16 septembre** ». */}
+                      <p className="text-[11px] text-muted mt-1 line-clamp-2">{enTextePlat(item.answer)}</p>
                       <p className="text-[10px] text-muted mt-1">{enDate(item.created_at)}</p>
                     </div>
                   ))}

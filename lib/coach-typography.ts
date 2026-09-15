@@ -124,3 +124,44 @@ export function createDashStripper(): {
     },
   };
 }
+
+/**
+ * UN APERÇU DE RÉPONSE, SANS LA SYNTAXE MARKDOWN.
+ *
+ * ── LE DÉFAUT, VU À L'ÉCRAN ─────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ « **Demain, mercredi 16 septembre** - 14h30 (Paris) : Retail Sales… »
+ * Vingt-six occurrences d'astérisques doubles sur la page Analyse IA, relevées
+ * le 2026-09-15 dans la carte « Historique Q&R Coach IA ». Le fil de discussion,
+ * lui, rend le markdown proprement : c'est la MÊME réponse, servie deux fois,
+ * lisible d'un côté et pleine de ponctuation technique de l'autre.
+ *
+ * ⚠️ ET LE RENDU COMPLET N'EST PAS LA RÉPONSE ICI : l'aperçu est coupé à deux
+ * lignes. Du gras, des titres et des puces sur deux lignes tronquées ne veulent
+ * rien dire. Ce qu'il faut, c'est le TEXTE, débarrassé de sa syntaxe.
+ *
+ * ⚠️ ON NE TOUCHE PAS AUX CHIFFRES NI AUX DATES : seule la ponctuation de
+ * structure part (gras, italique, titres, puces, numérotation, code, liens).
+ */
+export function enTextePlat(texte: string): string {
+  return texte
+    // Liens : on garde le libellé, on jette l'adresse.
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // Code encadré puis code en ligne.
+    .replace(/```[a-zA-Z]*\n?/g, "")
+    .replace(/`([^`]*)`/g, "$1")
+    // Gras et italique, dans cet ordre : `**` avant `*`.
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    // Titres et citations en début de ligne.
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    // Puces et numérotation en début de ligne.
+    .replace(/^\s{0,3}[-*+]\s+/gm, "")
+    .replace(/^\s{0,3}\d+[.)]\s+/gm, "")
+    // Les sauts de ligne deviennent des espaces : l'aperçu tient sur une ligne.
+    .replace(/\s*\n+\s*/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
