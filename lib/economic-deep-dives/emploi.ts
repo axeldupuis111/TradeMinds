@@ -177,6 +177,163 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
     },
   },
 
+  /**
+   * ⚠️ LE RAPPORT EMPLOI DES AUTRES PAYS, QUI RECEVAIT LA FICHE DU NFP.
+   * Voir le commentaire de l'alias « employment change » dans
+   * lib/economic-glossary.ts : un trader australien lisait, sur son propre
+   * rapport emploi, une leçon qui ne parlait que des États-Unis.
+   */
+  employment_change: {
+    fr: {
+      sections: [
+        {
+          heading: "Le rapport emploi du pays, pas celui des États-Unis",
+          body: "Chaque pays publie son propre rapport emploi, produit par son institut statistique national : l'ABS en Australie, Statistique Canada, Eurostat pour la zone euro. Le principe est partout le même : une enquête auprès des ménages, parfois doublée d'une enquête auprès des entreprises, qui donne le nombre net d'emplois gagnés ou perdus sur le mois. Le rapport américain, lui, porte le nom « Non-Farm Employment Change » et a sa propre fiche.",
+        },
+        {
+          heading: "Le chiffre net cache deux mouvements opposés",
+          body: "Un solde de +20 000 peut vouloir dire 60 000 créations et 40 000 destructions. Surtout, le partage entre temps plein et temps partiel change tout : en Australie et au Canada, le marché lit cette ligne avant le total, parce que dix mille emplois à temps plein ne valent pas dix mille contrats de quelques heures en termes de revenu et de consommation.",
+        },
+        {
+          heading: "Une série très bruyante, à lire en tendance",
+          body: "Sur des économies plus petites que celle des États-Unis, l'échantillon est plus réduit et le chiffre saute d'un mois à l'autre, avec des révisions fréquentes. Un seul mois ne dit presque rien ; trois mois dans le même sens disent beaucoup. C'est la raison pour laquelle la réaction du marché, souvent vive dans la minute, se dégonfle fréquemment dans l'heure.",
+        },
+        {
+          heading: "Le lien avec les taux et la devise",
+          body: "La chaîne est la même partout : un marché du travail tendu pousse les salaires, donc l'inflation, donc oblige la banque centrale du pays à garder ses taux hauts, ce qui soutient la devise. Un emploi qui décroche fait l'inverse et rapproche les baisses de taux. C'est par ce canal, et non par le chiffre lui-même, que l'annonce déplace les prix.",
+        },
+      ],
+      outcomes: [
+        {
+          tone: "up",
+          label: "Nettement au-dessus du consensus",
+          body: "Marché du travail solide : la devise du pays se renforce, les paris sur une baisse de taux reculent. Effet amplifié si les emplois créés sont à temps plein.",
+        },
+        {
+          tone: "down",
+          label: "Nettement en dessous du consensus",
+          body: "Emploi qui faiblit : la devise recule et les anticipations de baisse de taux avancent. Vérifie si le recul vient du temps plein ou seulement du temps partiel.",
+        },
+      ],
+      watch: [
+        "L'heure et le jour dépendent du pays : ceux de cette annonce sont en haut de la fiche.",
+        "Regarde le partage temps plein / temps partiel avant le chiffre global.",
+        "Série volatile et souvent révisée : la tendance sur trois mois vaut mieux qu'un mois isolé.",
+      ],
+    },
+    en: {
+      sections: [
+        {
+          heading: "This country's jobs report, not the US one",
+          body: "Every country publishes its own employment report, produced by its national statistics office: the ABS in Australia, Statistics Canada, Eurostat for the euro area. The principle is the same everywhere: a household survey, sometimes paired with a business survey, giving the net number of jobs gained or lost over the month. The US report is titled 'Non-Farm Employment Change' and has its own card.",
+        },
+        {
+          heading: "The net number hides two opposite flows",
+          body: "A balance of +20,000 can mean 60,000 hires and 40,000 losses. Above all, the full-time versus part-time split changes everything: in Australia and Canada the market reads that line before the headline, because ten thousand full-time jobs are not ten thousand few-hour contracts in terms of income and spending.",
+        },
+        {
+          heading: "A very noisy series, read as a trend",
+          body: "In economies smaller than the US, the sample is smaller and the number jumps from month to month, with frequent revisions. A single month says almost nothing; three months pointing the same way say a lot. That is why the market reaction, often sharp within the minute, so frequently fades within the hour.",
+        },
+        {
+          heading: "The link with rates and the currency",
+          body: "The chain is the same everywhere: a tight labour market pushes wages, so inflation, so it forces that country's central bank to keep rates high, which supports the currency. Weakening employment does the reverse and brings rate cuts closer. It is through that channel, not the number itself, that the release moves prices.",
+        },
+      ],
+      outcomes: [
+        {
+          tone: "up",
+          label: "Clearly above consensus",
+          body: "A solid labour market: the country's currency firms and rate-cut bets are pared back. The effect is amplified if the jobs created are full-time.",
+        },
+        {
+          tone: "down",
+          label: "Clearly below consensus",
+          body: "Weakening employment: the currency slips and rate-cut expectations are brought forward. Check whether the drop came from full-time or only part-time work.",
+        },
+      ],
+      watch: [
+        "The day and time depend on the country: this announcement's own are at the top of the card.",
+        "Read the full-time versus part-time split before the headline.",
+        "A volatile and frequently revised series: a three-month trend beats any single month.",
+      ],
+    },
+    de: {
+      sections: [
+        {
+          heading: "Der Arbeitsmarktbericht dieses Landes, nicht der US-Bericht",
+          body: "Jedes Land veröffentlicht seinen eigenen Arbeitsmarktbericht, erstellt vom nationalen Statistikamt: das ABS in Australien, Statistics Canada, Eurostat für die Eurozone. Das Prinzip ist überall gleich: eine Haushaltsbefragung, teils ergänzt um eine Unternehmensbefragung, die die Nettozahl der im Monat gewonnenen oder verlorenen Stellen liefert. Der US-Bericht heißt 'Non-Farm Employment Change' und hat seine eigene Karte.",
+        },
+        {
+          heading: "Die Nettozahl verbirgt zwei gegenläufige Ströme",
+          body: "Ein Saldo von +20.000 kann 60.000 Einstellungen und 40.000 Verluste bedeuten. Vor allem ändert die Aufteilung zwischen Voll- und Teilzeit alles: in Australien und Kanada liest der Markt diese Zeile vor der Gesamtzahl, denn zehntausend Vollzeitstellen sind beim Einkommen und beim Konsum nicht zehntausend Verträge über wenige Stunden.",
+        },
+        {
+          heading: "Eine sehr verrauschte Reihe, als Trend zu lesen",
+          body: "In Volkswirtschaften, die kleiner sind als die der USA, ist die Stichprobe kleiner und die Zahl springt von Monat zu Monat, mit häufigen Revisionen. Ein einzelner Monat sagt fast nichts; drei Monate in dieselbe Richtung sagen viel. Deshalb verpufft die oft heftige Reaktion der ersten Minute häufig innerhalb einer Stunde.",
+        },
+        {
+          heading: "Die Verbindung zu Zinsen und Währung",
+          body: "Die Kette ist überall dieselbe: ein angespannter Arbeitsmarkt treibt die Löhne, damit die Inflation, und zwingt die Notenbank des Landes, die Zinsen hoch zu halten, was die Währung stützt. Ein einbrechender Arbeitsmarkt kehrt das um und rückt Zinssenkungen näher. Über diesen Kanal, nicht über die Zahl selbst, bewegt die Meldung die Kurse.",
+        },
+      ],
+      outcomes: [
+        {
+          tone: "up",
+          label: "Deutlich über dem Konsens",
+          body: "Solider Arbeitsmarkt: die Währung des Landes zieht an, Wetten auf Zinssenkungen werden zurückgenommen. Verstärkt, wenn die neuen Stellen Vollzeit sind.",
+        },
+        {
+          tone: "down",
+          label: "Deutlich unter dem Konsens",
+          body: "Schwächerer Arbeitsmarkt: die Währung gibt nach, Zinssenkungserwartungen rücken vor. Prüfe, ob der Rückgang Vollzeit oder nur Teilzeit betrifft.",
+        },
+      ],
+      watch: [
+        "Tag und Uhrzeit hängen vom Land ab: die dieser Ankündigung stehen oben auf der Karte.",
+        "Lies die Aufteilung Vollzeit/Teilzeit vor der Gesamtzahl.",
+        "Volatile und oft revidierte Reihe: der Dreimonatstrend schlägt jeden Einzelmonat.",
+      ],
+    },
+    es: {
+      sections: [
+        {
+          heading: "El informe de empleo de este país, no el de EE. UU.",
+          body: "Cada país publica su propio informe de empleo, elaborado por su instituto estadístico nacional: la ABS en Australia, Statistics Canada, Eurostat para la zona euro. El principio es el mismo en todas partes: una encuesta a los hogares, a veces acompañada de una encuesta a las empresas, que da el número neto de empleos ganados o perdidos en el mes. El informe estadounidense se titula 'Non-Farm Employment Change' y tiene su propia ficha.",
+        },
+        {
+          heading: "La cifra neta esconde dos flujos opuestos",
+          body: "Un saldo de +20.000 puede significar 60.000 contrataciones y 40.000 pérdidas. Sobre todo, el reparto entre tiempo completo y tiempo parcial lo cambia todo: en Australia y Canadá el mercado lee esa línea antes que el total, porque diez mil empleos a tiempo completo no son diez mil contratos de pocas horas en términos de renta y de consumo.",
+        },
+        {
+          heading: "Una serie muy ruidosa, que se lee en tendencia",
+          body: "En economías más pequeñas que la estadounidense, la muestra es menor y el dato salta de un mes a otro, con revisiones frecuentes. Un solo mes no dice casi nada; tres meses en el mismo sentido dicen mucho. Por eso la reacción del mercado, a menudo viva en el primer minuto, se desinfla con frecuencia en la hora siguiente.",
+        },
+        {
+          heading: "El vínculo con los tipos y la divisa",
+          body: "La cadena es la misma en todas partes: un mercado laboral tenso empuja los salarios, por tanto la inflación, y obliga al banco central del país a mantener los tipos altos, lo que apoya a la divisa. Un empleo que se debilita hace lo contrario y acerca las bajadas de tipos. Es por ese canal, y no por el dato en sí, por donde la publicación mueve los precios.",
+        },
+      ],
+      outcomes: [
+        {
+          tone: "up",
+          label: "Claramente por encima del consenso",
+          body: "Mercado laboral sólido: la divisa del país se refuerza y las apuestas por bajadas de tipos retroceden. Efecto amplificado si el empleo creado es a tiempo completo.",
+        },
+        {
+          tone: "down",
+          label: "Claramente por debajo del consenso",
+          body: "Empleo que flaquea: la divisa retrocede y se adelantan las expectativas de bajada de tipos. Comprueba si la caída viene del tiempo completo o solo del parcial.",
+        },
+      ],
+      watch: [
+        "El día y la hora dependen del país: los de este anuncio están arriba en la ficha.",
+        "Mira el reparto entre tiempo completo y parcial antes que el dato general.",
+        "Serie volátil y revisada a menudo: la tendencia a tres meses vale más que un mes suelto.",
+      ],
+    },
+  },
+
   adp: {
     fr: {
       sections: [

@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEEP_DIVES, deepDiveIds, isGlossaryId, lookupDeepDive } from "./economic-deep-dives";
-import type { GlossaryLang } from "./economic-glossary";
+import { indicatorId, type GlossaryLang } from "./economic-glossary";
 
 const LANGS: GlossaryLang[] = ["fr", "en", "de", "es"];
 
@@ -73,7 +73,8 @@ describe("les explications longues du calendrier", () => {
   const MULTI_PAYS = [
     "cpi", "ppi", "gdp", "retail_sales", "unemployment_rate", "rate_decision",
     "fomc_minutes", "manufacturing_pmi", "services_pmi", "trade_balance",
-    "current_account", "building_permits",
+    "current_account", "building_permits", "employment_change",
+    "consumer_confidence", "consumer_sentiment",
   ];
   it("un indicateur de plusieurs pays n'annonce pas l'horaire d'un seul", () => {
     // 14h30 · 8:30am · 14:30 Uhr : les trois formes utilisées dans les quatre langues.
@@ -117,6 +118,32 @@ describe("les explications longues du calendrier", () => {
           }
         }
       }
+    }
+  });
+
+  /**
+   * ⚠️⚠️ LE RAPPORT EMPLOI AUSTRALIEN RECEVAIT LA FICHE DU NFP AMÉRICAIN.
+   *
+   * Le flux dit « Non-Farm Employment Change » pour les États-Unis et
+   * « Employment Change » tout court pour l'Australie, le Canada ou la zone
+   * euro. `normalizeIndicator` retirant le préfixe de nationalité, le second
+   * tombait sur l'alias du premier : un trader australien lisait le Bureau of
+   * Labor Statistics, 120 000 entreprises américaines et les deux mandats de
+   * la Fed sur SON rapport emploi.
+   *
+   * Ce test tient la séparation, dans les deux sens.
+   */
+  it("un rapport emploi non américain ne reçoit pas la fiche du NFP", () => {
+    for (const titre of ["Employment Change", "Australian Employment Change", "Canadian Employment Change"]) {
+      expect(indicatorId(titre), `${titre} doit avoir sa propre fiche`).toBe("employment_change");
+    }
+    for (const titre of ["Non-Farm Employment Change", "NFP", "Non-Farm Payrolls"]) {
+      expect(indicatorId(titre), `${titre} est bien le rapport américain`).toBe("nfp");
+    }
+    // Et la fiche américaine reste la seule à nommer des institutions américaines.
+    for (const lang of LANGS) {
+      const texte = DEEP_DIVES.employment_change[lang].sections.map((s) => s.body).join(" ");
+      expect(/Bureau of Labor Statistics/i.test(texte), `employment_change/${lang} cite le BLS`).toBe(false);
     }
   });
 

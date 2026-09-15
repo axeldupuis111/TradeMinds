@@ -84,7 +84,22 @@ const ALIASES: Record<string, string> = {
   "non farm payrolls": "nfp",
   "nonfarm payrolls": "nfp",
   "nfp": "nfp",
-  "employment change": "nfp",
+  /**
+   * ⚠️⚠️ « EMPLOYMENT CHANGE » N'EST PAS LE NFP, ET IL POINTAIT DESSUS.
+   *
+   * Le flux intitule « Non-Farm Employment Change » le rapport américain et
+   * « Employment Change » tout court celui de l'Australie, du Canada ou de la
+   * zone euro. Or `normalizeIndicator` retire le préfixe de nationalité :
+   * « Australian Employment Change » devenait « employment change », qui
+   * renvoyait ici sur `nfp`. Le trader australien lisait donc, sur SON rapport
+   * emploi, une fiche qui parle du Bureau of Labor Statistics, de 120 000
+   * entreprises américaines, du premier vendredi du mois et des deux mandats
+   * de la Fed. Rien n'était vrai, et rien ne le signalait.
+   *
+   * Les deux ont désormais leur propre entrée.
+   */
+  "employment change": "employment_change",
+  "labour force change": "employment_change",
   "adp non farm employment change": "adp",
   "adp employment change": "adp",
   "unemployment rate": "unemployment_rate",
@@ -177,6 +192,28 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
       beginnerNote: "Más empleo = economía más fuerte. Mucha volatilidad en la publicación, normalmente el primer viernes del mes.",
     },
   },
+  employment_change: {
+    fr: {
+      whatItIs: "Variation du nombre d'emplois sur le mois dans le pays concerné (rapport emploi national, hors États-Unis).",
+      whyItMoves: "L'emploi oriente la politique de taux : un écart marqué avec le consensus fait bouger la devise du pays.",
+      beginnerNote: "Plus d'emplois = économie solide. Regarde aussi le partage entre temps plein et temps partiel.",
+    },
+    en: {
+      whatItIs: "Monthly change in the number of jobs in the country concerned (the national employment report, outside the US).",
+      whyItMoves: "Employment steers rate policy: a clear gap versus consensus moves that country's currency.",
+      beginnerNote: "More jobs = a stronger economy. Also check the full-time versus part-time split.",
+    },
+    de: {
+      whatItIs: "Monatliche Veränderung der Beschäftigtenzahl im betreffenden Land (nationaler Arbeitsmarktbericht, außerhalb der USA).",
+      whyItMoves: "Der Arbeitsmarkt steuert die Zinspolitik: eine deutliche Abweichung vom Konsens bewegt die Währung des Landes.",
+      beginnerNote: "Mehr Stellen = stärkere Wirtschaft. Sieh dir auch die Aufteilung zwischen Voll- und Teilzeit an.",
+    },
+    es: {
+      whatItIs: "Variación mensual del número de empleos en el país correspondiente (informe de empleo nacional, fuera de EE. UU.).",
+      whyItMoves: "El empleo orienta la política de tipos: una diferencia clara con el consenso mueve la divisa del país.",
+      beginnerNote: "Más empleo = economía sólida. Mira también el reparto entre tiempo completo y tiempo parcial.",
+    },
+  },
   adp: {
     fr: {
       whatItIs: "Estimation privée (cabinet ADP) des créations d'emplois dans le secteur privé, publiée avant le NFP officiel.",
@@ -203,22 +240,22 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     fr: {
       whatItIs: "Pourcentage de la population active sans emploi mais à la recherche d'un travail.",
       whyItMoves: "Un taux qui baisse signale un marché du travail tendu, ce qui peut pousser la banque centrale à monter les taux.",
-      beginnerNote: "Plus bas = mieux pour l'économie. Souvent publié en même temps que le NFP.",
+      beginnerNote: "Plus bas = mieux pour l'économie. Aux États-Unis, publié en même temps que le NFP.",
     },
     en: {
       whatItIs: "Share of the labour force that is jobless but actively looking for work.",
       whyItMoves: "A falling rate signals a tight labour market, which can push the central bank toward higher rates.",
-      beginnerNote: "Lower = healthier economy. Often released alongside the NFP.",
+      beginnerNote: "Lower = healthier economy. In the US, released alongside the NFP.",
     },
     de: {
       whatItIs: "Anteil der Erwerbspersonen, die arbeitslos sind, aber aktiv eine Stelle suchen.",
       whyItMoves: "Eine fallende Quote signalisiert einen angespannten Arbeitsmarkt und kann die Notenbank zu höheren Zinsen drängen.",
-      beginnerNote: "Niedriger = gesündere Wirtschaft. Oft zusammen mit den NFP veröffentlicht.",
+      beginnerNote: "Niedriger = gesündere Wirtschaft. In den USA zusammen mit den NFP veröffentlicht.",
     },
     es: {
       whatItIs: "Porcentaje de la población activa sin empleo pero que busca trabajo activamente.",
       whyItMoves: "Una tasa a la baja indica un mercado laboral tenso, lo que puede empujar al banco central a subir tipos.",
-      beginnerNote: "Más baja = economía más sana. Suele publicarse junto a las NFP.",
+      beginnerNote: "Más baja = economía más sana. En EE. UU. se publica junto a las NFP.",
     },
   },
   jobless_claims: {
@@ -301,7 +338,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     de: {
       whatItIs: "Verbraucherpreisindex: die Veränderung der Kosten eines Warenkorbs (Inflation).",
       whyItMoves: "Der zentrale Inflationswert. Ein heißer Wert hebt die Zinserhöhungserwartungen und stärkt tendenziell die Währung.",
-      beginnerNote: "Die „Kern-CPI\" lässt Nahrung und Energie als zu volatil weg. Eine wichtige Veröffentlichung mit hoher Volatilität.",
+      beginnerNote: "Die „Kern-CPI“ lässt Nahrung und Energie als zu volatil weg. Eine wichtige Veröffentlichung mit hoher Volatilität.",
     },
     es: {
       whatItIs: "Índice de Precios al Consumo: la variación del coste de una cesta de bienes y servicios (la inflación).",
@@ -323,7 +360,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     de: {
       whatItIs: "Erzeugerpreisindex: die Veränderung der von Produzenten gezahlten Preise vor dem Verkauf an Verbraucher.",
       whyItMoves: "Ein Vorläufer der Verbraucherinflation: steigende Produktionskosten landen oft in den Endpreisen.",
-      beginnerNote: "Inflation „vorgelagert\". Wird als Frühsignal vor der CPI beachtet.",
+      beginnerNote: "Inflation „vorgelagert“. Wird als Frühsignal vor der CPI beachtet.",
     },
     es: {
       whatItIs: "Índice de Precios de Producción: la variación de los precios que pagan los productores antes de la venta al consumidor.",
@@ -345,7 +382,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     de: {
       whatItIs: "Preisindex der persönlichen Konsumausgaben (Kern-PCE): das bevorzugte Inflationsmaß der Fed.",
       whyItMoves: "Da es das von der Fed angepeilte Inflationsmaß ist (2 %), beeinflusst es Zinsentscheidungen stark.",
-      beginnerNote: "Das „offizielle\" Inflationsthermometer der Fed. Für die US-Geldpolitik genau beobachten.",
+      beginnerNote: "Das „offizielle“ Inflationsthermometer der Fed. Für die US-Geldpolitik genau beobachten.",
     },
     es: {
       whatItIs: "Índice de precios del gasto en consumo personal (PCE subyacente): la medida de inflación preferida de la Fed.",
@@ -367,7 +404,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     de: {
       whatItIs: "Veränderung der gesamten Einzelhandelsumsätze – das wichtigste Maß für die Konsumausgaben.",
       whyItMoves: "Konsum treibt die Wirtschaft: starke Umsätze signalisieren gesundes Wachstum und stützen die Währung.",
-      beginnerNote: "„Kern\" schließt Autos als zu volatil aus. Spiegelt die Lage der Verbraucher wider.",
+      beginnerNote: "„Kern“ schließt Autos als zu volatil aus. Spiegelt die Lage der Verbraucher wider.",
     },
     es: {
       whatItIs: "Variación de las ventas minoristas totales, el principal indicador del gasto de los hogares.",
@@ -411,7 +448,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     de: {
       whatItIs: "Veränderung der Bestellungen langlebiger Güter (Maschinen, Flugzeuge, Ausrüstung) mit über drei Jahren Nutzungsdauer.",
       whyItMoves: "Spiegelt die Investitionsbereitschaft der Unternehmen wider; volatil wegen Großaufträgen (Luftfahrt).",
-      beginnerNote: "„Kern\" schließt Transport aus. Ein Maß für Unternehmensinvestitionen.",
+      beginnerNote: "„Kern“ schließt Transport aus. Ein Maß für Unternehmensinvestitionen.",
     },
     es: {
       whatItIs: "Variación de los pedidos de bienes duraderos (maquinaria, aviones, equipos) que duran más de tres años.",
@@ -543,7 +580,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     de: {
       whatItIs: "Der US-ISM-Dienstleistungs-PMI, ein Barometer für den größten Sektor der US-Wirtschaft.",
       whyItMoves: "Da Dienstleistungen das US-BIP dominieren, wirkt eine Überraschung stark auf Dollar und Indizes.",
-      beginnerNote: "Das „Dienstleistungs\"-Gegenstück zum ISM-Industrieindex. In den USA sehr einflussreich.",
+      beginnerNote: "Das „Dienstleistungs“-Gegenstück zum ISM-Industrieindex. In den USA sehr einflussreich.",
     },
     es: {
       whatItIs: "El PMI de servicios del ISM de EE. UU., barómetro del mayor sector de la economía estadounidense.",

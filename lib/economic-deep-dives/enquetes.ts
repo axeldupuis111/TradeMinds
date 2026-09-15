@@ -546,12 +546,12 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
     fr: {
       sections: [
         {
-          heading: "Ce que mesure l'indice du Conference Board",
-          body: "Plusieurs milliers de ménages américains sont interrogés chaque mois sur leur perception de la situation actuelle (emploi, affaires) et sur leurs attentes à six mois. L'indice combine les deux, avec une base fixée à 100 sur une année de référence : le niveau absolu compte moins que la tendance.",
+          heading: "Ce que mesure un indice de confiance",
+          body: "Chaque grande économie a son enquête : le Conference Board aux États-Unis, la Commission européenne en zone euro, GfK en Allemagne. Le principe est partout le même : plusieurs milliers de ménages sont interrogés chaque mois sur leur perception de la situation actuelle (emploi, affaires) et sur leurs attentes à six mois, et les réponses sont ramenées à un indice de base 100. Le niveau absolu compte moins que la tendance.",
         },
         {
           heading: "Pourquoi cet indice-là est lié à l'emploi",
-          body: "Sa question la plus suivie porte sur la facilité à trouver un travail. L'écart entre « emplois faciles à trouver » et « emplois difficiles à trouver » suit de près le taux de chômage, souvent avec un peu d'avance. C'est ce qui le distingue du sentiment de l'université du Michigan, davantage lié au pouvoir d'achat.",
+          body: "Dans l'enquête américaine, la question la plus suivie porte sur la facilité à trouver un travail. L'écart entre « emplois faciles à trouver » et « emplois difficiles à trouver » suit de près le taux de chômage, souvent avec un peu d'avance. C'est ce qui le distingue du sentiment de l'université du Michigan, davantage lié au pouvoir d'achat.",
         },
         {
           heading: "Confiance et dépense ne sont pas la même chose",
@@ -571,20 +571,20 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Dernier mardi du mois, 10h00 à New York.",
-        "Le sous-indice sur la facilité à trouver un emploi est le plus informatif.",
+        "Aux États-Unis (Conference Board), dernier mardi du mois ; ailleurs, selon le calendrier du pays.",
+        "Dans l'enquête américaine, le sous-indice sur la facilité à trouver un emploi est le plus informatif.",
         "Un moral en baisse ne fait pas forcément baisser la consommation.",
       ],
     },
     en: {
       sections: [
         {
-          heading: "What the Conference Board index measures",
-          body: "Several thousand US households are surveyed each month on how they see the present situation (jobs, business conditions) and their expectations six months out. The index blends the two, with a base of 100 in a reference year: the absolute level matters less than the trend.",
+          heading: "What a confidence index measures",
+          body: "Every large economy runs its own survey: the Conference Board in the US, the European Commission in the euro area, GfK in Germany. The principle is the same everywhere: several thousand households are surveyed each month on how they see the present situation (jobs, business conditions) and their expectations six months out, and the answers are turned into an index based at 100. The absolute level matters less than the trend.",
         },
         {
           heading: "Why this one is tied to jobs",
-          body: "Its most-watched question is about how easy it is to find work. The gap between 'jobs plentiful' and 'jobs hard to get' tracks the unemployment rate closely, often slightly ahead of it. That is what separates it from the University of Michigan sentiment index, which is more about purchasing power.",
+          body: "In the US survey, the most-watched question is about how easy it is to find work. The gap between 'jobs plentiful' and 'jobs hard to get' tracks the unemployment rate closely, often slightly ahead of it. That is what separates it from the University of Michigan sentiment index, which is more about purchasing power.",
         },
         {
           heading: "Confidence and spending are not the same thing",
@@ -604,20 +604,20 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Last Tuesday of the month, 10:00am New York time.",
-        "The 'jobs hard to get' sub-index is the most informative line.",
+        "In the US (Conference Board), the last Tuesday of the month; elsewhere, on that country's own schedule.",
+        "In the US survey, the 'jobs hard to get' sub-index is the most informative line.",
         "A falling mood does not necessarily mean falling spending.",
       ],
     },
     de: {
       sections: [
         {
-          heading: "Was der Conference-Board-Index misst",
-          body: "Mehrere tausend US-Haushalte werden monatlich zur aktuellen Lage (Arbeitsmarkt, Geschäftsklima) und zu ihren Erwartungen auf Sicht von sechs Monaten befragt. Der Index verbindet beides, mit Basis 100 in einem Referenzjahr: das Niveau zählt weniger als der Trend.",
+          heading: "Was ein Vertrauensindex misst",
+          body: "Jede große Volkswirtschaft hat ihre eigene Umfrage: das Conference Board in den USA, die Europäische Kommission in der Eurozone, GfK in Deutschland. Das Prinzip ist überall gleich: mehrere tausend Haushalte werden monatlich zur aktuellen Lage (Arbeitsmarkt, Geschäftsklima) und zu ihren Erwartungen auf Sicht von sechs Monaten befragt, und die Antworten ergeben einen Index mit Basis 100. Das Niveau zählt weniger als der Trend.",
         },
         {
           heading: "Warum gerade dieser Index am Arbeitsmarkt hängt",
-          body: "Die meistbeachtete Frage betrifft, wie leicht sich eine Stelle finden lässt. Der Abstand zwischen 'Stellen reichlich' und 'Stellen schwer zu finden' folgt der Arbeitslosenquote eng, oft mit leichtem Vorlauf. Das unterscheidet ihn vom Michigan-Sentiment, das stärker an der Kaufkraft hängt.",
+          body: "In der US-Umfrage betrifft die meistbeachtete Frage, wie leicht sich eine Stelle finden lässt. Der Abstand zwischen 'Stellen reichlich' und 'Stellen schwer zu finden' folgt der Arbeitslosenquote eng, oft mit leichtem Vorlauf. Das unterscheidet ihn vom Michigan-Sentiment, das stärker an der Kaufkraft hängt.",
         },
         {
           heading: "Zuversicht und Ausgaben sind nicht dasselbe",
@@ -637,20 +637,20 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Letzter Dienstag im Monat, 10:00 Uhr New Yorker Zeit.",
-        "Der Teilindex zur Schwierigkeit der Stellensuche ist die aussagekräftigste Zeile.",
+        "In den USA (Conference Board) am letzten Dienstag im Monat; anderswo nach dem Kalender des jeweiligen Landes.",
+        "In der US-Umfrage ist der Teilindex zur Schwierigkeit der Stellensuche die aussagekräftigste Zeile.",
         "Eine sinkende Stimmung bedeutet nicht zwingend sinkenden Konsum.",
       ],
     },
     es: {
       sections: [
         {
-          heading: "Qué mide el índice del Conference Board",
-          body: "Cada mes se encuesta a varios miles de hogares estadounidenses sobre su percepción de la situación actual (empleo, negocios) y sus expectativas a seis meses. El índice combina ambas, con base 100 en un año de referencia: el nivel absoluto importa menos que la tendencia.",
+          heading: "Qué mide un índice de confianza",
+          body: "Cada gran economía tiene su encuesta: el Conference Board en EE. UU., la Comisión Europea en la zona euro, GfK en Alemania. El principio es el mismo en todas partes: cada mes se encuesta a varios miles de hogares sobre su percepción de la situación actual (empleo, negocios) y sus expectativas a seis meses, y las respuestas se convierten en un índice con base 100. El nivel absoluto importa menos que la tendencia.",
         },
         {
           heading: "Por qué este índice está ligado al empleo",
-          body: "Su pregunta más seguida es lo fácil que resulta encontrar trabajo. La diferencia entre empleos abundantes y empleos difíciles de encontrar sigue de cerca a la tasa de paro, a menudo con algo de adelanto. Eso lo distingue del sentimiento de la Universidad de Michigan, más ligado al poder adquisitivo.",
+          body: "En la encuesta estadounidense, la pregunta más seguida es lo fácil que resulta encontrar trabajo. La diferencia entre empleos abundantes y empleos difíciles de encontrar sigue de cerca a la tasa de paro, a menudo con algo de adelanto. Eso lo distingue del sentimiento de la Universidad de Michigan, más ligado al poder adquisitivo.",
         },
         {
           heading: "Confianza y gasto no son lo mismo",
@@ -670,8 +670,8 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Último martes del mes, 10:00 de Nueva York.",
-        "El subíndice sobre la dificultad de encontrar empleo es el más informativo.",
+        "En EE. UU. (Conference Board), el último martes del mes; en otros países, según su propio calendario.",
+        "En la encuesta estadounidense, el subíndice sobre la dificultad de encontrar empleo es el más informativo.",
         "Un ánimo a la baja no implica necesariamente un consumo a la baja.",
       ],
     },
@@ -681,8 +681,8 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
     fr: {
       sections: [
         {
-          heading: "L'enquête de l'université du Michigan",
-          body: "Environ 1 000 ménages répondent chaque mois à un questionnaire en ligne sur leurs finances personnelles, leurs perspectives économiques et leur propension à acheter des biens durables. L'enquête se faisait par téléphone jusqu'en 2024. Panel plus petit que celui du Conference Board, donc indice plus nerveux d'un mois à l'autre.",
+          heading: "L'enquête de référence, aux États-Unis, est celle du Michigan",
+          body: "Environ 1 000 ménages américains répondent chaque mois à un questionnaire en ligne sur leurs finances personnelles, leurs perspectives économiques et leur propension à acheter des biens durables. L'enquête se faisait par téléphone jusqu'en 2024. Panel plus petit que celui du Conference Board, donc indice plus nerveux d'un mois à l'autre.",
         },
         {
           heading: "Sa vraie valeur pour le marché : les anticipations d'inflation",
@@ -706,7 +706,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Estimation préliminaire vers le milieu du mois, version définitive en fin de mois, 10h00 à New York.",
+        "Aux États-Unis : estimation préliminaire vers le milieu du mois, version définitive en fin de mois.",
         "Va directement lire les anticipations d'inflation à 1 an et à 5 ans.",
         "Panel réduit : un mois isolé se surinterprète facilement.",
       ],
@@ -714,8 +714,8 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
     en: {
       sections: [
         {
-          heading: "The University of Michigan survey",
-          body: "Around 1,000 households answer an online questionnaire each month about their personal finances, their economic outlook and their willingness to buy durable goods. The survey was run by telephone until 2024. A smaller panel than the Conference Board's, so a jumpier index month to month.",
+          heading: "In the US, the benchmark is the Michigan survey",
+          body: "Around 1,000 US households answer an online questionnaire each month about their personal finances, their economic outlook and their willingness to buy durable goods. The survey was run by telephone until 2024. A smaller panel than the Conference Board's, so a jumpier index month to month.",
         },
         {
           heading: "Its real value to markets: inflation expectations",
@@ -739,7 +739,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Preliminary around mid-month, final at month end, 10:00am New York time.",
+        "In the US: preliminary around mid-month, final at month end.",
         "Go straight to the 1-year and 5-year inflation expectations.",
         "Small panel: a single month is easy to over-read.",
       ],
@@ -747,8 +747,8 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
     de: {
       sections: [
         {
-          heading: "Die Umfrage der University of Michigan",
-          body: "Rund 1.000 Haushalte beantworten monatlich online Fragen zu ihren Finanzen, ihrem Wirtschaftsausblick und ihrer Neigung, langlebige Güter zu kaufen. Bis 2024 lief die Befragung telefonisch. Kleineres Panel als beim Conference Board, daher ein von Monat zu Monat nervöserer Index.",
+          heading: "In den USA ist die Michigan-Umfrage der Maßstab",
+          body: "Rund 1.000 US-Haushalte beantworten monatlich online Fragen zu ihren Finanzen, ihrem Wirtschaftsausblick und ihrer Neigung, langlebige Güter zu kaufen. Bis 2024 lief die Befragung telefonisch. Kleineres Panel als beim Conference Board, daher ein von Monat zu Monat nervöserer Index.",
         },
         {
           heading: "Der eigentliche Marktwert: die Inflationserwartungen",
@@ -772,7 +772,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Vorläufig zur Monatsmitte, endgültig zum Monatsende, 10:00 Uhr New Yorker Zeit.",
+        "In den USA: vorläufig zur Monatsmitte, endgültig zum Monatsende.",
         "Lies direkt die Inflationserwartungen auf 1 und 5 Jahre.",
         "Kleines Panel: ein einzelner Monat wird leicht überinterpretiert.",
       ],
@@ -780,8 +780,8 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
     es: {
       sections: [
         {
-          heading: "La encuesta de la Universidad de Michigan",
-          body: "Alrededor de 1.000 hogares responden cada mes un cuestionario en línea sobre sus finanzas personales, sus perspectivas económicas y su disposición a comprar bienes duraderos. Hasta 2024 la encuesta era telefónica. Panel más pequeño que el del Conference Board, y por tanto un índice más nervioso de un mes a otro.",
+          heading: "En EE. UU. la referencia es la encuesta de Michigan",
+          body: "Alrededor de 1.000 hogares estadounidenses responden cada mes un cuestionario en línea sobre sus finanzas personales, sus perspectivas económicas y su disposición a comprar bienes duraderos. Hasta 2024 la encuesta era telefónica. Panel más pequeño que el del Conference Board, y por tanto un índice más nervioso de un mes a otro.",
         },
         {
           heading: "Su valor real para el mercado: las expectativas de inflación",
@@ -805,7 +805,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Preliminar hacia mediados de mes, definitiva a final de mes, 10:00 de Nueva York.",
+        "En EE. UU.: preliminar hacia mediados de mes, definitiva a final de mes.",
         "Ve directo a las expectativas de inflación a 1 y a 5 años.",
         "Panel reducido: un mes aislado se sobreinterpreta con facilidad.",
       ],
