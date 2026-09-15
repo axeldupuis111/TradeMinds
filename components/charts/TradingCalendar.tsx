@@ -1,7 +1,7 @@
 "use client";
 
 import { fmtPrice } from "@/lib/prix-instrument";
-import { langueCourante } from "@/lib/nombres";
+import { langueCourante, lots } from "@/lib/nombres";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -478,7 +478,7 @@ export default function TradingCalendar({
                         </span>
                         {hasLot && (
                           <span className="text-[10px] text-muted tabular-nums">
-                            Lot {tr.lot_size}
+                            Lot {lots(tr.lot_size as number)}
                           </span>
                         )}
                       </div>

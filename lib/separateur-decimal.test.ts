@@ -154,4 +154,50 @@ describe("aucun nombre affiché n'est formaté à la main", () => {
       "nombres affichés formatés à la main (passer par nombre()) : " + fautes.join(", "),
     ).toEqual([]);
   });
+
+  /**
+   * ── LE NOMBRE QU'ON N'A PAS FORMATÉ DU TOUT ────────────────────────────────
+   *
+   * ⚠️⚠️ TOUT CE QUI PRÉCÈDE CHERCHE UN FORMATAGE FAIT À LA MAIN. Un nombre
+   * simplement INTERPOLÉ y échappe : `{tr.lot_size}` rend « 0.01 » en français
+   * comme en anglais, parce que JavaScript écrit ses nombres avec un point.
+   *
+   * ⚠️ MESURÉ SUR TROIS ÉCRANS : le tableau de bord (« XAUUSD BUY · 0.01 »), le
+   * calendrier (« Lot 0.01 ») et la fermeture d'un trade, pendant que le
+   * calculateur de position, lui, annonçait « 2,50 lots ». Le même produit, la
+   * même unité, deux conventions.
+   *
+   * ⚠️ ET LE PRIX EST L'EXCEPTION, pour une raison écrite dans `fmtPrice` : le
+   * trader recoupe ce chiffre avec MetaTrader, qui écrit « 2515.00 » partout.
+   * Une taille de position ne se recoupe avec rien.
+   */
+  it("une taille de position n'est jamais interpolée telle quelle", () => {
+    const fautes: string[] = [];
+    for (const chemin of tous()) {
+      const nom = court(chemin);
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
+      const lignes = source.split(/\r?\n/);
+      lignes.forEach((ligne, i) => {
+        // `{x.lot_size}` ou `${x.lot_size}` dans du JSX ou un gabarit.
+        if (!/\$?\{\s*[\w.]*lot_size\s*\}/.test(ligne)) return;
+        // L'aperçu d'un import CSV montre la valeur DU FICHIER, pas un nombre
+        // du produit : la recopier telle quelle est ce qu'on veut.
+        if (nom === "trades/CsvImport.tsx") return;
+        /**
+         * ⚠️ LA VALEUR D'UN CHAMP DE SAISIE RESTE BRUTE, et ce n'est pas une
+         * dispense de confort : un `<input type="number">` dont la valeur
+         * porterait une virgule ou une espace de groupement serait refusé par
+         * le navigateur, et le trader ne pourrait plus rien taper. Le message
+         * d'erreur d'un champ n'est pas un nombre du tout.
+         */
+        if (/\bvalue=|<input|errors?\.[\w]*lot_size|fieldErrors\./.test(ligne)) return;
+        if (/^\s*(const|let|if|return|errs|errors)\b/.test(ligne)) return;
+        fautes.push(`${nom}:${i + 1}`);
+      });
+    }
+    expect(
+      fautes,
+      "tailles de position affichées sans lots() : " + fautes.join(", "),
+    ).toEqual([]);
+  });
 });

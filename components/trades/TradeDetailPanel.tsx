@@ -2,6 +2,8 @@
 
 import { ICT_EMOTIONS } from "@/lib/ict-constants";
 import { EMOTION_EMOJIS } from "@/lib/emotions";
+import { lots } from "@/lib/nombres";
+import { fmtPrice } from "@/lib/prix-instrument";
 import ScreenshotAnnotator from "@/components/trades/ScreenshotAnnotator";
 import AnnotationOverlay from "@/components/trades/AnnotationOverlay";
 import { asShapes, type Shape } from "@/lib/annotations";
@@ -578,10 +580,10 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? enDate(trade.open_time) : "—"}</span></div>
-              <div><span className="text-muted">{t("trades_col_lot")}:</span> <span className="text-foreground">{trade.lot_size}</span></div>
-              <div><span className="text-muted">{t("trades_col_entry")}:</span> <span className="text-foreground">{trade.entry_price}</span></div>
-              <div><span className="text-muted">{t("trades_col_exit")}:</span> <span className="text-foreground">{trade.exit_price}</span></div>
-              <div><span className="text-muted">{t("trades_col_sl")}:</span> <span className="text-foreground">{trade.sl ?? "—"}</span></div>
+              <div><span className="text-muted">{t("trades_col_lot")}:</span> <span className="text-foreground">{lots(trade.lot_size)}</span></div>
+              <div><span className="text-muted">{t("trades_col_entry")}:</span> <span className="text-foreground">{fmtPrice(trade.entry_price)}</span></div>
+              <div><span className="text-muted">{t("trades_col_exit")}:</span> <span className="text-foreground">{fmtPrice(trade.exit_price)}</span></div>
+              <div><span className="text-muted">{t("trades_col_sl")}:</span> <span className="text-foreground">{trade.sl != null ? fmtPrice(trade.sl) : "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_tp")}:</span> <span className="text-foreground">{trade.tp ?? "—"}</span></div>
             </div>
             <div className="pt-2 border-t border-border">

@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtPrice } from "@/lib/prix-instrument";
+import { lots } from "@/lib/nombres";
 import { stripLongDashes } from "@/lib/coach-typography";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import EquityCurve from "@/components/charts/EquityCurve";
@@ -655,7 +656,7 @@ export default function DashboardContent({
                             ? new Date(tr.open_time).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" })
                             : "—"}
                           {tr.lot_size != null && tr.lot_size > 0
-                            ? ` · ${tr.lot_size}`
+                            ? ` · ${lots(tr.lot_size)}`
                             : ""}
                         </p>
                         {/* Ligne 2 — prix entrée → sortie (si disponibles) */}

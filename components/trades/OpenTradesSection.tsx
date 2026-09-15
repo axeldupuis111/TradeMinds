@@ -2,6 +2,8 @@
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { langueCourante } from "@/lib/nombres";
+import { lots } from "@/lib/nombres";
+import { fmtPrice } from "@/lib/prix-instrument";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -162,7 +164,7 @@ export default function OpenTradesSection({ refreshKey, onCloseTrade }: Props) {
                     {dir === "long" ? "LONG" : "SHORT"}
                   </span>
                   <span className="text-sm text-muted">
-                    {tr.lot_size} lot @ {tr.entry_price}
+                    {lots(tr.lot_size)} lot @ {fmtPrice(tr.entry_price)}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">

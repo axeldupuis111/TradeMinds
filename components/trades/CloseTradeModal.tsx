@@ -4,6 +4,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { accountCurrency, currencySymbol, DEFAULT_CURRENCY, tradeCurrency } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { estimatePnl } from "@/lib/pnl-calculator";
+import { lots } from "@/lib/nombres";
+import { fmtPrice } from "@/lib/prix-instrument";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
@@ -244,7 +246,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           <div className="flex items-center gap-2 flex-wrap mb-2">
             <span className="font-semibold text-foreground">{trade.pair}</span>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${dirColor}`}>{dirLabel}</span>
-            <span className="text-sm text-muted">{trade.lot_size} lot @ {trade.entry_price}</span>
+            <span className="text-sm text-muted">{lots(trade.lot_size)} lot @ {fmtPrice(trade.entry_price)}</span>
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
             <span>SL : <span className="text-foreground">{trade.sl ?? "—"}</span></span>

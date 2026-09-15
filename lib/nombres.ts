@@ -78,3 +78,26 @@ export function pourcent(valeurEnPourcent: number, decimales = 0, locale?: strin
     maximumFractionDigits: decimales,
   });
 }
+
+/**
+ * UNE TAILLE DE POSITION, DANS LA LANGUE DU LECTEUR.
+ *
+ * ⚠️⚠️ LE PRODUIT EN AVAIT DEUX ÉCRITURES. Le calculateur de lot annonçait
+ * « 2,50 lots » (virgule, par `nombre()`), et le tableau de bord, le calendrier
+ * et la fermeture de trade écrivaient « 0.01 » — l'interpolation brute d'un
+ * nombre JavaScript, donc un point, en français comme ailleurs. Le même produit,
+ * la même unité, deux conventions.
+ *
+ * ⚠️ ET CE N'EST PAS LE CAS DU PRIX. `fmtPrice` garde volontairement le point,
+ * parce que le trader recoupe ce chiffre avec MetaTrader ou TradingView, qui
+ * l'écrivent ainsi dans toutes les langues. Une taille de position, elle, ne se
+ * recoupe avec rien : c'est une quantité qu'on lit.
+ *
+ * ⚠️ LES DÉCIMALES NE SONT PAS FORCÉES : un lot rond reste « 1 », pas « 1,00 ».
+ */
+export function lots(valeur: number, locale?: string): string {
+  return valeur.toLocaleString(locale ?? langueCourante(), {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
