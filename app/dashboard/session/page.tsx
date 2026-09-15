@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
+import { fermerLesSeancesOubliees } from "@/lib/sessions-oubliees";
 import { startOfBrowserDayIso } from "@/lib/timezone";
 import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
@@ -295,16 +296,13 @@ export default function SessionPage() {
      */
     const today = startOfBrowserDayIso();
 
-    // Auto-close any session older than today that is still flagged active
-    // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : c'est un ménage, refait à chaque
-    // chargement. Un échec ne change rien à ce qui s'affiche et se rattrape
-    // tout seul la fois d'après.
-    await supabase
-      .from("sessions")
-      .update({ active: false, ended_at: today })
-      .eq("user_id", user.id)
-      .eq("active", true)
-      .lt("created_at", today);
+    /**
+     * ⚠️ LE MÊME MÉNAGE TOURNE MAINTENANT DEPUIS LA MISE EN PAGE DU TABLEAU DE
+     * BORD, donc derrière n'importe quelle page. Il restait ici seul, c'est-à-dire
+     * exactement sur la page où un trader qu'on ne relance plus ne vient jamais.
+     * Voir `lib/sessions-oubliees.ts` pour la mesure.
+     */
+    await fermerLesSeancesOubliees(supabase, user.id, today);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

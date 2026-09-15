@@ -63,8 +63,8 @@ describe("une date qui décide d'un accès est écrite quelque part", () => {
     for (const chemin of tous()) {
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
       const src = readFileSync(chemin, "utf8");
-      for (const m of src.matchAll(COMPARAISON)) {
-        const dernier = [...m[1].matchAll(/[a-z][a-z0-9_]{3,}/g)].pop();
+      for (const m of Array.from(src.matchAll(COMPARAISON))) {
+        const dernier = Array.from(m[1].matchAll(/[a-z][a-z0-9_]{3,}/g)).pop();
         if (!dernier) continue;
         const col = dernier[0];
         // Une variable locale n'est pas une colonne : on ne retient que les
@@ -80,15 +80,15 @@ describe("une date qui décide d'un accès est écrite quelque part", () => {
 
   it("reconnaît la lecture quand on la lui montre", () => {
     const exemple = "if (profile?.plan_expires_at && new Date(profile.plan_expires_at) < new Date()) {";
-    const m = [...exemple.matchAll(COMPARAISON)];
+    const m = Array.from(exemple.matchAll(COMPARAISON));
     expect(m.length, "la comparaison de garde n'est plus reconnue").toBe(1);
-    expect([...m[0][1].matchAll(/[a-z][a-z0-9_]{3,}/g)].pop()![0]).toBe("plan_expires_at");
+    expect(Array.from(m[0][1].matchAll(/[a-z][a-z0-9_]{3,}/g)).pop()![0]).toBe("plan_expires_at");
   });
 
   it("trouve bien des dates de garde, sinon ce test ne prouve rien", () => {
     const lues = colonnesLues();
     expect(lues.size, "plus aucune date ne décide d'un accès : le balayage est cassé").toBeGreaterThan(0);
-    expect([...lues.keys()], "la colonne connue n'est plus vue").toContain("plan_expires_at");
+    expect(Array.from(lues.keys()), "la colonne connue n'est plus vue").toContain("plan_expires_at");
   });
 
   it("chaque date de garde est écrite quelque part", () => {
@@ -96,7 +96,7 @@ describe("une date qui décide d'un accès est écrite quelque part", () => {
       .map((c) => readFileSync(c, "utf8"))
       .join("\n");
     const orphelines: string[] = [];
-    for (const [col, ou] of colonnesLues()) {
+    for (const [col, ou] of Array.from(colonnesLues())) {
       // Une écriture, c'est la colonne posée dans un objet passé à Supabase.
       const ecrite = new RegExp(`${col}\\s*:`).test(ecritures.replace(/\.select\([^)]*\)/g, ""));
       if (!ecrite) orphelines.push(`${col} (lue par ${ou.join(", ")})`);

@@ -43,6 +43,7 @@ import type { PlanType } from "@/lib/PlanContext";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleDePeriode } from "@/lib/periode-objectif";
 import { localDateKey as localDateKeyFor, startOfDateKeyUtc } from "@/lib/timezone";
+import { fermerLesSeancesOubliees } from "@/lib/sessions-oubliees";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
 
@@ -977,6 +978,23 @@ function csvCell(v: unknown): string {
   if (v === null || v === undefined) return "";
   const s = Array.isArray(v) ? v.join(" ") : String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * Début de la journée du trader, en ISO, pour borner « séance en cours ».
+ *
+ * ⚠️⚠️ SANS CETTE BORNE, UNE SÉANCE FANTÔME BLOQUE LE COACH POUR TOUJOURS.
+ * Mesuré le 2026-09-16 : sept séances portaient encore `active = true`, la plus
+ * ancienne depuis 97,5 jours (voir `lib/sessions-oubliees.ts`). Les quatre
+ * outils de séance du coach lisaient `active = true` sans aucune date :
+ *
+ *   - `start_session` répondait « une session est déjà ouverte » et REFUSAIT
+ *     d'en ouvrir une, c'est-à-dire bloquait l'action centrale du produit ;
+ *   - `session_debrief` aurait rédigé le bilan d'une séance de trois mois ;
+ *   - `log_emotional_check` accrochait le ressenti du jour à cette séance-là.
+ */
+function debutDeLaJournee(timezone?: string): string {
+  return (startOfDateKeyUtc(localDateKeyFor(timezone), timezone) ?? new Date(0)).toISOString();
 }
 
 // ── Exécution ────────────────────────────────────────────────────────────────
@@ -2281,8 +2299,14 @@ export async function executeCoachTool(
           ? input.emotion : null;
         if (!emotion) return fail(`emotion invalide (${EMOTIONS.join(", ")}).`);
 
+        // Le ménage d'abord : une séance oubliée des jours précédents ne doit
+        // pas faire passer l'ouverture du jour pour un doublon.
+        const debutOuverture = debutDeLaJournee(timezone);
+        await fermerLesSeancesOubliees(supabase, userId, debutOuverture);
+
         const { data: existing } = await supabase
-          .from("sessions").select("id").eq("user_id", userId).eq("active", true).limit(1).maybeSingle();
+          .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+          .gte("created_at", debutOuverture).limit(1).maybeSingle();
         if (existing) return fail("Une session est déjà ouverte. Utilise end_session pour la clôturer d'abord.");
 
         const { data, error } = await supabase
@@ -2299,8 +2323,20 @@ export async function executeCoachTool(
       }
 
       case "end_session": {
+        /**
+         * ⚠️ PAS DE MÉNAGE ICI, CONTRAIREMENT À `start_session`, et la raison
+         * tient en une phrase : clôturer ne fait RIEN de mal quand il n'y a rien
+         * à clôturer, alors que refuser d'ouvrir bloque le produit. Le ménage
+         * tourne de toute façon dans la mise en page du tableau de bord, donc
+         * avant que ce dock puisse seulement s'afficher.
+         *
+         * ⚠️ ET « ne rien clôturer » VEUT DIRE NE RIEN ÉCRIRE : un garde le
+         * vérifie (`lib/coach-tools-extra.test.ts`, « refuse de clôturer quand
+         * rien n'est ouvert »).
+         */
         const { data: active } = await supabase
           .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+          .gte("created_at", debutDeLaJournee(timezone))
           .order("created_at", { ascending: false }).limit(1).maybeSingle();
         if (!active) return fail("Aucune session ouverte à clôturer.");
         const patch: Record<string, unknown> = { active: false, ended_at: new Date().toISOString() };
@@ -2354,6 +2390,7 @@ export async function executeCoachTool(
         if (kind === "session_debrief") {
           const { data: active } = await supabase
             .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+            .gte("created_at", debutDeLaJournee(timezone))
             .order("created_at", { ascending: false }).limit(1).maybeSingle();
           if (!active) {
             return fail("Aucune session ouverte à débriefer. AUCUN bouton n'est apparu. Propose start_session, ou un autre rapport.");
@@ -2412,6 +2449,7 @@ export async function executeCoachTool(
 
         const { data: active } = await supabase
           .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+          .gte("created_at", debutDeLaJournee(timezone))
           .order("created_at", { ascending: false }).limit(1).maybeSingle();
         if (!active) return fail("Aucune session ouverte. Propose start_session avant d'enregistrer un ressenti.");
 

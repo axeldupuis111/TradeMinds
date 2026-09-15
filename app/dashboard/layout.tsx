@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { fermerLesSeancesOubliees } from "@/lib/sessions-oubliees";
 import { browserTimezone, localDateKey, startOfBrowserDayIso } from "@/lib/timezone";
 
 function SessionReminderBanner() {
@@ -42,6 +43,18 @@ function SessionReminderBanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const today = startOfBrowserDayIso();
+
+      /**
+       * ⚠️⚠️ CE BANDEAU ÉTAIT ÉTEINT POUR TOUJOURS CHEZ SEPT PERSONNES. La
+       * lecture de « séance active » ci-dessous n'était bornée par aucune date,
+       * et sept séances traînaient `active = true` depuis 6 à 97 JOURS (mesure
+       * du 2026-09-16, voir `lib/sessions-oubliees.ts`). Le produit n'invitait
+       * donc plus jamais ces traders à préparer leur séance, ce qui les
+       * empêchait de retourner sur la page des séances, seul endroit où le
+       * ménage tournait : le défaut se maintenait tout seul.
+       */
+      await fermerLesSeancesOubliees(supabase, user.id, today);
+
       const [{ data: todaySession }, { data: activeSession }] = await Promise.all([
         supabase
           .from("sessions")
@@ -55,6 +68,10 @@ function SessionReminderBanner() {
           .select("id")
           .eq("user_id", user.id)
           .eq("active", true)
+          // ⚠️ LA BORNE EST LA VRAIE CORRECTION : le ménage juste au-dessus peut
+          // échouer (droits, réseau), et un échec silencieux ne doit pas
+          // reconduire l'extinction du bandeau.
+          .gte("created_at", today)
           .limit(1)
           .maybeSingle(),
       ]);
