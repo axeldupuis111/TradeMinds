@@ -27,6 +27,7 @@ import { analyserSegments } from "./projection-segments";
 import { mesurerStabilite } from "./projection-stability";
 import { mesurerAdherence } from "./strategy-adherence";
 import { verifierCoherence } from "./strategy-coherence";
+import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 import { getFuturesContract } from "@/lib/futures-contracts";
@@ -1939,17 +1940,46 @@ export async function executeCoachTool(
         }));
         const pourSegments = lignes.map((x, i) => ({ ...pourProjection[i], pair: x.pair, direction: x.direction, emotion: x.emotion, ict_setup: x.ict_setup }));
 
-        // Le solde du compte sert de base au risque de ruine. Sans compte
-        // lisible, on retombe sur une base conventionnelle et on le DIT, pour
-        // que le coach ne présente pas un pourcentage comme s'il portait sur
-        // l'argent réel du trader.
+        /**
+         * Le solde du compte sert de base au risque de ruine. Sans compte
+         * lisible, on retombe sur une base conventionnelle et on le DIT, pour
+         * que le coach ne présente pas un pourcentage comme s'il portait sur
+         * l'argent réel du trader.
+         *
+         * ⚠️⚠️ LA TABLE DES COMPTES S'APPELLE `prop_challenges`. Ces deux
+         * lectures interrogeaient une table `accounts` QUI N'EXISTE PAS :
+         * PostgREST répond 404 (PGRST205), le client Supabase ne jette pas, et
+         * le repli conventionnel de 10 000 s'appliquait donc À TOUS LES
+         * TRADERS, y compris à celui qui a un compte de 50 000 renseigné. Le
+         * risque de ruine annoncé par le coach ne portait sur l'argent de
+         * personne, et la note disait le contraire.
+         *
+         * ⚠️ LE COMPTE RETENU EST CELUI DE LA PAGE : son sélecteur retient par
+         * défaut le compte du trade le plus récent (voir
+         * ActiveAccountContext). Le choix réel du trader vit dans son
+         * navigateur, le serveur ne peut pas le lire ; reprendre le même
+         * défaut est ce qui rapproche le plus les deux chiffres.
+         */
         const { data: comptes } = await supabase
-          .from("accounts")
-          .select("account_size")
+          .from("prop_challenges")
+          .select("id, account_size, max_daily_dd_pct, max_total_dd_pct")
           .eq("user_id", userId)
-          .order("created_at", { ascending: true })
-          .limit(1);
-        const taille = Number(comptes?.[0]?.account_size);
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
+        const actifs = (comptes ?? []) as unknown as {
+          id: string; account_size: number | null;
+          max_daily_dd_pct: number | null; max_total_dd_pct: number | null;
+        }[];
+        const { data: dernierTrade } = await supabase
+          .from("trades")
+          .select("challenge_id")
+          .eq("user_id", userId)
+          .order("open_time", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const compte =
+          actifs.find((a) => a.id === (dernierTrade?.challenge_id as string | null)) ?? actifs[0] ?? null;
+        const taille = Number(compte?.account_size);
         const capital = taille > 0 ? taille : 10_000;
 
         const p = projeter(pourProjection, { annees, capitalDepart: capital });
@@ -1968,13 +1998,14 @@ export async function executeCoachTool(
             .eq("user_id", userId)
             .maybeSingle();
           if (fiche) {
-            const { data: cpt } = await supabase
-              .from("accounts")
-              .select("max_daily_dd_pct, max_total_dd_pct")
-              .eq("user_id", userId)
-              .order("created_at", { ascending: true })
-              .limit(1);
-            const c = verifierCoherence(fiche, cpt?.[0] ?? {});
+            // Les limites de perte du compte, déjà lues ci-dessus. Sans elles,
+            // le vérificateur ne peut PAS voir les contradictions qui opposent
+            // la fiche au compte (un risque par trade qui dépasse la perte
+            // maximale autorisée, par exemple) : il n'en rendait aucune.
+            const c = verifierCoherence(fiche, {
+              max_daily_dd_pct: compte?.max_daily_dd_pct ?? null,
+              max_total_dd_pct: compte?.max_total_dd_pct ?? null,
+            });
             coherence = {
               contradictions: c.constats.filter((x) => x.gravite === "bloquant").map((x) => x.code),
               a_regarder: c.constats.filter((x) => x.gravite === "serieux").map((x) => x.code),
@@ -2150,7 +2181,12 @@ export async function executeCoachTool(
 
         let q = supabase
           .from("trades")
-          .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score, checklist_total")
+          // ⚠️ PAS DE `checklist_total` ICI : ce n'est pas une colonne de
+          // `trades` mais le nombre d'éléments de la fiche stratégie. Demandée
+          // à la base, elle faisait refuser la requête ENTIÈRE (42703), et cet
+          // outil répondait donc TOUJOURS « Lecture des trades impossible ».
+          // Les dimensions rendues ci-dessous ne s'en servent pas.
+          .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score")
           .eq("user_id", userId)
           .eq("status", "closed")
           .order("open_time", { ascending: false })
@@ -2403,13 +2439,28 @@ export async function executeCoachTool(
       }
 
       case "get_leaderboard_standing": {
-        const [{ data: profile }, { data: badges }] = await Promise.all([
+        /**
+         * ⚠️⚠️ LA SÉRIE NE VIT PAS DANS `profiles`. Cet outil lisait
+         * `current_streak`, `best_streak` et `streak_freezes_used` — trois
+         * colonnes qui n'ont jamais existé. PostgREST refusait la lecture
+         * entière (42703), le client Supabase ne jette pas, et `profile` valait
+         * donc `null` POUR TOUT LE MONDE : le coach annonçait à chaque trader
+         * « tu n'as pas de pseudo public, tu n'apparais pas au classement »,
+         * pseudo ou pas, et une série de 0 jour à des traders qui en tenaient
+         * une de plusieurs semaines.
+         *
+         * La série a une source unique dans tout le produit, celle qu'emploient
+         * le tableau de bord et le profil public : `chargerLaSerieDeDiscipline`.
+         * Un deuxième calcul ici recréerait le défaut que ce module a corrigé.
+         */
+        const [{ data: profile }, { data: badges }, serie] = await Promise.all([
           supabase.from("profiles")
-            .select("username, current_streak, best_streak, streak_freezes_used, plan")
+            .select("username, plan")
             .eq("id", userId).maybeSingle(),
           supabase.from("badge_awards")
             .select("badge_key, awarded_at").eq("user_id", userId)
             .order("awarded_at", { ascending: false }).limit(30),
+          chargerLaSerieDeDiscipline(supabase, userId),
         ]);
         const earned = (badges ?? []) as unknown as { badge_key: string; awarded_at: string }[];
         return {
@@ -2418,8 +2469,8 @@ export async function executeCoachTool(
             // Sans pseudo public, le trader n'apparaît pas au classement : le
             // dire évite de lui chercher un rang qui n'existe pas.
             listed: !!profile?.username,
-            current_streak: profile?.current_streak ?? 0,
-            best_streak: profile?.best_streak ?? 0,
+            current_streak: serie.current,
+            best_streak: serie.record,
             badges_earned: earned.map((b) => b.badge_key),
             badges_count: earned.length,
             note: profile?.username

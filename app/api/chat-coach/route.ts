@@ -187,40 +187,29 @@ export async function POST(request: Request) {
       reserved = { userId, plan, timezone };
     }
 
-    // ── 4b bis. Statistiques du trader, calculées SERVEUR ──
-    // Remplace l'ancien dump des 60 derniers trades envoyé par le client. Trois
-    // gains : le prompt fond (le dump pesait 79 % du système), les chiffres
-    // deviennent fiables (agrégation déterministe plutôt qu'un modèle qui
-    // compte des lignes), et la surface d'injection disparaît puisque le
-    // contexte ne transite plus par le client. Le détail trade par trade reste
-    // accessible au coach via l'outil find_trades, à la demande.
-    let statsBlock = "";
-    try {
-      const { data: statTrades } = await sb
-        .from("trades")
-        .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score, checklist_total")
-        .eq("user_id", userId)
-        .eq("status", "closed")
-        .order("open_time", { ascending: false })
-        .limit(STATS_TRADE_LIMIT);
-      if (statTrades && statTrades.length > 0) {
-        statsBlock = renderStatsBlock(
-          computeTradeStats(statTrades as InsightTrade[], timezone),
-          timezone,
-        );
-      }
-    } catch {
-      // statistiques indisponibles — le coach répond sans elles
-    }
-
     // ── 4b bis. Stratégie du trader, lue SERVEUR ──
     // Le client n'envoyait qu'un résumé de cinq champs, sans `raw_text` : la
     // stratégie écrite par le trader lui-même. À la question « explique-moi les
     // étapes de ma stratégie », le coach n'avait donc rien à lire et improvisait
     // une méthode générique. On lit la source, ici, comme pour les statistiques.
     let strategyBlock = "";
+    /**
+     * Le nombre d'éléments de la checklist du trader.
+     *
+     * ⚠️⚠️ CE N'EST PAS UNE COLONNE DE `trades`, ET LE CROIRE A COÛTÉ TOUTES LES
+     * STATISTIQUES DU COACH. La lecture ci-dessous demandait `checklist_total`
+     * à la base : PostgREST refuse la requête ENTIÈRE (42703, « column
+     * trades.checklist_total does not exist »), le client Supabase ne jette
+     * pas, et `statTrades` valait donc `null` À CHAQUE MESSAGE. Le bloc de
+     * statistiques — celui-là même qui devait remplacer le dump des 60 trades —
+     * n'a jamais été envoyé au modèle, sans une ligne de journal.
+     *
+     * Le total vient de la FICHE STRATÉGIE (le score coché, lui, est sur le
+     * trade), exactement comme le fait la page Analyse IA.
+     */
+    let checklistTotal: number | null = null;
     try {
-      const { data: strategyRow } = await sb
+      const { data: strategyRow, error: strategyError } = await sb
         .from("strategies")
         .select("name, raw_text, pairs, sessions, risk_reward, max_sl_pips, max_trades_per_day, max_consecutive_losses, max_session_minutes, risk_per_trade_pct, setup_rules, id")
         .eq("user_id", userId)
@@ -253,9 +242,54 @@ export async function POST(request: Request) {
           // pas de vocabulaire personnalisé — les champs suffisent
         }
         strategyBlock = renderStrategyContext(strategyRow as StrategyRow, tagRows);
+        checklistTotal = Array.isArray(strategyRow.setup_rules) ? strategyRow.setup_rules.length : null;
+      } else if (strategyError) {
+        console.error(
+          "[chat-coach] fiche stratégie illisible, le coach perd la méthode du trader :",
+          strategyError.message,
+        );
       }
     } catch {
       // stratégie illisible — le coach le dira plutôt que d'en inventer une
+    }
+
+    // ── 4b ter. Statistiques du trader, calculées SERVEUR ──
+    // Remplace l'ancien dump des 60 derniers trades envoyé par le client. Trois
+    // gains : le prompt fond (le dump pesait 79 % du système), les chiffres
+    // deviennent fiables (agrégation déterministe plutôt qu'un modèle qui
+    // compte des lignes), et la surface d'injection disparaît puisque le
+    // contexte ne transite plus par le client. Le détail trade par trade reste
+    // accessible au coach via l'outil find_trades, à la demande.
+    //
+    // ⚠️ LA LECTURE PASSE APRÈS LA FICHE STRATÉGIE, et c'est voulu : le total de
+    // la checklist vient d'elle. L'ordre d'ASSEMBLAGE du prompt, lui, n'a pas
+    // bougé — le découpage du cache en dépend.
+    let statsBlock = "";
+    try {
+      const { data: statTrades, error: statsError } = await sb
+        .from("trades")
+        .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score")
+        .eq("user_id", userId)
+        .eq("status", "closed")
+        .order("open_time", { ascending: false })
+        .limit(STATS_TRADE_LIMIT);
+      if (statsError) {
+        console.error(
+          "[chat-coach] statistiques illisibles, le coach répond sans les chiffres du trader :",
+          statsError.message,
+        );
+      }
+      if (statTrades && statTrades.length > 0) {
+        statsBlock = renderStatsBlock(
+          computeTradeStats(
+            statTrades.map((t) => ({ ...t, checklist_total: checklistTotal })) as InsightTrade[],
+            timezone,
+          ),
+          timezone,
+        );
+      }
+    } catch {
+      // statistiques indisponibles — le coach répond sans elles
     }
 
     // Glossaires des écoles employées par CE trader, détectées dans sa fiche.

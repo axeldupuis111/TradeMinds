@@ -5,17 +5,53 @@ import { executeCoachConfirm, executeCoachTool } from "./coach-tools";
 const USER = "11111111-1111-4111-8111-111111111111";
 const ID = "22222222-2222-4222-8222-222222222222";
 
-/** Client simulé rendant une réponse différente à chaque requête enchaînée. */
-function mockClient(seq: { data?: unknown; error?: unknown; count?: number }[]) {
+type Reponse = { data?: unknown; error?: unknown; count?: number };
+
+/**
+ * Client simulé rendant une réponse différente à chaque requête enchaînée.
+ *
+ * ⚠️⚠️ UN CLIENT SIMULÉ NE VÉRIFIE NI LA TABLE NI LES COLONNES : il rend ce
+ * qu'on lui a préparé, quoi qu'on lui demande. C'est ainsi que les deux tests
+ * de `get_leaderboard_standing` ci-dessous ont certifié pendant des semaines
+ * une lecture qui échouait en production à CHAQUE appel — elle demandait
+ * `profiles.current_streak`, une colonne qui n'existe pas, et PostgREST refuse
+ * alors la requête entière. Le test, lui, voyait un profil complet.
+ *
+ * D'où la forme par TABLE ci-dessous : la réponse est choisie d'après la table
+ * réellement interrogée. Un outil qui change de table le fait voir, au lieu de
+ * consommer en silence la réponse préparée pour la précédente.
+ */
+function mockClient(reponses: Reponse[] | Record<string, Reponse | Reponse[]>) {
   let i = 0;
+  const restes: Record<string, Reponse[]> = {};
   const calls: { method: string; args: unknown[] }[] = [];
-  const builder: Record<string, unknown> = {};
-  const chain = (m: string) => (...args: unknown[]) => { calls.push({ method: m, args }); return builder; };
-  for (const m of ["select", "eq", "in", "is", "ilike", "gte", "lt", "order", "limit", "insert", "update", "delete", "upsert", "maybeSingle", "single"]) {
-    builder[m] = chain(m);
-  }
-  builder.then = (resolve: (v: unknown) => unknown) => resolve(seq[Math.min(i++, seq.length - 1)]);
-  const from = vi.fn((t: string) => { calls.push({ method: "from", args: [t] }); return builder; });
+
+  /**
+   * ⚠️ UN CONSTRUCTEUR PAR APPEL, et ce n'est pas un détail de style : plusieurs
+   * lectures partent ensemble dans un `Promise.all`. Avec un constructeur
+   * partagé, la dernière table demandée décidait de la réponse des trois, et le
+   * test se mettait à mesurer l'ordre d'exécution au lieu de l'outil.
+   */
+  const construire = (table: string) => {
+    const builder: Record<string, unknown> = {};
+    const chain = (m: string) => (...args: unknown[]) => { calls.push({ method: m, args }); return builder; };
+    for (const m of ["select", "eq", "neq", "in", "is", "ilike", "gte", "lte", "lt", "gt", "or", "range", "order", "limit", "insert", "update", "delete", "upsert", "maybeSingle", "single"]) {
+      builder[m] = chain(m);
+    }
+    builder.then = (resolve: (v: unknown) => unknown) => {
+      if (Array.isArray(reponses)) return resolve(reponses[Math.min(i++, reponses.length - 1)]);
+      const prete = reponses[table];
+      if (prete === undefined) {
+        throw new Error(`Table « ${table} » interrogée sans réponse préparée.`);
+      }
+      if (!Array.isArray(prete)) return resolve(prete);
+      const file = (restes[table] ??= [...prete]);
+      return resolve(file.length > 1 ? file.shift() : file[0]);
+    };
+    return builder;
+  };
+
+  const from = vi.fn((t: string) => { calls.push({ method: "from", args: [t] }); return construire(t); });
   return { client: { from } as unknown as SupabaseClient, calls };
 }
 const called = (calls: { method: string }[], m: string) => calls.some((c) => c.method === m);
@@ -53,7 +89,12 @@ describe("log_emotional_check", () => {
 
 describe("get_leaderboard_standing", () => {
   it("dit clairement qu'un trader sans pseudo n'apparaît pas au classement", async () => {
-    const { client } = mockClient([{ data: { username: null, current_streak: 3 }, error: null }, { data: [], error: null }]);
+    const { client } = mockClient({
+      profiles: { data: { username: null, plan: "plus" }, error: null },
+      badge_awards: { data: [], error: null },
+      trades: { data: [], error: null },
+      streak_freezes: { data: [], error: null },
+    });
     const r = await executeCoachTool(client, USER, "get_leaderboard_standing", {});
     const res = r.result as { listed: boolean; note: string };
     expect(res.listed).toBe(false);
@@ -61,15 +102,45 @@ describe("get_leaderboard_standing", () => {
   });
 
   it("remonte les badges obtenus", async () => {
-    const { client } = mockClient([
-      { data: { username: "axel", current_streak: 12, best_streak: 30 }, error: null },
-      { data: [{ badge_key: "streak_7", awarded_at: "2026-08-01" }, { badge_key: "regular", awarded_at: "2026-07-01" }], error: null },
-    ]);
+    const { client } = mockClient({
+      profiles: { data: { username: "axel", plan: "plus" }, error: null },
+      badge_awards: { data: [{ badge_key: "streak_7", awarded_at: "2026-08-01" }, { badge_key: "regular", awarded_at: "2026-07-01" }], error: null },
+      trades: { data: [], error: null },
+      streak_freezes: { data: [], error: null },
+    });
     const r = await executeCoachTool(client, USER, "get_leaderboard_standing", {});
     const res = r.result as { listed: boolean; badges_earned: string[]; badges_count: number };
     expect(res.listed).toBe(true);
     expect(res.badges_earned).toContain("streak_7");
     expect(res.badges_count).toBe(2);
+  });
+
+  /**
+   * ⚠️ LA SÉRIE VIENT DES TRADES, PAS DU PROFIL. Le test ne se contente pas de
+   * lire le chiffre rendu : il vérifie QUELLES TABLES l'outil interroge. Sans
+   * cela, un retour à `profiles.current_streak` repasserait au vert ici tout en
+   * ne renvoyant que des zéros à tous les traders, comme avant.
+   */
+  it("calcule la série depuis les trades, jamais depuis une colonne de profil", async () => {
+    const jour = (d: string) => `${d}T10:00:00.000Z`;
+    const { client, calls } = mockClient({
+      profiles: { data: { username: "axel", plan: "plus" }, error: null },
+      badge_awards: { data: [], error: null },
+      trades: {
+        data: [
+          { emotion: null, open_time: jour("2026-09-09") },
+          { emotion: null, open_time: jour("2026-09-10") },
+          { emotion: "revenge", open_time: jour("2026-09-11") },
+        ],
+        error: null,
+      },
+      streak_freezes: { data: [], error: null },
+    });
+    const r = await executeCoachTool(client, USER, "get_leaderboard_standing", {});
+    const res = r.result as { current_streak: number; best_streak: number };
+    expect(tables(calls)).toContain("trades");
+    expect(res.best_streak).toBeGreaterThan(0);
+    expect(res.current_streak).toBe(0); // la journée fautive coupe la série
   });
 });
 

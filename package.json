@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "verif:anon": "node scripts/verif-anon.mjs",
+    "schema:sync": "node scripts/schema-snapshot.mjs",
     "test": "vitest run",
     "eval:coach": "vitest run --config vitest.eval.config.ts"
   },
