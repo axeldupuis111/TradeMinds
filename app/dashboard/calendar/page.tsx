@@ -21,6 +21,8 @@ import {
   type Impact,
 } from "@/lib/economic-calendar";
 import { lookupGlossary, type GlossaryEntry, type GlossaryLang } from "@/lib/economic-glossary";
+import type { DeepDive } from "@/lib/economic-deep-dives/types";
+import { EventLesson, EventOutcomes } from "@/components/calendar/EventLesson";
 import { displayEventTitle } from "@/lib/economic-event-labels";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarClock, CalendarDays, ChevronDown, Filter, Sparkles, X } from "lucide-react";
@@ -102,41 +104,60 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
   const [source, setSource] = useState<"glossary" | "ai" | "demo" | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBeginner, setShowBeginner] = useState(false);
+  /**
+   * La leçon longue de l'annonce, quand elle en a une.
+   *
+   * Elle ne vit PAS dans le bundle : quatre langues de cours pour vingt-quatre
+   * annonces se téléchargeraient à l'ouverture de l'onglet pour, au mieux, une
+   * annonce lue. Le résumé reste local et s'affiche tout de suite, la leçon
+   * arrive de la route juste derrière (elle ne coûte aucun token : c'est du
+   * texte écrit à la main).
+   */
+  const [deepDive, setDeepDive] = useState<DeepDive | null>(null);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setShowBeginner(false);
+    setDeepDive(null);
 
-    // Curated glossary first — instant, no network.
+    // Glossaire local d'abord : instantané, sans réseau. Le trader lit le
+    // résumé pendant que la leçon arrive.
     const curated = lookupGlossary(ev.title, glossaryLang);
     if (curated) {
       setEntry(curated);
       setSource("glossary");
       setLoading(false);
-      return;
-    }
-
-    // ⚠️ Compte de démonstration : aucun appel au modèle (la route refuse).
-    // Le glossaire ci-dessus, lui, reste servi : il ne coûte rien.
-    if (demoMode) {
+    } else if (demoMode) {
+      // ⚠️ Compte de démonstration : aucun appel au modèle. La route refuse la
+      // génération, mais elle sert le glossaire et les leçons écrites à la main,
+      // qui ne coûtent rien : on ne l'interroge donc que si l'annonce est
+      // couverte, sinon on affiche directement la note de démo.
       setEntry(null);
       setSource("demo");
       setLoading(false);
       return;
+    } else {
+      setEntry(null);
+      setSource(null);
     }
 
-    // Fallback: cached / generated AI explanation.
-    setEntry(null);
-    setSource(null);
+    // La route sert deux choses : l'explication (glossaire, cache, ou
+    // génération ponctuelle) ET la leçon longue. On l'appelle même quand le
+    // résumé est déjà affiché, puisque c'est elle qui détient le cours.
     fetch("/api/economic-calendar/explain", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: ev.title, currency: ev.currency, lang: glossaryLang }),
     })
       .then((r) => r.json())
-      .then((data: { available?: boolean; source?: "glossary" | "ai"; whatItIs?: string; whyItMoves?: string; beginnerNote?: string }) => {
+      .then((data: { available?: boolean; source?: "glossary" | "ai"; whatItIs?: string; whyItMoves?: string; beginnerNote?: string; deepDive?: DeepDive | null }) => {
         if (!alive) return;
+        if (data.deepDive) setDeepDive(data.deepDive);
+        // ⚠️ NE JAMAIS ÉCRASER UN RÉSUMÉ DÉJÀ AFFICHÉ PAR UN ÉCHEC DE LA ROUTE.
+        // Le glossaire local fait autorité : si la requête échoue ou renvoie
+        // vide, le texte déjà à l'écran reste juste.
+        if (curated) return;
         if (data.available && data.whatItIs) {
           setEntry({ whatItIs: data.whatItIs, whyItMoves: data.whyItMoves || "", beginnerNote: data.beginnerNote || "" });
           setSource(data.source === "glossary" ? "glossary" : "ai");
@@ -145,7 +166,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
           setSource(null);
         }
       })
-      .catch(() => { if (alive) { setEntry(null); setSource(null); } })
+      .catch(() => { if (alive && !curated) { setEntry(null); setSource(null); } })
       .finally(() => { if (alive) setLoading(false); });
 
     return () => { alive = false; };
@@ -238,6 +259,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
                   <p className="text-sm text-foreground leading-relaxed">{entry.whyItMoves}</p>
                 </div>
               )}
+              {deepDive && <EventOutcomes deepDive={deepDive} t={t} />}
               {entry.beginnerNote && (
                 <div className="rounded-lg border border-border bg-surface overflow-hidden">
                   <button
@@ -252,6 +274,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
                   )}
                 </div>
               )}
+              {deepDive && <EventLesson deepDive={deepDive} t={t} />}
               {source === "ai" && (
                 <p className="flex items-center gap-1.5 text-[11px] text-foreground-muted">
                   <Sparkles className="w-3.5 h-3.5 text-accent" /> {t("cal_explained_by_ai")}

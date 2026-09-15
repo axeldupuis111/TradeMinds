@@ -10,11 +10,15 @@ import {
   normalizeIndicator,
   type GlossaryLang,
 } from "@/lib/economic-glossary";
+import { lookupDeepDive } from "@/lib/economic-deep-dives";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Explain a macro indicator that isn't in the curated static glossary.
+ *
+ * A curated indicator also carries a long-form lesson (lib/economic-deep-dives),
+ * hand-written in four languages and therefore free to serve.
  *
  * Resolution order (cheapest first):
  *   1. static glossary  → return immediately, no AI, source "glossary"
@@ -56,12 +60,6 @@ function serviceClient() {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
-  const refus = refusSiDemo(auth);
-  if (refus) return refus;
-  // 15/j : très au-delà de l'usage réel, mais borne le pire cas de coût IA
-  // (audit rentabilité 2026-07-03 : les caps anti-abus sont aussi des caps de déficit).
-  const limited = await rateLimitAi(auth.userId, "calendar-explain", 15, auth.timezone);
-  if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as {
     title?: string;
@@ -77,10 +75,15 @@ export async function POST(req: Request) {
   const norm = normalizeIndicator(title);
   if (!norm) return NextResponse.json({ available: false });
 
+  // La leçon longue, quand l'annonce en a une. Écrite à la main, donc servie
+  // à tout le monde pour zéro token : c'est la raison pour laquelle elle est
+  // réservée aux annonces récurrentes (voir lib/economic-deep-dives).
+  const deepDive = lookupDeepDive(title, lang);
+
   // 1. Static glossary — instant, trustworthy, no AI.
   const curated = lookupGlossary(title, lang);
   if (curated) {
-    return NextResponse.json({ available: true, source: "glossary", ...curated });
+    return NextResponse.json({ available: true, source: "glossary", ...curated, deepDive });
   }
 
   const key = indicatorId(title) ?? norm;
@@ -112,6 +115,7 @@ export async function POST(req: Request) {
         whatItIs: cached.what_it_is,
         whyItMoves: cached.why_it_moves,
         beginnerNote: cached.beginner_note,
+        deepDive,
       });
     }
   } catch {
@@ -134,6 +138,23 @@ export async function POST(req: Request) {
   }
 
   // 3. Generate once with the model.
+  //
+  // ⚠️ LA LIMITE DE DÉBIT EST ICI, PAS À L'ENTRÉE DE LA ROUTE. Elle borne le pire
+  // cas de coût IA (audit rentabilité 2026-07-03 : les caps anti-abus sont aussi
+  // des caps de déficit), et c'est la GÉNÉRATION qui coûte. Placée à l'entrée,
+  // elle comptait aussi le glossaire et le cache, qui ne coûtent RIEN : depuis
+  // que la page demande la leçon longue à chaque ouverture, quinze annonces
+  // consultées dans la journée suffisaient à fermer la porte pour du contenu
+  // gratuit et déjà écrit.
+  // ⚠️ LE REFUS DÉMO EST ICI POUR LA MÊME RAISON : ce qu'on interdit à un
+  // compte de démonstration, c'est de déclencher un appel au modèle. Le
+  // glossaire et les leçons écrites à la main ne coûtent rien et n'ont aucune
+  // raison de lui être cachés.
+  const refus = refusSiDemo(auth);
+  if (refus) return refus;
+  const limited = await rateLimitAi(auth.userId, "calendar-explain", 15, auth.timezone);
+  if (limited) return limited;
+
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ available: false });
 
@@ -194,6 +215,7 @@ N'invente JAMAIS de chiffre, de prévision ou de valeur. Décris seulement le r�
       whatItIs: parsed.whatItIs,
       whyItMoves: parsed.whyItMoves,
       beginnerNote: parsed.beginnerNote,
+      deepDive,
     });
   } catch (err) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();
