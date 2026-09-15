@@ -276,11 +276,37 @@ export default function GoalsStreaks() {
     ? achievements.reduce((a, b) => a.unlocked_at > b.unlocked_at ? a : b).key
     : null;
 
-  // Prochain palier de streak (3 → 10 → 30) pour la barre de progression
-  const nextMilestone = streak < 3 ? 3 : streak < 10 ? 10 : streak < 30 ? 30 : null;
-  const prevMilestone = streak < 3 ? 0 : streak < 10 ? 3 : streak < 30 ? 10 : 30;
+  /**
+   * PROCHAIN PALIER DE SÉRIE (3 → 10 → 30) POUR LA BARRE DE PROGRESSION.
+   *
+   * ⚠️⚠️ IL SE DÉDUISAIT DE LA SEULE SÉRIE EN COURS, ET PROMETTAIT DONC UN
+   * BADGE DÉJÀ GAGNÉ. Mesuré le 2026-09-15 : série de 7 jours, badge
+   * « 10 jours de discipline » débloqué en juillet et affiché comme acquis sur
+   * le profil public. La carte annonçait « Prochain badge dans 3 jours, 7/10 ».
+   * Trois jours plus tard, rien : la boucle d'attribution passe le badge
+   * (`existing.has(badge.key)`), donc ni confettis, ni bannière, ni ligne en
+   * base. Le produit promettait une récompense qu'il ne pouvait pas remettre.
+   *
+   * ⚠️ LE PALIER VISÉ EST DONC LE PREMIER NON ENCORE DÉBLOQUÉ, lu là où les
+   * badges vivent vraiment : `unlockedKeys`.
+   */
+  const PALIERS_SERIE = [3, 10, 30] as const;
+  const CLE_DU_PALIER: Record<number, string> = {
+    3: "discipline_3",
+    10: "discipline_10",
+    30: "discipline_30",
+  };
+  const nextMilestone = PALIERS_SERIE.find((p) => !unlockedKeys.has(CLE_DU_PALIER[p])) ?? null;
+  const prevMilestone = PALIERS_SERIE.filter((p) => p < (nextMilestone ?? Infinity)).pop() ?? 0;
+  /**
+   * ⚠️ LE POINT DE DÉPART DE LA BARRE SUIT LA SÉRIE, PAS LE PALIER PRÉCÉDENT.
+   * Une série retombée SOUS le palier précédent (7 jours quand le palier visé
+   * est 30) donnait un pourcentage négatif, donc une barre vide alors que le
+   * trader a déjà fait les deux tiers du chemin.
+   */
+  const departBarre = streak >= prevMilestone ? prevMilestone : 0;
   const milestonePct = nextMilestone
-    ? Math.min(100, ((streak - prevMilestone) / (nextMilestone - prevMilestone)) * 100)
+    ? Math.max(0, Math.min(100, ((streak - departBarre) / (nextMilestone - departBarre)) * 100))
     : 100;
   const celebratedBadge = celebrating ? BADGE_DEFS.find((b) => b.key === celebrating) : null;
 
@@ -352,7 +378,10 @@ export default function GoalsStreaks() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] text-foreground-muted">
-              {t("goals_next_badge", { n: nextMilestone - streak })}
+              {/* ⚠️ Jamais de nombre négatif : une série qui dépasse un palier
+                  non encore écrit en base (insertion refusée, et journalisée)
+                  donnerait « Prochain badge dans -2 jours ». */}
+              {t("goals_next_badge", { n: Math.max(0, nextMilestone - streak) })}
             </span>
             <span className="text-[11px] text-foreground-muted tabular-nums">{streak}/{nextMilestone}</span>
           </div>

@@ -63,6 +63,39 @@ export default function UpgradePage() {
     setCheckoutError(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * L'ARRIVÉE SUR CETTE PAGE EST L'ÉTAPE DU TUNNEL, PAS LE CLIC D'UN BOUTON
+   * PRÉCIS.
+   *
+   * ⚠️⚠️ `upgrade_cta_clicked` N'ÉTAIT POSÉ QUE SUR TROIS BOUTONS, tous dans
+   * `app/dashboard/analysis`. Le produit compte DIX-HUIT chemins vers cette
+   * page : la barre latérale, la palette de commandes, le dock du coach, le
+   * calculateur de position, l'import CSV, le panneau d'un trade, le bandeau
+   * d'abonnement, le débrief de séance, le plan de la semaine, le backtest…
+   * Le tableau de bord d'administration annonçait donc « 0 utilisateur a
+   * cliqué sur une offre » pendant que deux paiements se lançaient : le
+   * chiffre qui sert à décider quoi construire ne mesurait qu'un quinzième de
+   * la surface.
+   *
+   * ⚠️ ON MESURE DONC L'ARRIVÉE, une seule fois par visite, avec la page de
+   * départ comme source. Les trois boutons de l'analyse gardent leur source
+   * précise : `upgradeCtaUsers` compte des utilisateurs DISTINCTS, un doublon
+   * ne fausse rien, et la ventilation y gagne le chemin réel.
+   */
+  const arriveeMesuree = useRef(false);
+  useEffect(() => {
+    if (arriveeMesuree.current) return;
+    arriveeMesuree.current = true;
+    let source = "direct";
+    try {
+      const venant = document.referrer ? new URL(document.referrer) : null;
+      if (venant && venant.host === window.location.host) source = venant.pathname;
+    } catch {
+      // Référent illisible : « direct » reste vrai du point de vue de la mesure.
+    }
+    track("upgrade_cta_clicked", { source: `page:${source}` });
+  }, []);
+
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [welcomePlan, setWelcomePlan] = useState<"plus" | "premium">("plus");
   const [isPlanReady, setIsPlanReady] = useState(false);
