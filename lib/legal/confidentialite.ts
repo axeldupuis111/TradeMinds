@@ -4,7 +4,7 @@ import { COMPANY } from "./company";
 const content: LegalContent = {
   fr: {
     title: "Politique de confidentialité",
-    updated: "Dernière mise à jour : 7 août 2026",
+    updated: "Dernière mise à jour : 15 septembre 2026",
     sections: [
       {
         heading: "1. Responsable du traitement",
@@ -63,7 +63,7 @@ const content: LegalContent = {
               "Supabase : hébergement de la base de données (UE) ;",
               "Anthropic (Claude) : génération des analyses IA (vos données de trading sont transmises pour analyse) ;",
               "Stripe : traitement des paiements ;",
-              "Vercel : hébergement de l'application ;",
+              "Vercel : hébergement de l'application et mesure d'audience (voir la section 10) ;",
               "Resend : envoi des emails transactionnels.",
               "Google : transcription de la dictée vocale, uniquement si vous activez cette fonction et selon le navigateur utilisé (voir la section 7).",
             ],
@@ -134,11 +134,33 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Cookies",
+        heading: "10. Cookies et stockage local",
         blocks: [
           {
             kind: "p",
-            text: `${COMPANY.brand} n'utilise que des cookies strictement nécessaires au fonctionnement du service (session d'authentification). Aucun cookie publicitaire ou de pistage tiers n'est utilisé ; aucun consentement préalable n'est donc requis pour ces cookies essentiels.`,
+            text: `${COMPANY.brand} n'utilise aucun cookie publicitaire et aucun cookie de pistage tiers. Les informations enregistrées sur votre appareil, qu'il s'agisse de cookies ou du stockage local de votre navigateur, se limitent à celles listées ci-dessous.`,
+          },
+          {
+            kind: "ul",
+            items: [
+              "Session d'authentification et sécurité des connexions (cookies) : vous garde connecté d'une page à l'autre et protège le rattachement de votre compte broker. Strictement nécessaire au service, aucun consentement requis ;",
+              "Langue d'affichage (cookie et stockage local) : affiche le site dans la langue que vous avez choisie. Préférence d'affichage, aucun consentement requis ;",
+              "Thème clair ou sombre (stockage local) : mémorise votre choix d'apparence. Préférence d'affichage, aucun consentement requis ;",
+              "Confort d'usage dans l'application (stockage local et stockage de session) : par exemple les filtres de listes, le compte sélectionné, les cartes repliées, les alertes déjà vues, l'état de vos sessions de trading en cours. Ces informations ne quittent pas votre appareil ;",
+              "Source d'arrivée (stockage local, 30 jours) : voir ci-dessous.",
+            ],
+          },
+          {
+            kind: "p",
+            text: "Mesure d'audience : nous mesurons la fréquentation du site avec Vercel Web Analytics et Vercel Speed Insights. Ces outils n'écrivent aucun cookie et n'enregistrent rien sur votre appareil, ne vous suivent pas d'un site à l'autre et ne construisent aucun profil publicitaire. Ils produisent des statistiques agrégées : pages consultées, provenance générale, temps de chargement.",
+          },
+          {
+            kind: "p",
+            text: "Source d'arrivée : si vous découvrez le service par le lien d'un partenaire ou d'une campagne, cette provenance est mémorisée dans le stockage local de votre navigateur pendant 30 jours. Elle sert uniquement à rémunérer le partenaire qui vous a fait connaître le service si vous vous abonnez. Elle reste dans votre navigateur, n'est transmise à aucun tiers, et n'est lue qu'au moment d'une inscription ou d'un abonnement.",
+          },
+          {
+            kind: "p",
+            text: "Vous pouvez à tout moment consulter, bloquer ou effacer ces informations depuis les réglages de votre navigateur, ou naviguer en navigation privée. Effacer la session d'authentification vous déconnecte ; bloquer le stockage local n'empêche pas d'utiliser le service.",
           },
         ],
       },
@@ -170,7 +192,7 @@ const content: LegalContent = {
   },
   en: {
     title: "Privacy Policy",
-    updated: "Last updated: August 7, 2026",
+    updated: "Last updated: September 15, 2026",
     sections: [
       {
         heading: "1. Data controller",
@@ -229,7 +251,7 @@ const content: LegalContent = {
               "Supabase: database hosting (EU);",
               "Anthropic (Claude): AI analysis generation (your trading data is sent for analysis);",
               "Stripe: payment processing;",
-              "Vercel: application hosting;",
+              "Vercel: application hosting and audience measurement (see section 10);",
               "Resend: transactional email delivery.",
               "Google: transcription of voice dictation, only if you enable that feature and depending on the browser used (see section 7).",
             ],
@@ -297,11 +319,33 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Cookies",
+        heading: "10. Cookies and local storage",
         blocks: [
           {
             kind: "p",
-            text: `${COMPANY.brand} only uses cookies strictly necessary for the operation of the service (authentication session). No advertising or third-party tracking cookies are used; no prior consent is therefore required for these essential cookies.`,
+            text: `${COMPANY.brand} uses no advertising cookies and no third-party tracking cookies. The information stored on your device, whether cookies or your browser's local storage, is limited to the items listed below.`,
+          },
+          {
+            kind: "ul",
+            items: [
+              "Authentication session and connection security (cookies): keeps you signed in from page to page and protects the linking of your broker account. Strictly necessary for the service, no consent required;",
+              "Display language (cookie and local storage): shows the site in the language you selected. Display preference, no consent required;",
+              "Light or dark theme (local storage): remembers your appearance choice. Display preference, no consent required;",
+              "In-app convenience (local and session storage): for example list filters, the selected account, collapsed cards, alerts already seen, the state of your ongoing trading sessions. This information never leaves your device;",
+              "Referral source (local storage, 30 days): see below.",
+            ],
+          },
+          {
+            kind: "p",
+            text: "Audience measurement: we measure site traffic with Vercel Web Analytics and Vercel Speed Insights. These tools write no cookie and store nothing on your device, do not follow you from site to site, and build no advertising profile. They produce aggregate statistics: pages viewed, general origin, loading times.",
+          },
+          {
+            kind: "p",
+            text: "Referral source: if you discover the service through a partner link or a campaign, that origin is stored in your browser's local storage for 30 days. It is used solely to pay the partner who introduced you to the service, should you subscribe. It stays in your browser, is passed to no third party, and is read only when you create an account or subscribe.",
+          },
+          {
+            kind: "p",
+            text: "You can view, block or erase this information at any time from your browser settings, or browse in private mode. Erasing the authentication session signs you out; blocking local storage does not prevent you from using the service.",
           },
         ],
       },
@@ -334,7 +378,7 @@ const content: LegalContent = {
   },
   es: {
     title: "Política de privacidad",
-    updated: "Última actualización: 7 de agosto de 2026",
+    updated: "Última actualización: 15 de septiembre de 2026",
     sections: [
       {
         heading: "1. Responsable del tratamiento",
@@ -393,7 +437,7 @@ const content: LegalContent = {
               "Supabase: alojamiento de la base de datos (UE);",
               "Anthropic (Claude): generación de análisis de IA (sus datos de trading se transmiten para su análisis);",
               "Stripe: tratamiento de los pagos;",
-              "Vercel: alojamiento de la aplicación;",
+              "Vercel: alojamiento de la aplicación y medición de audiencia (véase la sección 10);",
               "Resend: envío de correos transaccionales.",
               "Google: transcripción del dictado por voz, únicamente si activa esta función y según el navegador utilizado (véase la sección 7).",
             ],
@@ -461,11 +505,33 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Cookies",
+        heading: "10. Cookies y almacenamiento local",
         blocks: [
           {
             kind: "p",
-            text: `${COMPANY.brand} solo utiliza cookies estrictamente necesarias para el funcionamiento del servicio (sesión de autenticación). No se utiliza ninguna cookie publicitaria ni de seguimiento de terceros; por tanto, no se requiere consentimiento previo para estas cookies esenciales.`,
+            text: `${COMPANY.brand} no utiliza ninguna cookie publicitaria ni ninguna cookie de seguimiento de terceros. La información registrada en su dispositivo, ya sean cookies o el almacenamiento local de su navegador, se limita a los elementos enumerados a continuación.`,
+          },
+          {
+            kind: "ul",
+            items: [
+              "Sesión de autenticación y seguridad de las conexiones (cookies): le mantiene conectado de una página a otra y protege la vinculación de su cuenta de bróker. Estrictamente necesaria para el servicio, no se requiere consentimiento;",
+              "Idioma de visualización (cookie y almacenamiento local): muestra el sitio en el idioma que ha elegido. Preferencia de visualización, no se requiere consentimiento;",
+              "Tema claro u oscuro (almacenamiento local): recuerda su elección de apariencia. Preferencia de visualización, no se requiere consentimiento;",
+              "Comodidad de uso en la aplicación (almacenamiento local y de sesión): por ejemplo los filtros de listas, la cuenta seleccionada, las tarjetas plegadas, las alertas ya vistas, el estado de sus sesiones de trading en curso. Esta información no sale de su dispositivo;",
+              "Origen de llegada (almacenamiento local, 30 días): véase más abajo.",
+            ],
+          },
+          {
+            kind: "p",
+            text: "Medición de audiencia: medimos el tráfico del sitio con Vercel Web Analytics y Vercel Speed Insights. Estas herramientas no escriben ninguna cookie ni registran nada en su dispositivo, no le siguen de un sitio a otro y no elaboran ningún perfil publicitario. Producen estadísticas agregadas: páginas consultadas, procedencia general, tiempos de carga.",
+          },
+          {
+            kind: "p",
+            text: "Origen de llegada: si descubre el servicio a través del enlace de un socio o de una campaña, esa procedencia se guarda en el almacenamiento local de su navegador durante 30 días. Sirve únicamente para remunerar al socio que le dio a conocer el servicio, si usted se suscribe. Permanece en su navegador, no se transmite a ningún tercero y solo se lee en el momento de crear una cuenta o suscribirse.",
+          },
+          {
+            kind: "p",
+            text: "Puede consultar, bloquear o borrar esta información en cualquier momento desde los ajustes de su navegador, o navegar en modo privado. Borrar la sesión de autenticación le desconecta; bloquear el almacenamiento local no impide utilizar el servicio.",
           },
         ],
       },
@@ -498,7 +564,7 @@ const content: LegalContent = {
   },
   de: {
     title: "Datenschutzerklärung",
-    updated: "Letzte Aktualisierung: 7. August 2026",
+    updated: "Letzte Aktualisierung: 15. September 2026",
     sections: [
       {
         heading: "1. Verantwortlicher",
@@ -557,7 +623,7 @@ const content: LegalContent = {
               "Supabase: Hosting der Datenbank (EU);",
               "Anthropic (Claude): Erstellung der KI-Analysen (Ihre Trading-Daten werden zur Analyse übermittelt);",
               "Stripe: Zahlungsabwicklung;",
-              "Vercel: Hosting der Anwendung;",
+              "Vercel: Hosting der Anwendung und Reichweitenmessung (siehe Abschnitt 10);",
               "Resend: Versand transaktionaler E-Mails.",
               "Google: Transkription der Spracheingabe, nur wenn Sie diese Funktion aktivieren und je nach verwendetem Browser (siehe Abschnitt 7).",
             ],
@@ -625,11 +691,33 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Cookies",
+        heading: "10. Cookies und lokaler Speicher",
         blocks: [
           {
             kind: "p",
-            text: `${COMPANY.brand} verwendet nur Cookies, die für den Betrieb des Dienstes unbedingt erforderlich sind (Authentifizierungssitzung). Es werden keine Werbe- oder Tracking-Cookies von Dritten verwendet; für diese essenziellen Cookies ist daher keine vorherige Einwilligung erforderlich.`,
+            text: `${COMPANY.brand} verwendet keine Werbe-Cookies und keine Tracking-Cookies von Dritten. Die auf Ihrem Gerät gespeicherten Informationen, seien es Cookies oder der lokale Speicher Ihres Browsers, beschränken sich auf die unten aufgeführten Einträge.`,
+          },
+          {
+            kind: "ul",
+            items: [
+              "Authentifizierungssitzung und Verbindungssicherheit (Cookies): hält Sie von Seite zu Seite angemeldet und schützt die Verknüpfung Ihres Broker-Kontos. Für den Dienst unbedingt erforderlich, keine Einwilligung nötig;",
+              "Anzeigesprache (Cookie und lokaler Speicher): zeigt die Website in der von Ihnen gewählten Sprache an. Anzeigepräferenz, keine Einwilligung nötig;",
+              "Helles oder dunkles Design (lokaler Speicher): merkt sich Ihre Darstellungswahl. Anzeigepräferenz, keine Einwilligung nötig;",
+              "Bedienkomfort in der Anwendung (lokaler Speicher und Sitzungsspeicher): zum Beispiel Listenfilter, das ausgewählte Konto, eingeklappte Karten, bereits gesehene Hinweise, der Stand Ihrer laufenden Trading-Sitzungen. Diese Informationen verlassen Ihr Gerät nicht;",
+              "Herkunft des Besuchs (lokaler Speicher, 30 Tage): siehe unten.",
+            ],
+          },
+          {
+            kind: "p",
+            text: "Reichweitenmessung: wir messen die Besucherzahlen der Website mit Vercel Web Analytics und Vercel Speed Insights. Diese Werkzeuge schreiben kein Cookie und speichern nichts auf Ihrem Gerät, verfolgen Sie nicht von Website zu Website und erstellen kein Werbeprofil. Sie liefern aggregierte Statistiken: aufgerufene Seiten, allgemeine Herkunft, Ladezeiten.",
+          },
+          {
+            kind: "p",
+            text: "Herkunft des Besuchs: wenn Sie den Dienst über den Link eines Partners oder einer Kampagne entdecken, wird diese Herkunft 30 Tage lang im lokalen Speicher Ihres Browsers abgelegt. Sie dient ausschließlich dazu, den Partner zu vergüten, der Ihnen den Dienst bekannt gemacht hat, falls Sie ein Abonnement abschließen. Sie bleibt in Ihrem Browser, wird an keinen Dritten weitergegeben und wird nur bei einer Registrierung oder einem Abonnement gelesen.",
+          },
+          {
+            kind: "p",
+            text: "Sie können diese Informationen jederzeit in den Einstellungen Ihres Browsers einsehen, blockieren oder löschen oder im privaten Modus surfen. Das Löschen der Authentifizierungssitzung meldet Sie ab; das Blockieren des lokalen Speichers hindert Sie nicht an der Nutzung des Dienstes.",
           },
         ],
       },
