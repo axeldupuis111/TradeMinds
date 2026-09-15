@@ -20,9 +20,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * ils portent le même nom. Et c'est le chiffre dont le produit tire son nom.
  *
  * ⚠️ LA DÉFINITION RETENUE EST CELLE DES TRADES, pas celle des bilans : c'est
- * elle que les badges, les gels et les paliers utilisent déjà, et un trader qui
- * n'écrit pas de bilan a quand même une série. La version « bilans » comptait
- * en réalité tout autre chose : la régularité de la relecture.
+ * elle que les gels et les paliers utilisent déjà, et un trader qui n'écrit pas
+ * de bilan a quand même une série. La version « bilans » compte en réalité tout
+ * autre chose : la régularité de la relecture.
+ *
+ * ⚠️⚠️ ET LE CLASSEMENT GARDE LA SIENNE, VOLONTAIREMENT. Ce commentaire disait
+ * « c'est elle que LES BADGES utilisent déjà » : c'était faux, et personne ne
+ * l'avait vérifié. Les badges du classement (`lib/badges.ts`) reçoivent la
+ * série calculée par `app/api/leaderboard/route.ts` — jours calendaires
+ * consécutifs avec un bilan de séance à 70 ou plus — et c'est cohérent avec le
+ * reste de cette page, qui ne récompense QUE le rituel du bilan (« Régulier »,
+ * « Lève-tôt », « Gardien du week-end », « 10 jours en or »).
+ *
+ * ⚠️ CE QUI ÉTAIT FAUX, C'ÉTAIT L'ÉTIQUETTE. Le tableau de bord annonçait
+ * « 7 jours de discipline » pendant que le classement affichait « Meilleure
+ * série : 0 » et un badge « 7 jours d'affilée » non obtenu, avec pour indice
+ * « Enchaîne 7 jours de discipline d'affilée » — les mots du tableau de bord.
+ * Deux mesures différentes peuvent coexister ; deux mesures différentes SOUS LE
+ * MÊME NOM, non. Les libellés du classement disent maintenant qu'ils comptent
+ * des BILANS.
  *
  * ⚠️ LA LECTURE EST PAGINÉE, ET CE N'EST PAS UN DÉTAIL : non bornée, elle
  * s'arrête à mille trades en silence (voir supabase-paginate.ts) et la série

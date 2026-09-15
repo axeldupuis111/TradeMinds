@@ -4,6 +4,8 @@
  * at any size. Add a motif here and reference it by key from a post's `cover`.
  */
 
+import { useId } from "react";
+
 type Motif = (a: string, m: string) => JSX.Element;
 
 // a = accent color, m = muted line color (both CSS-var based)
@@ -106,15 +108,37 @@ export default function BlogIllustration({ name, className }: { name?: string; c
   const motif = (name && MOTIFS[name]) || MOTIFS.trend;
   const accent = "rgb(var(--accent))";
   const muted = "rgb(var(--foreground))";
+  /**
+   * ⚠️ UN IDENTIFIANT PAR VIGNETTE, ET C'EST LA CORRECTION D'UN VRAI DÉFAUT :
+   * l'identifiant du dégradé était écrit en dur, si bien que la liste du blog
+   * servait TRENTE ET UN éléments portant `id="blogill-bg"` dans la même page.
+   * Un document HTML n'a pas le droit d'avoir deux fois le même identifiant, et
+   * `url(#…)` ne désigne alors QUE LE PREMIER : les trente autres vignettes
+   * peignaient le dégradé de la première. Il se trouve qu'ils sont identiques
+   * aujourd'hui, donc rien ne se voyait — la première variante de motif, ou le
+   * premier filtre, aurait rendu le défaut visible d'un coup.
+   */
+  const idFond = `${useId()}bg`;
   return (
-    <svg viewBox="0 0 400 220" className={className} role="img" aria-hidden preserveAspectRatio="xMidYMid slice">
+    <svg
+      viewBox="0 0 400 220"
+      className={className}
+      /**
+       * ⚠️ DÉCORATIVE, DONC MASQUÉE. `role="img"` annonçait une image aux
+       * lecteurs d'écran pendant que `aria-hidden` la retirait de l'arbre : les
+       * deux ensemble ne veulent rien dire. Ces vignettes n'apportent aucune
+       * information que le titre de l'article ne porte déjà.
+       */
+      aria-hidden="true"
+      preserveAspectRatio="xMidYMid slice"
+    >
       <defs>
-        <linearGradient id="blogill-bg" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={idFond} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.12" />
           <stop offset="100%" stopColor="rgb(var(--surface))" stopOpacity="0.6" />
         </linearGradient>
       </defs>
-      <rect x="0" y="0" width="400" height="220" fill="url(#blogill-bg)" />
+      <rect x="0" y="0" width="400" height="220" fill={`url(#${idFond})`} />
       {motif(accent, muted)}
     </svg>
   );

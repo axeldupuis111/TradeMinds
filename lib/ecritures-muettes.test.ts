@@ -51,6 +51,22 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
      */
     "components/community",
     "components/dashboard",
+    /**
+     * ⚠️⚠️ ET LA LISTE ELLE-MÊME ÉTAIT LE DÉFAUT. Nommer les dossiers un par un
+     * garantit qu'il en manque : `components/coach` (envoyer un message, vider
+     * l'historique, confirmer une action du coach), `components/backtest`
+     * (enregistrer une version), `components/calendar` (se faire prévenir d'une
+     * annonce), `components/leaderboard`, `components/upgrade` — tous pleins de
+     * gestes du trader, aucun dans la liste. On vise donc TOUT `components`, et
+     * les trois pages publiques où le visiteur écrit quelque chose.
+     *
+     * Ce qui reste volontairement dehors est ce que le commentaire du haut
+     * décrit : crons, webhooks, télémétrie, sous `app/api`.
+     */
+    "components",
+    "app/partner",
+    "app/login",
+    "app/contact",
   ];
 
   const SAUT = new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10));

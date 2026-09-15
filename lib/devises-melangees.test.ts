@@ -203,4 +203,86 @@ describe("les totaux en devises mêlées", () => {
       "{!devisesMelangees && curves && curves.finalGap > 0",
     );
   });
+
+  /**
+   * ── LA MÊME RÈGLE, LE RESTE DE LA PAGE ANALYTICS ────────────────────────────
+   *
+   * ⚠️⚠️ ELLE N'ÉTAIT TENUE QUE PAR LES QUATRE CARTES DU HAUT. Tout ce qui suit
+   * formatait avec `pageCurrency`, qui retombe sur l'euro dès que la vue mêle
+   * plusieurs monnaies. Relevé à l'écran sur le journal EUR + USD d'Axel :
+   *
+   *   - « Comparaison des stratégies » : « ICT Liquidité -6 343€ » et « Sans
+   *     stratégie -727€ », deux lignes qui ajoutaient des dollars à des euros
+   *     (les totaux réels sont -6 619,77 € ET -449,36 $) ;
+   *   - « Est-ce que tu progresses ? » : « P&L net : -8 184€ → -449€, ↑7 734€ »,
+   *     un écart obtenu en soustrayant des dollars à des euros ;
+   *   - et les cartes « jour le moins performant », « meilleure heure »,
+   *     « paire à risque », « émotion à risque », la courbe de capital, le
+   *     drawdown, la heatmap.
+   *
+   * ⚠️ PENDANT CE TEMPS LE BANDEAU DU HAUT AFFIRMAIT « les totaux sont donnés
+   * séparément ». La règle était écrite, dite au trader, et appliquée à un
+   * cinquième de la page.
+   */
+  it("Analytics ne montre aucun total additionné quand les devises se mêlent", () => {
+    const src = lire("app/dashboard/analytics/page.tsx");
+    expect(src, "le bloc d'explication manque").toContain(
+      't("analytics_devises_melangees_bloc")',
+    );
+    expect(
+      src,
+      "les blocs de montants ne sont plus protégés par le mélange de devises",
+    ).toMatch(/\{devisesMelangees \? \(/);
+    // Et la protection couvre bien jusqu'au dernier bloc de la page.
+    const apresGarde = src.slice(src.indexOf("{devisesMelangees ? ("));
+    expect(
+      apresGarde,
+      "la comparaison de stratégies est sortie de la protection",
+    ).toContain("<StrategyCompareBlock");
+    expect(
+      apresGarde,
+      "la comparaison de périodes est sortie de la protection",
+    ).toContain("<PeriodCompareBlock");
+    expect(
+      apresGarde,
+      "le graphique d'émotions est sorti de la protection",
+    ).toContain("<EmotionalTrendChart");
+  });
+
+  /**
+   * ── ET L'ONGLET PROJECTION, OÙ LE SÉLECTEUR NE CHANGEAIT QUE L'ÉTIQUETTE ────
+   *
+   * ⚠️⚠️ LA PAGE LISAIT TOUS LES TRADES DU JOURNAL, puis affichait les montants
+   * dans la devise du compte sélectionné et calculait le risque de ruine sur SON
+   * capital. Choisir un autre compte rendait donc les mêmes chiffres avec un
+   * autre symbole, et sur un journal mêlant deux monnaies l'espérance par trade
+   * additionnait des euros à des dollars.
+   */
+  it("la projection ne porte que sur les trades du compte choisi", () => {
+    const src = lire("app/dashboard/projection/page.tsx");
+    expect(src, "les trades ne sont pas filtrés par compte").toContain(
+      "selectedAccountId ? trades.filter((x) => x.challenge_id === selectedAccountId) : trades",
+    );
+    expect(src, "la lecture ne ramène pas le compte du trade").toContain("challenge_id,");
+    expect(src, "la devise ne se déduit pas des trades projetés").toContain(
+      "commonCurrency(tradesDuCompte.map((x) => x.challenge_id), currencyMap)",
+    );
+    expect(src, "la page projette encore des devises mêlées").toMatch(
+      /\) : devisesMelangees \? \(/,
+    );
+    // Plus aucun calcul ne part de la liste brute : tout passe par le périmètre
+    // du compte. Un retour à `trades` ici recrée le défaut en silence.
+    expect(
+      src.match(/\btrades\.filter\(/g) ?? [],
+      "un calcul repart de tous les trades au lieu du compte choisi",
+    ).toHaveLength(1); // la seule occurrence restante est le filtre ci-dessus
+  });
+
+  it("le message de blocage existe dans les quatre langues", () => {
+    for (const [nom, dico] of Object.entries({ fr: frDict, en: enDict, es: esDict, de: deDict })) {
+      const texte = (dico as Record<string, string>)["analytics_devises_melangees_bloc"];
+      expect(texte, `analytics_devises_melangees_bloc manque en ${nom}`).toBeTruthy();
+      expect(texte.length).toBeGreaterThan(60);
+    }
+  });
 });

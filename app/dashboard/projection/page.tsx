@@ -37,7 +37,7 @@ import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerCo
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
-import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
 import {
   MIN_TRADES,
@@ -94,6 +94,18 @@ interface TradeRow {
   commission: number | null;
   swap: number | null;
   strategy_id: string | null;
+  /**
+   * Le compte auquel le trade appartient.
+   *
+   * ⚠️⚠️ SANS LUI, LE SÉLECTEUR DE COMPTE DU BANDEAU NE CHANGEAIT QUE
+   * L'ÉTIQUETTE. La page lisait TOUS les trades clôturés du trader, puis
+   * affichait les montants dans la devise du compte sélectionné et calculait le
+   * risque de ruine sur SON capital. Passer d'un compte en euros à un compte en
+   * dollars rendait donc exactement les mêmes chiffres, avec l'autre symbole ;
+   * et sur un journal qui mêle les deux, l'espérance additionnait des euros à
+   * des dollars.
+   */
+  challenge_id: string | null;
   // Dimensions de regroupement : elles servent à dire OÙ l'argent part, pas
   // seulement combien. Sans elles, l'onglet annonce un mur sans indiquer le mur.
   pair: string | null;
@@ -114,7 +126,7 @@ const COLONNES_STRATEGIE =
 export default function ProjectionPage() {
   const { t, lang } = useLanguage();
   const { plan, demoMode, loading: abonnementEnCours } = usePlan();
-  const { selectedAccount } = useActiveAccount();
+  const { accounts, selectedAccount, selectedAccountId } = useActiveAccount();
   const c = useChartColors();
   const supabase = createClient();
 
@@ -158,7 +170,7 @@ export default function ProjectionPage() {
         fetchAllRows<TradeRow>((from, to) =>
           supabase
             .from("trades")
-            .select("open_time, pnl, commission, swap, strategy_id, pair, direction, emotion, ict_setup")
+            .select("open_time, pnl, commission, swap, strategy_id, challenge_id, pair, direction, emotion, ict_setup")
             .eq("user_id", user.id)
             .eq("status", "closed")
             .order("id", { ascending: true })
@@ -192,7 +204,40 @@ export default function ProjectionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estPremium]);
 
-  const devise = selectedAccount?.synced_currency || selectedAccount?.currency || DEFAULT_CURRENCY;
+  /**
+   * LES TRADES DU COMPTE CHOISI, ET EUX SEULS.
+   *
+   * ⚠️⚠️ LA PAGE PROJETAIT TOUT LE JOURNAL EN DISANT « ton compte ». Le
+   * sélecteur du bandeau décidait déjà de la devise affichée et du capital qui
+   * sert de base au risque de ruine, mais pas des trades : un trader avec un
+   * compte à 100 000 € et un compte à 5 000 $ voyait la MÊME projection sur les
+   * deux, au symbole près, calculée sur les trades des deux.
+   *
+   * « Tous les comptes » (valeur vide) garde tout le journal : c'est un choix
+   * explicite du trader, et le garde de devises ci-dessous couvre le cas où ce
+   * journal mêle plusieurs monnaies.
+   */
+  const tradesDuCompte = useMemo(
+    () => (selectedAccountId ? trades.filter((x) => x.challenge_id === selectedAccountId) : trades),
+    [trades, selectedAccountId],
+  );
+
+  const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+
+  /**
+   * La devise se DÉDUIT des trades projetés, elle ne se suppose pas.
+   *
+   * ⚠️ `null` = la sélection mêle plusieurs monnaies. Une espérance qui ajoute
+   * des euros à des dollars ne vaut pas « à peu près » : elle ne désigne aucune
+   * somme d'argent, et la page refuse alors d'en afficher une.
+   */
+  const deviseDesTrades = useMemo(
+    () => commonCurrency(tradesDuCompte.map((x) => x.challenge_id), currencyMap),
+    [tradesDuCompte, currencyMap],
+  );
+  const devisesMelangees = tradesDuCompte.length > 0 && deviseDesTrades === null;
+  const devise =
+    deviseDesTrades || selectedAccount?.synced_currency || selectedAccount?.currency || DEFAULT_CURRENCY;
   const capital = Number(selectedAccount?.account_size) > 0 ? Number(selectedAccount?.account_size) : CAPITAL_DEFAUT;
 
   /**
@@ -219,11 +264,11 @@ export default function ProjectionPage() {
    */
   const tradesParStrategie = useMemo(() => {
     const m = new Map<string, number>();
-    for (const t of trades) {
+    for (const t of tradesDuCompte) {
       if (t.strategy_id) m.set(t.strategy_id, (m.get(t.strategy_id) ?? 0) + 1);
     }
     return m;
-  }, [trades]);
+  }, [tradesDuCompte]);
 
   const strategieCourante = strategieId === "all" ? null : strategies.find((x) => x.id === strategieId) ?? null;
 
@@ -253,27 +298,27 @@ export default function ProjectionPage() {
    */
   const adherence: Adherence | null = useMemo(() => {
     if (!strategieCourante) return null;
-    const siens = trades.filter((x) => x.strategy_id === strategieCourante.id);
+    const siens = tradesDuCompte.filter((x) => x.strategy_id === strategieCourante.id);
     return mesurerAdherence(
       siens.map((x) => ({ open_time: x.open_time, netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0) })),
       strategieCourante,
       capital,
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     );
-  }, [strategieCourante, trades, capital]);
+  }, [strategieCourante, tradesDuCompte, capital]);
 
   /** Trades du périmètre choisi, réduits à ce dont le moteur a besoin. */
   const perimetre: ProjectionTrade[] = useMemo(() => {
-    const retenus = strategieId === "all" ? trades : trades.filter((x) => x.strategy_id === strategieId);
+    const retenus = strategieId === "all" ? tradesDuCompte : tradesDuCompte.filter((x) => x.strategy_id === strategieId);
     return retenus.map((x) => ({
       open_time: x.open_time,
       netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0),
     }));
-  }, [trades, strategieId]);
+  }, [tradesDuCompte, strategieId]);
 
   /** Le périmètre, mais en gardant les dimensions de regroupement. */
   const segmentables: TradeSegmente[] = useMemo(() => {
-    const retenus = strategieId === "all" ? trades : trades.filter((x) => x.strategy_id === strategieId);
+    const retenus = strategieId === "all" ? tradesDuCompte : tradesDuCompte.filter((x) => x.strategy_id === strategieId);
     return retenus.map((x) => ({
       open_time: x.open_time,
       netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0),
@@ -282,7 +327,7 @@ export default function ProjectionPage() {
       emotion: x.emotion,
       ict_setup: x.ict_setup,
     }));
-  }, [trades, strategieId]);
+  }, [tradesDuCompte, strategieId]);
 
   const optionsProjection = useMemo(
     () => ({ annees, capitalDepart: capital, seuilRuine: seuilRuinePct / 100 }),
@@ -521,6 +566,14 @@ export default function ProjectionPage() {
         <Card className="p-8 text-center text-sm text-foreground-muted">…</Card>
       ) : lectureRatee ? (
         <LectureRatee onReessayer={() => window.location.reload()} />
+      ) : devisesMelangees ? (
+        /* ⚠️ TOUTE CETTE PAGE EST FAITE DE MONTANTS : espérance par trade,
+           résultat médian, creux attendus, seuil de ruine. Aucun d'eux ne veut
+           dire quoi que ce soit si le périmètre mêle des euros et des dollars,
+           et l'onglet refuse d'en afficher un plutôt que d'en inventer un. */
+        <Card className="p-8 text-center text-sm text-foreground-muted">
+          {t("analytics_devises_melangees_bloc")}
+        </Card>
       ) : projection.verdict === "insuffisant" ? (
         <EncartInsuffisant
           projection={projection}

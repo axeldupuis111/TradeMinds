@@ -1107,6 +1107,38 @@ export default function AnalyticsPage() {
             />
           </StaggerItem>
 
+          {/**
+           * ⚠️⚠️ TOUT CE QUI SUIT ADDITIONNE DES MONTANTS, ET LA RÈGLE N'ÉTAIT
+           * APPLIQUÉE QU'EN HAUT DE PAGE. Les quatre cartes de KPI ventilent
+           * bien par devise (`pnlParDevise`), et l'export PDF reçoit déjà
+           * `currency={devisesMelangees ? null : …}` : la convention existe,
+           * dans ce fichier même. Le reste de la page, lui, formatait avec
+           * `pageCurrency`, qui retombe sur l'euro dès que la vue en mêle
+           * plusieurs.
+           *
+           * Relevé à l'écran sur un journal EUR + USD : « Comparaison des
+           * stratégies » annonçait « -6 343€ » et « -727€ » pour des lignes qui
+           * ajoutaient des euros à des dollars (total réel : -6 619,77€ ET
+           * -449,36$), et le tableau « Est-ce que tu progresses ? » calculait un
+           * écart de « ↑7 734€ » en soustrayant des dollars à des euros. Le
+           * bandeau du dessus affirmait pendant ce temps que « les totaux sont
+           * donnés séparément ».
+           *
+           * ⚠️ ON NE LES CORRIGE PAS, ON LES RETIRE : additionner deux devises
+           * ne donne pas un montant approximatif, ça ne donne AUCUN montant. Le
+           * sélecteur de compte, juste au-dessus, les rend en un clic.
+           */}
+          {devisesMelangees ? (
+            <StaggerItem>
+              <p
+                role="status"
+                className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-sm text-foreground-muted"
+              >
+                {t("analytics_devises_melangees_bloc")}
+              </p>
+            </StaggerItem>
+          ) : (
+          <>
           {/* ── Insight cards ─────────────────────────────────────────── */}
           <StaggerItem>
             <AnalyticsInsightCards
@@ -1424,6 +1456,8 @@ export default function AnalyticsPage() {
               <EmotionalTrendChart currency={pageCurrency} />
             </KpiCardPremium>
           </StaggerItem>
+          </>
+          )}
 
         </StaggerContainer>
       )}

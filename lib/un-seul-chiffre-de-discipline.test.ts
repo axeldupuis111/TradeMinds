@@ -233,4 +233,54 @@ describe("un seul chiffre de discipline", () => {
       expect(vue, `la vue affiche encore un chiffre inventé : ${marqueur}`).toContain(marqueur);
     }
   });
+
+  /**
+   * ── LA QUATRIÈME SÉRIE, ET POURQUOI ELLE A LE DROIT D'EXISTER ───────────────
+   *
+   * ⚠️⚠️ LE CLASSEMENT EN CALCULE UNE AUTRE : jours calendaires consécutifs avec
+   * un bilan de séance à 70 ou plus (`app/api/leaderboard/route.ts`). Relevé sur
+   * le compte d'Axel le 2026-09-15 : le tableau de bord annonçait « 7 jours de
+   * discipline » et un record de 8, la page Classement « 🔥 0 — Meilleure
+   * série », et le badge « 7 jours d'affilée » non obtenu, avec pour indice
+   * « Enchaîne 7 jours de discipline d'affilée » — mot pour mot le vocabulaire
+   * du tableau de bord.
+   *
+   * ⚠️ CETTE MESURE-LÀ EST COHÉRENTE AVEC SA PAGE : tous les badges du
+   * classement récompensent le rituel du bilan (« Régulier », « Lève-tôt »,
+   * « Gardien du week-end », « 10 jours en or »). On ne la remplace donc pas,
+   * ce qui distribuerait rétroactivement des récompenses. C'est l'ÉTIQUETTE qui
+   * mentait, et elle seule.
+   *
+   * ⚠️ D'OÙ CE TEST : tant que le classement garde son propre calcul, ses
+   * libellés DISENT qu'ils comptent des bilans. Un retour à « Meilleure série »
+   * tout court recrée le défaut, dans les quatre langues à la fois.
+   */
+  it("les libellés de série du classement disent qu'ils comptent des bilans", () => {
+    const VOCABULAIRE: Record<string, RegExp> = {
+      fr: /bilan/i,
+      en: /review/i,
+      de: /bericht/i,
+      es: /balance/i,
+    };
+    const CLES = [
+      "leaderboard_mode_streak",
+      "leaderboard_stat_streak",
+      "leaderboard_record_streak",
+      "badge_streak_7_hint",
+      "badge_streak_30_hint",
+      "badge_streak_90_hint",
+      "leaderboard_feed_streak",
+    ];
+    for (const [langue, attendu] of Object.entries(VOCABULAIRE)) {
+      const src = readFileSync(join(process.cwd(), `lib/i18n/${langue}.ts`), "utf8");
+      for (const cle of CLES) {
+        const m = src.match(new RegExp(`"${cle}":\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+        expect(m, `${cle} absente de ${langue}.ts`).toBeTruthy();
+        expect(
+          m![1],
+          `${langue}.${cle} = « ${m![1]} » : ce libellé ne dit pas qu'il compte des bilans, et il porte alors le même nom que la série de discipline du tableau de bord, qui ne vaut pas la même chose.`,
+        ).toMatch(attendu);
+      }
+    }
+  });
 });
