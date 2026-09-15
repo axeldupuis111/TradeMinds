@@ -166,7 +166,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Publié le même jour que le PMI manufacturier, il pèse davantage.",
+        "L'estimation flash sort le même jour que celle de l'industrie, et c'est elle qui pèse le plus.",
         "Regarde l'écart entre services et industrie : il raconte la nature du cycle.",
         "La composante des prix payés est un indicateur avancé de l'inflation de services.",
       ],
@@ -199,7 +199,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Released the same day as the manufacturing PMI, and it carries more weight.",
+        "The flash estimate lands the same day as manufacturing's, and it is the one that carries more weight.",
         "Watch the gap between services and manufacturing: it describes the nature of the cycle.",
         "The prices-paid component leads services inflation.",
       ],
@@ -232,7 +232,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erscheint am selben Tag wie der Industrie-PMI und wiegt schwerer.",
+        "Die Schnellschätzung erscheint am selben Tag wie die der Industrie und wiegt schwerer.",
         "Achte auf den Abstand zwischen Dienstleistungen und Industrie: er beschreibt die Art des Zyklus.",
         "Die Komponente der gezahlten Preise läuft der Dienstleistungsinflation voraus.",
       ],
@@ -265,7 +265,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Se publica el mismo día que el PMI manufacturero y pesa más.",
+        "La estimación preliminar sale el mismo día que la de la industria, y pesa más.",
         "Mira la diferencia entre servicios e industria: cuenta la naturaleza del ciclo.",
         "El componente de precios pagados adelanta la inflación de servicios.",
       ],
@@ -301,7 +301,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Premier jour ouvré du mois, 16h00 heure de Paris (10h00 à New York).",
+        "Premier jour ouvré du mois, 10h00 à New York.",
         "Lis « nouvelles commandes » et « prix payés » autant que l'indice principal.",
         "Publié avant l'ISM des services, qui sort deux jours plus tard.",
       ],
@@ -367,7 +367,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erster Werktag des Monats, 16:00 Uhr MEZ (10:00 Uhr in New York).",
+        "Erster Werktag des Monats, 10:00 Uhr New Yorker Zeit.",
         "Lies Auftragseingang und gezahlte Preise ebenso wie den Hauptindex.",
         "Erscheint vor dem Dienstleistungs-ISM, der zwei Tage später kommt.",
       ],
@@ -436,7 +436,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Troisième jour ouvré du mois, 16h00 heure de Paris.",
+        "Troisième jour ouvré du mois, 10h00 à New York.",
         "Pèse plus lourd que l'ISM manufacturier dans la lecture du cycle.",
         "Surveille sa composante emploi comme avant-goût du rapport mensuel.",
       ],
@@ -502,7 +502,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Dritter Werktag des Monats, 16:00 Uhr MEZ.",
+        "Dritter Werktag des Monats, 10:00 Uhr New Yorker Zeit.",
         "Wiegt bei der Zyklusdeutung schwerer als der Industrie-ISM.",
         "Achte auf die Beschäftigungskomponente als Vorgeschmack auf den Monatsbericht.",
       ],
@@ -547,7 +547,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Ce que mesure l'indice du Conference Board",
-          body: "Environ 3 000 ménages américains sont interrogés chaque mois sur leur perception de la situation actuelle (emploi, affaires) et sur leurs attentes à six mois. L'indice combine les deux, avec une base fixée à 100 sur une année de référence : le niveau absolu compte moins que la tendance.",
+          body: "Plusieurs milliers de ménages américains sont interrogés chaque mois sur leur perception de la situation actuelle (emploi, affaires) et sur leurs attentes à six mois. L'indice combine les deux, avec une base fixée à 100 sur une année de référence : le niveau absolu compte moins que la tendance.",
         },
         {
           heading: "Pourquoi cet indice-là est lié à l'emploi",
@@ -571,7 +571,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Dernier mardi du mois, 16h00 heure de Paris.",
+        "Dernier mardi du mois, 10h00 à New York.",
         "Le sous-indice sur la facilité à trouver un emploi est le plus informatif.",
         "Un moral en baisse ne fait pas forcément baisser la consommation.",
       ],
@@ -580,7 +580,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "What the Conference Board index measures",
-          body: "Around 3,000 US households are surveyed each month on how they see the present situation (jobs, business conditions) and their expectations six months out. The index blends the two, with a base of 100 in a reference year: the absolute level matters less than the trend.",
+          body: "Several thousand US households are surveyed each month on how they see the present situation (jobs, business conditions) and their expectations six months out. The index blends the two, with a base of 100 in a reference year: the absolute level matters less than the trend.",
         },
         {
           heading: "Why this one is tied to jobs",
@@ -613,7 +613,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Was der Conference-Board-Index misst",
-          body: "Rund 3.000 US-Haushalte werden monatlich zur aktuellen Lage (Arbeitsmarkt, Geschäftsklima) und zu ihren Erwartungen auf Sicht von sechs Monaten befragt. Der Index verbindet beides, mit Basis 100 in einem Referenzjahr: das Niveau zählt weniger als der Trend.",
+          body: "Mehrere tausend US-Haushalte werden monatlich zur aktuellen Lage (Arbeitsmarkt, Geschäftsklima) und zu ihren Erwartungen auf Sicht von sechs Monaten befragt. Der Index verbindet beides, mit Basis 100 in einem Referenzjahr: das Niveau zählt weniger als der Trend.",
         },
         {
           heading: "Warum gerade dieser Index am Arbeitsmarkt hängt",
@@ -637,7 +637,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Letzter Dienstag im Monat, 16:00 Uhr MEZ.",
+        "Letzter Dienstag im Monat, 10:00 Uhr New Yorker Zeit.",
         "Der Teilindex zur Schwierigkeit der Stellensuche ist die aussagekräftigste Zeile.",
         "Eine sinkende Stimmung bedeutet nicht zwingend sinkenden Konsum.",
       ],
@@ -646,7 +646,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Qué mide el índice del Conference Board",
-          body: "Cada mes se encuesta a unos 3.000 hogares estadounidenses sobre su percepción de la situación actual (empleo, negocios) y sus expectativas a seis meses. El índice combina ambas, con base 100 en un año de referencia: el nivel absoluto importa menos que la tendencia.",
+          body: "Cada mes se encuesta a varios miles de hogares estadounidenses sobre su percepción de la situación actual (empleo, negocios) y sus expectativas a seis meses. El índice combina ambas, con base 100 en un año de referencia: el nivel absoluto importa menos que la tendencia.",
         },
         {
           heading: "Por qué este índice está ligado al empleo",
@@ -682,7 +682,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "L'enquête de l'université du Michigan",
-          body: "Environ 600 ménages sont interrogés par téléphone sur leurs finances personnelles, leurs perspectives économiques et leur propension à acheter des biens durables. Panel plus petit que celui du Conference Board, donc indice plus nerveux d'un mois à l'autre.",
+          body: "Environ 1 000 ménages répondent chaque mois à un questionnaire en ligne sur leurs finances personnelles, leurs perspectives économiques et leur propension à acheter des biens durables. L'enquête se faisait par téléphone jusqu'en 2024. Panel plus petit que celui du Conference Board, donc indice plus nerveux d'un mois à l'autre.",
         },
         {
           heading: "Sa vraie valeur pour le marché : les anticipations d'inflation",
@@ -706,7 +706,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Estimation vers le 15, version définitive en fin de mois, 16h00 heure de Paris.",
+        "Estimation préliminaire vers le milieu du mois, version définitive en fin de mois, 10h00 à New York.",
         "Va directement lire les anticipations d'inflation à 1 an et à 5 ans.",
         "Panel réduit : un mois isolé se surinterprète facilement.",
       ],
@@ -715,7 +715,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "The University of Michigan survey",
-          body: "Around 600 households are surveyed by phone about their personal finances, their economic outlook and their willingness to buy durable goods. A smaller panel than the Conference Board's, so a jumpier index month to month.",
+          body: "Around 1,000 households answer an online questionnaire each month about their personal finances, their economic outlook and their willingness to buy durable goods. The survey was run by telephone until 2024. A smaller panel than the Conference Board's, so a jumpier index month to month.",
         },
         {
           heading: "Its real value to markets: inflation expectations",
@@ -739,7 +739,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Preliminary around the 15th, final at month end, 10:00am New York time.",
+        "Preliminary around mid-month, final at month end, 10:00am New York time.",
         "Go straight to the 1-year and 5-year inflation expectations.",
         "Small panel: a single month is easy to over-read.",
       ],
@@ -748,7 +748,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Die Umfrage der University of Michigan",
-          body: "Rund 600 Haushalte werden telefonisch zu ihren Finanzen, ihrem Wirtschaftsausblick und ihrer Neigung befragt, langlebige Güter zu kaufen. Kleineres Panel als beim Conference Board, daher ein von Monat zu Monat nervöserer Index.",
+          body: "Rund 1.000 Haushalte beantworten monatlich online Fragen zu ihren Finanzen, ihrem Wirtschaftsausblick und ihrer Neigung, langlebige Güter zu kaufen. Bis 2024 lief die Befragung telefonisch. Kleineres Panel als beim Conference Board, daher ein von Monat zu Monat nervöserer Index.",
         },
         {
           heading: "Der eigentliche Marktwert: die Inflationserwartungen",
@@ -772,7 +772,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Vorläufig um den 15., endgültig zum Monatsende, 16:00 Uhr MEZ.",
+        "Vorläufig zur Monatsmitte, endgültig zum Monatsende, 10:00 Uhr New Yorker Zeit.",
         "Lies direkt die Inflationserwartungen auf 1 und 5 Jahre.",
         "Kleines Panel: ein einzelner Monat wird leicht überinterpretiert.",
       ],
@@ -781,7 +781,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "La encuesta de la Universidad de Michigan",
-          body: "Se encuesta por teléfono a unos 600 hogares sobre sus finanzas personales, sus perspectivas económicas y su disposición a comprar bienes duraderos. Panel más pequeño que el del Conference Board, y por tanto un índice más nervioso de un mes a otro.",
+          body: "Alrededor de 1.000 hogares responden cada mes un cuestionario en línea sobre sus finanzas personales, sus perspectivas económicas y su disposición a comprar bienes duraderos. Hasta 2024 la encuesta era telefónica. Panel más pequeño que el del Conference Board, y por tanto un índice más nervioso de un mes a otro.",
         },
         {
           heading: "Su valor real para el mercado: las expectativas de inflación",
@@ -805,7 +805,7 @@ export const ENQUETES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Preliminar hacia el día 15, definitiva a final de mes, 10:00 de Nueva York.",
+        "Preliminar hacia mediados de mes, definitiva a final de mes, 10:00 de Nueva York.",
         "Ve directo a las expectativas de inflación a 1 y a 5 años.",
         "Panel reducido: un mes aislado se sobreinterpreta con facilidad.",
       ],

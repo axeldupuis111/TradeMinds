@@ -11,7 +11,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Pourquoi on regarde le « groupe de contrôle »",
-          body: "Le chiffre global inclut l'automobile, l'essence et les matériaux de construction, trois postes très volatils : une hausse du prix du carburant gonfle mécaniquement les ventes sans qu'un seul article de plus ait été vendu. Le « control group », qui les exclut, alimente directement le calcul du PIB et reste la ligne la plus suivie par les analystes.",
+          body: "Le chiffre global inclut l'automobile, l'essence, les matériaux de construction et la restauration, quatre postes très volatils : une hausse du prix du carburant gonfle mécaniquement les ventes sans qu'un seul article de plus ait été vendu. Le « control group », qui les exclut, alimente directement le calcul du PIB et reste la ligne la plus suivie par les analystes.",
         },
         {
           heading: "Une donnée en valeur, pas en volume",
@@ -44,7 +44,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Why people watch the 'control group'",
-          body: "The headline includes autos, gasoline and building materials, three very volatile lines: a rise in fuel prices mechanically inflates sales without a single extra item being sold. The control group, which excludes them, feeds directly into the GDP calculation and remains the line analysts follow.",
+          body: "The headline includes autos, gasoline, building materials and food services, four very volatile lines: a rise in fuel prices mechanically inflates sales without a single extra item being sold. The control group, which excludes them, feeds directly into the GDP calculation and remains the line analysts follow.",
         },
         {
           heading: "A value figure, not a volume one",
@@ -77,7 +77,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Warum man auf die Kernrate schaut",
-          body: "Der Gesamtwert enthält Autos, Kraftstoff und Baustoffe, drei sehr schwankende Posten: ein höherer Spritpreis bläht die Umsätze rein rechnerisch auf, ohne dass ein Stück mehr verkauft wurde. Die Kontrollgruppe ohne diese Posten fließt direkt in die BIP-Rechnung ein und bleibt die von Analysten beachtete Zeile.",
+          body: "Der Gesamtwert enthält Autos, Kraftstoff, Baustoffe und Gastronomie, vier sehr schwankende Posten: ein höherer Spritpreis bläht die Umsätze rein rechnerisch auf, ohne dass ein Stück mehr verkauft wurde. Die Kontrollgruppe ohne diese Posten fließt direkt in die BIP-Rechnung ein und bleibt die von Analysten beachtete Zeile.",
         },
         {
           heading: "Ein Wert, kein Volumen",
@@ -110,7 +110,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Por qué se mira el grupo de control",
-          body: "El dato general incluye automóvil, gasolina y materiales de construcción, tres partidas muy volátiles: una subida del carburante infla mecánicamente las ventas sin que se haya vendido un artículo más. El grupo de control, que las excluye, alimenta directamente el cálculo del PIB y es la línea que siguen los analistas.",
+          body: "El dato general incluye automóvil, gasolina, materiales de construcción y hostelería, cuatro partidas muy volátiles: una subida del carburante infla mecánicamente las ventas sin que se haya vendido un artículo más. El grupo de control, que las excluye, alimenta directamente el cálculo del PIB y es la línea que siguen los analistas.",
         },
         {
           heading: "Un dato en valor, no en volumen",
@@ -301,7 +301,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Vers la fin du mois, 14h30 heure de Paris.",
+        "Vers la fin du mois, 8h30 à New York.",
         "Regarde le chiffre hors transport, jamais le total brut.",
         "Donnée très volatile : la tendance sur trois mois vaut mieux qu'un mois isolé.",
       ],
@@ -367,7 +367,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Gegen Monatsende, 14:30 Uhr MEZ.",
+        "Gegen Monatsende, 8:30 Uhr New Yorker Zeit.",
         "Lies den Wert ohne Verkehr, nie die rohe Gesamtzahl.",
         "Sehr volatil: der Dreimonatstrend schlägt jeden Einzelmonat.",
       ],
@@ -416,7 +416,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Pourquoi l'immobilier annonce le cycle",
-          body: "La construction est l'un des secteurs les plus sensibles aux taux d'intérêt : quand le crédit se renchérit, les projets sont reportés les premiers, et quand il se détend, ils repartent les premiers. Les permis de construire font partie des indicateurs avancés officiels du cycle américain pour cette raison précise.",
+          body: "La construction est l'un des secteurs les plus sensibles aux taux d'intérêt : quand le crédit se renchérit, les projets sont reportés les premiers, et quand il se détend, ils repartent les premiers. C'est pour cette raison précise que les permis de construire entrent dans l'indice avancé du Conference Board, la référence des indicateurs avancés américains.",
         },
         {
           heading: "Son effet de diffusion",
@@ -449,7 +449,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Why housing leads the cycle",
-          body: "Construction is one of the most rate-sensitive sectors: when credit gets expensive, projects are the first to be shelved, and when it eases, they are the first to restart. That is precisely why building permits sit in the official US leading indicators.",
+          body: "Construction is one of the most rate-sensitive sectors: when credit gets expensive, projects are the first to be shelved, and when it eases, they are the first to restart. That is precisely why building permits are a component of the Conference Board's Leading Economic Index, the reference gauge of US leading indicators.",
         },
         {
           heading: "Its spillover effect",
@@ -482,7 +482,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Warum der Bau dem Zyklus vorausläuft",
-          body: "Der Bau ist einer der zinssensibelsten Sektoren: wird Kredit teuer, werden Projekte zuerst verschoben, entspannt er sich, starten sie zuerst wieder. Genau deshalb gehören Baugenehmigungen zu den offiziellen US-Frühindikatoren.",
+          body: "Der Bau ist einer der zinssensibelsten Sektoren: wird Kredit teuer, werden Projekte zuerst verschoben, entspannt er sich, starten sie zuerst wieder. Genau deshalb sind Baugenehmigungen Bestandteil des Frühindikatorenindex des Conference Board, der Referenz unter den US-Frühindikatoren.",
         },
         {
           heading: "Die Ausstrahlung",
@@ -515,7 +515,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Por qué la vivienda adelanta el ciclo",
-          body: "La construcción es uno de los sectores más sensibles a los tipos: cuando el crédito se encarece, los proyectos son los primeros en aplazarse, y cuando se relaja, los primeros en arrancar. Justo por eso los permisos de construcción figuran entre los indicadores adelantados oficiales de EE. UU.",
+          body: "La construcción es uno de los sectores más sensibles a los tipos: cuando el crédito se encarece, los proyectos son los primeros en aplazarse, y cuando se relaja, los primeros en arrancar. Justo por eso los permisos de construcción forman parte del índice adelantado del Conference Board, la referencia de los indicadores adelantados de EE. UU.",
         },
         {
           heading: "Su efecto de arrastre",

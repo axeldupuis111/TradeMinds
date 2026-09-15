@@ -89,6 +89,37 @@ describe("les explications longues du calendrier", () => {
     }
   });
 
+  /**
+   * ⚠️ UNE HEURE EUROPÉENNE EST FAUSSE UNE PARTIE DE L'ANNÉE.
+   *
+   * Les États-Unis et l'Europe ne changent pas d'heure le même week-end :
+   * 8h30 à New York valent 14h30 à Paris la plus grande partie de l'année,
+   * mais 13h30 pendant les deux ou trois semaines de décalage. Et « MEZ »
+   * désigne l'heure d'HIVER : l'écrire pour une annonce d'été est faux par
+   * construction. Une fiche qui convertit se trompe donc toute seule, sans
+   * que personne ne touche au fichier.
+   *
+   * La règle : on ne donne que l'heure du pays qui publie. L'heure locale
+   * exacte de l'annonce ouverte est affichée en haut de la fiche, calculée.
+   */
+  it("aucune heure convertie en fuseau européen", () => {
+    const interdits = [/heure de Paris/i, /Uhr MEZ/i, /\bMESZ\b/, /en España/i, /hora española/i];
+    for (const [id, record] of Object.entries(DEEP_DIVES)) {
+      for (const lang of LANGS) {
+        const textes = [
+          ...record[lang].watch,
+          ...record[lang].sections.map((s) => s.body),
+          ...record[lang].outcomes.map((o) => o.body),
+        ];
+        for (const texte of textes) {
+          for (const motif of interdits) {
+            expect(motif.test(texte), `${id}/${lang} convertit une heure : « ${texte} »`).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   it("se résout depuis un titre du flux", () => {
     expect(lookupDeepDive("Non-Farm Employment Change", "fr")).toBeTruthy();
     expect(lookupDeepDive("Core CPI m/m", "en")).toBeTruthy();

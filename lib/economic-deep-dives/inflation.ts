@@ -341,7 +341,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Fin de mois, 14h30 heure de Paris.",
+        "Fin de mois, 8h30 à New York.",
         "Regarde le core annuel : c'est lui que la Fed compare à sa cible de 2 %.",
         "Réaction plus faible que le CPI parce qu'il est en grande partie anticipé.",
       ],
@@ -407,7 +407,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Monatsende, 14:30 Uhr MEZ.",
+        "Monatsende, 8:30 Uhr New Yorker Zeit.",
         "Achte auf die Jahreskernrate: sie hält die Fed gegen ihr 2-Prozent-Ziel.",
         "Schwächere Reaktion als beim CPI, weil er weitgehend vorweggenommen ist.",
       ],

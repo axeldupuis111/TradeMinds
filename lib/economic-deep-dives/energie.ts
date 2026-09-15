@@ -35,8 +35,8 @@ export const ENERGIE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Chaque mercredi, 16h30 heure de Paris (10h30 à New York).",
-        "L'API publie son propre chiffre la veille au soir : il donne souvent le ton.",
+        "Chaque mercredi, 10h30 à New York.",
+        "L'API publie son propre chiffre le mardi en fin d'après-midi à New York : il donne souvent le ton.",
         "Regarde aussi essence, distillats et taux d'utilisation des raffineries.",
         "Réaction très rapide sur le baril : c'est un des créneaux les plus volatils de la semaine.",
       ],
@@ -74,7 +74,7 @@ export const ENERGIE: Record<string, DeepDiveRecord> = {
       ],
       watch: [
         "Every Wednesday, 10:30am New York time.",
-        "The API publishes its own number the previous evening: it often sets the tone.",
+        "The API publishes its own number late on the Tuesday afternoon, New York time: it often sets the tone.",
         "Check gasoline, distillates and refinery utilisation too.",
         "A very fast reaction in crude: one of the most volatile slots of the week.",
       ],
@@ -111,8 +111,8 @@ export const ENERGIE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Jeden Mittwoch, 16:30 Uhr MEZ (10:30 Uhr in New York).",
-        "Das API veröffentlicht am Vorabend seine eigene Zahl: sie gibt oft den Ton vor.",
+        "Jeden Mittwoch, 10:30 Uhr New Yorker Zeit.",
+        "Das API veröffentlicht am Dienstag am späten Nachmittag New Yorker Zeit seine eigene Zahl: sie gibt oft den Ton vor.",
         "Sieh dir auch Benzin, Destillate und die Raffinerieauslastung an.",
         "Sehr schnelle Reaktion im Rohöl: eines der volatilsten Zeitfenster der Woche.",
       ],
@@ -149,8 +149,8 @@ export const ENERGIE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Cada miércoles, 10:30 de Nueva York (16:30 en España).",
-        "El API publica su propio dato la víspera por la tarde: suele marcar el tono.",
+        "Cada miércoles, 10:30 de Nueva York.",
+        "El API publica su propio dato el martes a última hora de la tarde de Nueva York: suele marcar el tono.",
         "Mira también gasolina, destilados y utilización de refinerías.",
         "Reacción muy rápida en el crudo: una de las franjas más volátiles de la semana.",
       ],

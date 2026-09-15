@@ -7,7 +7,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "D'où sort le chiffre",
-          body: "Chaque mois, le Bureau of Labor Statistics interroge environ 120 000 entreprises et administrations américaines sur le nombre de salariés présents sur leur feuille de paie durant la semaine du 12. Le total est publié le premier vendredi du mois suivant à 14h30 (heure de Paris). L'agriculture en est exclue, d'où le nom : son emploi saisonnier rendrait la série impossible à comparer d'un mois à l'autre.",
+          body: "Chaque mois, le Bureau of Labor Statistics interroge environ 120 000 entreprises et administrations américaines sur le nombre de salariés présents sur leur feuille de paie durant la semaine du 12. Le total est publié à 8h30 à New York, le plus souvent le premier vendredi du mois suivant. L'agriculture en est exclue, d'où le nom : son emploi saisonnier rendrait la série impossible à comparer d'un mois à l'autre.",
         },
         {
           heading: "Ce n'est pas le chiffre qui compte, c'est l'écart",
@@ -40,7 +40,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Premier vendredi du mois, 14h30 heure de Paris (8h30 à New York).",
+        "Le plus souvent le premier vendredi du mois, 8h30 à New York (la règle exacte : le troisième vendredi après la semaine de référence).",
         "Les spreads s'élargissent une minute avant et après : un stop serré peut sauter sans que le prix ait vraiment bougé.",
         "Les révisions des deux mois précédents comptent autant que le chiffre du jour.",
         "Le premier mouvement s'inverse fréquemment dans les quinze minutes qui suivent.",
@@ -50,7 +50,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Where the number comes from",
-          body: "Every month the Bureau of Labor Statistics surveys around 120,000 US businesses and government bodies about how many people were on their payroll during the week containing the 12th. The total is released on the first Friday of the following month at 8:30am New York time. Farming is excluded, hence the name: its seasonal hiring would make the series impossible to compare month to month.",
+          body: "Every month the Bureau of Labor Statistics surveys around 120,000 US businesses and government bodies about how many people were on their payroll during the week containing the 12th. The total is released at 8:30am New York time, usually on the first Friday of the following month. Farming is excluded, hence the name: its seasonal hiring would make the series impossible to compare month to month.",
         },
         {
           heading: "The number doesn't matter, the gap does",
@@ -83,7 +83,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "First Friday of the month, 8:30am New York time.",
+        "Usually the first Friday of the month, 8:30am New York time (the exact rule: the third Friday after the reference week).",
         "Spreads widen a minute either side: a tight stop can be taken out without the price truly moving.",
         "Revisions to the previous two months matter as much as the headline.",
         "The first move frequently reverses within the following fifteen minutes.",
@@ -93,7 +93,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Woher die Zahl kommt",
-          body: "Das Bureau of Labor Statistics befragt monatlich rund 120.000 US-Unternehmen und Behörden, wie viele Beschäftigte in der Woche mit dem 12. auf der Lohnliste standen. Die Summe erscheint am ersten Freitag des Folgemonats um 14:30 Uhr MEZ. Die Landwirtschaft bleibt außen vor, daher der Name: ihre Saisonarbeit würde die Reihe von Monat zu Monat unvergleichbar machen.",
+          body: "Das Bureau of Labor Statistics befragt monatlich rund 120.000 US-Unternehmen und Behörden, wie viele Beschäftigte in der Woche mit dem 12. auf der Lohnliste standen. Die Summe erscheint um 8:30 Uhr New Yorker Zeit, meist am ersten Freitag des Folgemonats. Die Landwirtschaft bleibt außen vor, daher der Name: ihre Saisonarbeit würde die Reihe von Monat zu Monat unvergleichbar machen.",
         },
         {
           heading: "Nicht die Zahl zählt, sondern die Abweichung",
@@ -126,7 +126,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erster Freitag im Monat, 14:30 Uhr MEZ (8:30 Uhr in New York).",
+        "Meist erster Freitag im Monat, 8:30 Uhr New Yorker Zeit (genaue Regel: der dritte Freitag nach der Referenzwoche).",
         "Die Spreads weiten sich eine Minute davor und danach: ein enger Stop fliegt, ohne dass der Kurs wirklich gelaufen ist.",
         "Die Revisionen der beiden Vormonate zählen so viel wie die aktuelle Zahl.",
         "Die erste Bewegung dreht häufig innerhalb der folgenden fünfzehn Minuten.",
@@ -169,7 +169,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Primer viernes del mes, 8:30 de Nueva York (14:30 en España).",
+        "Normalmente el primer viernes del mes, 8:30 de Nueva York (la regla exacta: el tercer viernes tras la semana de referencia).",
         "Los spreads se abren un minuto antes y después: un stop ajustado salta sin que el precio se haya movido de verdad.",
         "Las revisiones de los dos meses anteriores cuentan tanto como el dato del día.",
         "El primer movimiento se invierte con frecuencia en los quince minutos siguientes.",
@@ -182,7 +182,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Une mesure privée, pas officielle",
-          body: "ADP est le plus gros gestionnaire de paie américain : il voit passer les bulletins de salaire de plus de 25 millions de salariés du privé. Il en tire une estimation mensuelle des créations d'emplois, publiée le mercredi qui précède le NFP, à 14h15 heure de Paris. Ce n'est pas une statistique officielle, c'est la lecture d'un acteur privé sur son propre fichier.",
+          body: "ADP est le plus gros gestionnaire de paie américain : il voit passer les bulletins de salaire de plus de 25 millions de salariés du privé. Il en tire une estimation mensuelle des créations d'emplois, publiée le mercredi qui précède le NFP, à 8h15 à New York. Ce n'est pas une statistique officielle, c'est la lecture d'un acteur privé sur son propre fichier.",
         },
         {
           heading: "Pourquoi le marché la regarde quand même",
@@ -206,7 +206,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Mercredi précédant le NFP, 14h15 heure de Paris.",
+        "Mercredi précédant le NFP, 8h15 à New York.",
         "Volatilité réelle mais courte : quelques minutes, pas une séance.",
         "Ne l'utilise jamais comme prédiction du NFP : la corrélation mensuelle est faible.",
       ],
@@ -248,7 +248,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Eine private, keine amtliche Messung",
-          body: "ADP ist der größte US-Lohnabrechner und sieht die Abrechnungen von über 25 Millionen Beschäftigten der Privatwirtschaft. Daraus entsteht eine monatliche Schätzung des Stellenaufbaus, veröffentlicht am Mittwoch vor den NFP um 14:15 Uhr MEZ. Das ist keine amtliche Statistik, sondern die Lesart eines privaten Anbieters auf seinem eigenen Bestand.",
+          body: "ADP ist der größte US-Lohnabrechner und sieht die Abrechnungen von über 25 Millionen Beschäftigten der Privatwirtschaft. Daraus entsteht eine monatliche Schätzung des Stellenaufbaus, veröffentlicht am Mittwoch vor den NFP um 8:15 Uhr New Yorker Zeit. Das ist keine amtliche Statistik, sondern die Lesart eines privaten Anbieters auf seinem eigenen Bestand.",
         },
         {
           heading: "Warum der Markt trotzdem hinschaut",
@@ -272,7 +272,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Mittwoch vor den NFP, 14:15 Uhr MEZ.",
+        "Mittwoch vor den NFP, 8:15 Uhr New Yorker Zeit.",
         "Echte, aber kurze Volatilität: Minuten, keine ganze Sitzung.",
         "Nie als NFP-Prognose verwenden: die monatliche Korrelation ist schwach.",
       ],
@@ -341,7 +341,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Aux États-Unis, publié avec le NFP le premier vendredi du mois ; ailleurs, selon le calendrier du pays.",
+        "Aux États-Unis, publié avec le NFP, le plus souvent le premier vendredi du mois ; ailleurs, selon le calendrier du pays.",
         "Un dixième de point d'écart suffit à faire réagir le marché.",
         "Un taux qui baisse parce que des gens ont cessé de chercher n'est pas une bonne nouvelle.",
       ],
@@ -374,7 +374,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "In the US, released with the NFP on the first Friday of the month; elsewhere, on that country's own schedule.",
+        "In the US, released with the NFP, usually on the first Friday of the month; elsewhere, on that country's own schedule.",
         "A single tenth of a point is enough to move the market.",
         "A rate falling because people stopped looking is not good news.",
       ],
@@ -407,7 +407,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "In den USA mit den NFP am ersten Freitag im Monat; anderswo nach dem Kalender des jeweiligen Landes.",
+        "In den USA mit den NFP, meist am ersten Freitag im Monat; anderswo nach dem Kalender des jeweiligen Landes.",
         "Ein Zehntelpunkt Abweichung reicht für eine Marktreaktion.",
         "Eine Quote, die sinkt, weil Menschen die Suche aufgaben, ist keine gute Nachricht.",
       ],
@@ -440,7 +440,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "En EE. UU. se publica con las NFP el primer viernes del mes; en otros países, según su propio calendario.",
+        "En EE. UU. se publica con las NFP, normalmente el primer viernes del mes; en otros países, según su propio calendario.",
         "Una décima de diferencia basta para que el mercado reaccione.",
         "Una tasa que baja porque la gente dejó de buscar no es una buena noticia.",
       ],
@@ -452,7 +452,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "La donnée la plus fraîche du calendrier",
-          body: "Chaque jeudi à 14h30 (heure de Paris), le département du Travail publie le nombre de nouvelles demandes d'allocations chômage déposées la semaine précédente. Aucune autre statistique macro américaine n'est aussi récente : elle décrit la semaine qui vient de s'écouler, là où le NFP décrit un mois déjà terminé.",
+          body: "Chaque jeudi à 8h30 à New York, le département du Travail publie le nombre de nouvelles demandes d'allocations chômage déposées la semaine précédente. Aucune autre statistique macro américaine n'est aussi récente : elle décrit la semaine qui vient de s'écouler, là où le NFP décrit un mois déjà terminé.",
         },
         {
           heading: "Une donnée bruyante qu'on lit en moyenne",
@@ -476,7 +476,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Chaque jeudi, 14h30 heure de Paris.",
+        "Chaque jeudi, 8h30 à New York.",
         "Lis la moyenne sur quatre semaines, pas la semaine isolée.",
         "Jours fériés et intempéries faussent régulièrement une semaine donnée.",
       ],
@@ -518,7 +518,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Die frischeste Zahl im Kalender",
-          body: "Jeden Donnerstag um 14:30 Uhr MEZ meldet das Arbeitsministerium die Zahl der in der Vorwoche neu gestellten Anträge auf Arbeitslosenunterstützung. Keine andere US-Makrozahl ist so aktuell: sie beschreibt die gerade vergangene Woche, während die NFP einen längst beendeten Monat beschreiben.",
+          body: "Jeden Donnerstag um 8:30 Uhr New Yorker Zeit meldet das Arbeitsministerium die Zahl der in der Vorwoche neu gestellten Anträge auf Arbeitslosenunterstützung. Keine andere US-Makrozahl ist so aktuell: sie beschreibt die gerade vergangene Woche, während die NFP einen längst beendeten Monat beschreiben.",
         },
         {
           heading: "Eine verrauschte Reihe, die man als Durchschnitt liest",
@@ -542,7 +542,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Jeden Donnerstag, 14:30 Uhr MEZ.",
+        "Jeden Donnerstag, 8:30 Uhr New Yorker Zeit.",
         "Lies den Vierwochendurchschnitt, nicht die einzelne Woche.",
         "Feiertage und Unwetter verzerren regelmäßig eine einzelne Woche.",
       ],
@@ -611,7 +611,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Publié avec le NFP, premier vendredi du mois.",
+        "Publié avec le NFP, le plus souvent le premier vendredi du mois.",
         "Regarde la variation annuelle autant que la mensuelle : le mensuel est bruyant.",
         "Une hausse de la moyenne peut venir de licenciements dans les métiers peu payés.",
       ],
@@ -644,7 +644,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Released with the NFP, first Friday of the month.",
+        "Released with the NFP, usually the first Friday of the month.",
         "Watch the yearly change as much as the monthly one: monthly is noisy.",
         "A rising average can come from layoffs in low-paid work.",
       ],
@@ -677,7 +677,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erscheint mit den NFP, erster Freitag im Monat.",
+        "Erscheint mit den NFP, meist am ersten Freitag im Monat.",
         "Achte auf die Jahres- ebenso wie auf die Monatsveränderung: der Monatswert ist verrauscht.",
         "Ein steigender Durchschnitt kann von Entlassungen in schlecht bezahlten Berufen kommen.",
       ],
@@ -710,7 +710,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Se publica con las NFP, primer viernes del mes.",
+        "Se publica con las NFP, normalmente el primer viernes del mes.",
         "Mira la variación anual tanto como la mensual: la mensual es ruidosa.",
         "Una subida de la media puede venir de despidos en los trabajos peor pagados.",
       ],
@@ -722,7 +722,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Le nombre de postes ouverts, pas de postes pourvus",
-          body: "L'enquête JOLTS compte les offres d'emploi non pourvues au dernier jour du mois, ainsi que les embauches, les démissions et les licenciements. Elle mesure donc la DEMANDE de travail des entreprises, là où le NFP mesure ce qui a été effectivement embauché.",
+          body: "L'enquête JOLTS compte les offres d'emploi non pourvues au dernier jour ouvré du mois, ainsi que les embauches, les démissions et les licenciements. Elle mesure donc la DEMANDE de travail des entreprises, là où le NFP mesure ce qui a été effectivement embauché.",
         },
         {
           heading: "Le ratio que surveille la banque centrale",
@@ -746,7 +746,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Publié avec un mois de décalage : la donnée est ancienne, la réaction reste réelle.",
+        "Publié environ cinq semaines après le mois de référence, le premier mardi du mois : la donnée est ancienne, la réaction reste réelle.",
         "Le ratio postes ouverts par chômeur compte plus que le nombre brut.",
         "Regarde aussi le taux de démission, souvent plus parlant que le total.",
       ],
@@ -755,7 +755,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Openings, not hires",
-          body: "The JOLTS survey counts job openings unfilled on the last day of the month, along with hires, quits and layoffs. It measures firms' DEMAND for labour, where the NFP measures who actually got hired.",
+          body: "The JOLTS survey counts job openings unfilled on the last business day of the month, along with hires, quits and layoffs. It measures firms' DEMAND for labour, where the NFP measures who actually got hired.",
         },
         {
           heading: "The ratio the central bank watches",
@@ -779,7 +779,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Published with a month's lag: the data is old, the reaction is still real.",
+        "Published about five weeks after the reference month, on the first Tuesday: the data is old, the reaction is still real.",
         "Openings per unemployed worker matters more than the raw number.",
         "Check the quits rate too, often more telling than the total.",
       ],
@@ -788,7 +788,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Offene Stellen, nicht besetzte",
-          body: "Die JOLTS-Erhebung zählt die am letzten Tag des Monats unbesetzten Stellen sowie Einstellungen, Kündigungen und Entlassungen. Sie misst also die NACHFRAGE der Unternehmen nach Arbeit, während die NFP messen, wer tatsächlich eingestellt wurde.",
+          body: "Die JOLTS-Erhebung zählt die am letzten Werktag des Monats unbesetzten Stellen sowie Einstellungen, Kündigungen und Entlassungen. Sie misst also die NACHFRAGE der Unternehmen nach Arbeit, während die NFP messen, wer tatsächlich eingestellt wurde.",
         },
         {
           heading: "Das Verhältnis, auf das die Notenbank schaut",
@@ -812,7 +812,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erscheint mit einem Monat Verzögerung: die Daten sind alt, die Reaktion trotzdem echt.",
+        "Erscheint rund fünf Wochen nach dem Referenzmonat, am ersten Dienstag: die Daten sind alt, die Reaktion trotzdem echt.",
         "Offene Stellen je Arbeitslosem zählen mehr als die reine Zahl.",
         "Sieh dir auch die Kündigungsquote an, oft aussagekräftiger als die Summe.",
       ],
@@ -821,7 +821,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Vacantes, no contrataciones",
-          body: "La encuesta JOLTS cuenta las vacantes sin cubrir el último día del mes, además de contrataciones, dimisiones y despidos. Mide por tanto la DEMANDA de trabajo de las empresas, mientras que las NFP miden quién fue contratado de verdad.",
+          body: "La encuesta JOLTS cuenta las vacantes sin cubrir el último día hábil del mes, además de contrataciones, dimisiones y despidos. Mide por tanto la DEMANDA de trabajo de las empresas, mientras que las NFP miden quién fue contratado de verdad.",
         },
         {
           heading: "El ratio que vigila el banco central",
@@ -845,7 +845,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Se publica con un mes de retraso: el dato es antiguo, la reacción sigue siendo real.",
+        "Se publica unas cinco semanas después del mes de referencia, el primer martes: el dato es antiguo, la reacción sigue siendo real.",
         "El ratio de vacantes por parado importa más que la cifra bruta.",
         "Mira también la tasa de dimisiones, a menudo más elocuente que el total.",
       ],

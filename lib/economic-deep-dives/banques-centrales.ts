@@ -7,7 +7,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Ce qui se décide vraiment",
-          body: "La banque centrale fixe le taux auquel les banques se prêtent entre elles au jour le jour. Ce taux se propage à tout le reste : crédit immobilier, financement des entreprises, rendement des obligations, coût de portage de chaque position à effet de levier. C'est le prix de l'argent, et il repose sur deux objectifs souvent contradictoires : contenir l'inflation, sans casser l'emploi.",
+          body: "La banque centrale fixe son taux directeur : le prix auquel les banques se refinancent à très court terme, auprès d'elle ou les unes des autres selon le pays. Ce taux se propage à tout le reste : crédit immobilier, financement des entreprises, rendement des obligations, coût de portage de chaque position à effet de levier. C'est le prix de l'argent, et il repose sur deux objectifs souvent contradictoires : contenir l'inflation, sans casser l'emploi.",
         },
         {
           heading: "La décision est rarement la surprise",
@@ -50,7 +50,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "What is actually being decided",
-          body: "The central bank sets the rate at which banks lend to each other overnight. That rate spreads into everything else: mortgages, corporate funding, bond yields, the carrying cost of every leveraged position. It is the price of money, and it rests on two often conflicting goals: contain inflation without breaking employment.",
+          body: "The central bank sets its policy rate: the price at which banks fund themselves at very short maturities, from the central bank or from each other depending on the country. That rate spreads into everything else: mortgages, corporate funding, bond yields, the carrying cost of every leveraged position. It is the price of money, and it rests on two often conflicting goals: contain inflation without breaking employment.",
         },
         {
           heading: "The decision is rarely the surprise",
@@ -93,7 +93,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Was tatsächlich entschieden wird",
-          body: "Die Notenbank setzt den Zins, zu dem sich Banken über Nacht Geld leihen. Dieser Zins strahlt auf alles andere aus: Immobilienkredite, Unternehmensfinanzierung, Anleiherenditen, Haltekosten jeder gehebelten Position. Er ist der Preis des Geldes und beruht auf zwei oft widersprüchlichen Zielen: die Inflation bändigen, ohne den Arbeitsmarkt zu brechen.",
+          body: "Die Notenbank setzt ihren Leitzins: den Preis, zu dem sich Banken sehr kurzfristig refinanzieren, je nach Land bei ihr oder untereinander. Dieser Zins strahlt auf alles andere aus: Immobilienkredite, Unternehmensfinanzierung, Anleiherenditen, Haltekosten jeder gehebelten Position. Er ist der Preis des Geldes und beruht auf zwei oft widersprüchlichen Zielen: die Inflation bändigen, ohne den Arbeitsmarkt zu brechen.",
         },
         {
           heading: "Die Entscheidung ist selten die Überraschung",
@@ -136,7 +136,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
       sections: [
         {
           heading: "Lo que se decide de verdad",
-          body: "El banco central fija el tipo al que los bancos se prestan entre sí a un día. Ese tipo se propaga a todo lo demás: hipotecas, financiación de empresas, rentabilidad de los bonos, coste de mantener cualquier posición apalancada. Es el precio del dinero, y descansa sobre dos objetivos a menudo contradictorios: contener la inflación sin romper el empleo.",
+          body: "El banco central fija su tipo de referencia: el precio al que los bancos se financian a muy corto plazo, ante él o entre ellos según el país. Ese tipo se propaga a todo lo demás: hipotecas, financiación de empresas, rentabilidad de los bonos, coste de mantener cualquier posición apalancada. Es el precio del dinero, y descansa sobre dos objetivos a menudo contradictorios: contener la inflación sin romper el empleo.",
         },
         {
           heading: "La decisión rara vez es la sorpresa",
