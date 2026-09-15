@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "verif:anon": "node scripts/verif-anon.mjs",
     "test": "vitest run",
     "eval:coach": "vitest run --config vitest.eval.config.ts"
   },
