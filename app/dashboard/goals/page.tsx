@@ -29,6 +29,13 @@ interface PeriodHistory { key: string; value: number; met: boolean; current: boo
 interface MetricGoal {
   id: string; kind: "metric"; metric: Metric; target: number; comparator: Comparator;
   period: Period; value: number; met: boolean; progress: number;
+  /**
+   * Y a-t-il eu la moindre activité sur la période en cours ? `false` veut
+   * dire « on ne conclut pas » : un objectif plafond est atteint par
+   * construction tant que rien ne s'est passé. Optionnel pour rester
+   * compatible avec une réponse servie avant ce champ.
+   */
+  hadData?: boolean;
   history?: PeriodHistory[]; periodStreak?: number;
 }
 interface CustomGoal { id: string; kind: "custom"; title: string; period: Period; done: boolean; recurring: boolean; streak: number; bestStreak: number }
@@ -305,6 +312,14 @@ function goalStatus(g: Goal): { status: "met" | "failed" | "progress"; priority:
   if (g.kind === "custom") {
     return g.done ? { status: "met", priority: 3 } : { status: "progress", priority: 1 };
   }
+  /**
+   * ⚠️ SANS ACTIVITÉ, PAS DE VERDICT. Un objectif plafond est « atteint » par
+   * construction tant que rien ne s'est passé : « pertes consécutives ≤ 2 »
+   * l'était pour un trader qui n'avait pas ouvert une position du mois. La
+   * même distinction existe déjà dans l'historique de cet objectif
+   * (`hadData`) : elle manquait à la période en cours.
+   */
+  if (g.hadData === false) return { status: "progress", priority: 2 };
   const failing = !g.met && g.comparator === "lte" && g.value > g.target;
   if (g.met) return { status: "met", priority: 3 };
   if (failing) return { status: "failed", priority: 0 };

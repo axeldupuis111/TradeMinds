@@ -216,9 +216,22 @@ export async function GET() {
       ? Math.min(100, Math.round((value / (target || 1)) * 100) || 0)
       : value <= target ? 100 : Math.max(0, Math.round((target / (value || 1)) * 100));
     const history = historyFor(g);
+    /**
+     * ⚠️⚠️ « AUCUNE ACTIVITÉ » N'EST PAS « OBJECTIF ATTEINT ». La notion
+     * existait déjà pour l'HISTORIQUE (`hadData`, « distingue une période
+     * ratée d'une période sans aucune activité »), et manquait pour la période
+     * COURANTE : un objectif plafond (« pertes consécutives ≤ 2 », « trades
+     * par jour ≤ 3 ») était annoncé « Atteint » à un trader qui n'avait pas
+     * passé un seul trade du mois. Vu à l'écran le 2026-09-15 : « 2 atteints »
+     * sur un compte à zéro trade.
+     *
+     * Ne pas trader n'est pas de la discipline, et le produit a déjà tranché
+     * ailleurs : le profil public affiche « — » plutôt qu'un 0 % calculé.
+     */
+    const hadData = history.find((h) => h.current)?.hadData ?? false;
     return {
       id: g.id, kind, metric: g.metric, target, comparator, period: g.period, value, met, progress,
-      history, periodStreak: periodStreakFor(history),
+      hadData, history, periodStreak: periodStreakFor(history),
     };
   });
 
