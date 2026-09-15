@@ -61,6 +61,41 @@ describe("le rattachement d'un envoi de robot à un challenge", () => {
     expect(challengeRattache(null, null, "ch-actif")).toBeNull();
   });
 
+  it("ne devine JAMAIS pour un rail qui ne tourne sur aucun compte", () => {
+    /**
+     * ⚠️⚠️ MESURÉ LE 2026-09-15 en testant le webhook TradingView de bout en
+     * bout : un trade venu d'une alerte Pine se rattachait au challenge
+     * Tradovate actif du compte.
+     *
+     * Le repli suppose un compte qui EXISTE et qui s'est tu : un expert advisor
+     * est installé SUR un compte MetaTrader. Une stratégie Pine, elle, tourne
+     * sur un GRAPHIQUE, avec des exécutions simulées, et le snippet distribué
+     * n'a aucun numéro à envoyer parce qu'il n'y a aucun compte.
+     *
+     * Ces trades entraient donc dans le P&L du challenge, dans sa courbe
+     * d'équité et dans le drawdown sur lequel le gardien décide de prévenir :
+     * la fonctionnalité qui promet d'avertir « avant que tu fasses sauter ton
+     * compte » se prononçait sur des trades jamais passés dessus.
+     */
+    expect(challengeRattache("", CARTE, "ch-actif", "tradingview")).toBeNull();
+    expect(challengeRattache(null, new Map(), "ch-actif", "tradingview")).toBeNull();
+  });
+
+  it("mais suit quand même un compte explicitement nommé", () => {
+    // ⚠️ Le trader qui VEUT rattacher son alerte le dit : le parseur accepte
+    // « account » dans le message. On ne lui refuse pas ce qu'il a désigné.
+    expect(challengeRattache("DEMO8651651", CARTE, null, "tradingview")).toBe("ch-tradovate");
+  });
+
+  it("garde le repli pour les rails installés sur un compte", () => {
+    for (const rail of ["mt4", "mt5", "ctrader", "ninjatrader", undefined]) {
+      expect(
+        challengeRattache("", CARTE, "ch-actif", rail),
+        `${rail} est installé sur un compte : le repli doit rester`,
+      ).toBe("ch-actif");
+    }
+  });
+
   it("ne rattache à rien quand il n'y a ni correspondance ni repli", () => {
     expect(challengeRattache("", new Map(), null)).toBeNull();
     expect(challengeRattache("INCONNU", CARTE, null)).toBeNull();
@@ -88,4 +123,25 @@ describe("les deux rails passent par cette décision", () => {
       ).not.toMatch(/\?\?\s*\(?\s*await\s+resolveActiveChallengeId/);
     });
   }
+
+  it("le rail transmis est celui de la ligne, pas une valeur écrite en dur", () => {
+    /**
+     * ⚠️⚠️ SANS CE GARDE, LA RÈGLE SE DÉTACHE EN SILENCE. Vérifié par mutation :
+     * remplacer `String(fields.source)` par `"mt5"` laissait tous les autres
+     * tests verts, et les trades TradingView se rattachaient de nouveau au
+     * challenge en cours. La décision peut être juste et son câblage faux.
+     */
+    const src = sansCommentaires(
+      readFileSync(join(process.cwd(), "lib/sync/push-handler.ts"), "utf8"),
+    );
+    const appels = src.match(/resolveChallenge\([^)]*\)/g) ?? [];
+    expect(appels.length, "plus aucun appel : le découpage a changé").toBeGreaterThanOrEqual(2);
+
+    const enDur = appels.filter((a) => /,\s*["'`]/.test(a));
+    expect(
+      enDur,
+      "le rail est écrit en dur au lieu d'être lu sur la ligne : un trade " +
+        "TradingView repassera pour un trade de courtier. Appels : " + enDur.join(", "),
+    ).toEqual([]);
+  });
 });

@@ -63,6 +63,7 @@ const guide: GuideContent = {
     ],
     notes: [
       "Le P&L envoyé est celui calculé par TradingView, dans la devise du compte de la stratégie.",
+      "Ces trades entrent dans ton journal SANS être rattachés à un compte : une stratégie Pine tourne sur un graphique, pas sur un compte de courtier, et ses exécutions ne doivent pas peser sur le drawdown d'un compte financé. Pour les rattacher quand même, ajoute \"account\":\"TON_NUMERO\" à ton message d'alerte.",
       "Tu peux aussi envoyer ton propre JSON sur cette URL, avec les champs : symbol, direction, volume, entry_price, exit_price, profit.",
     ],
   },
@@ -124,6 +125,7 @@ const guide: GuideContent = {
     ],
     notes: [
       "The P&L sent is the one computed by TradingView, in the strategy account currency.",
+      "These trades enter your journal WITHOUT being attached to an account: a Pine strategy runs on a chart, not on a broker account, and its fills must not weigh on a funded account's drawdown. To attach them anyway, add \"account\":\"YOUR_NUMBER\" to your alert message.",
       "You can also post your own JSON to this URL, with the fields: symbol, direction, volume, entry_price, exit_price, profit.",
     ],
   },
@@ -185,6 +187,7 @@ const guide: GuideContent = {
     ],
     notes: [
       "El P&L enviado es el que calcula TradingView, en la divisa de la cuenta de la estrategia.",
+      "Estos trades entran en tu diario SIN quedar vinculados a una cuenta: una estrategia Pine se ejecuta sobre un gráfico, no sobre una cuenta de bróker, y sus ejecuciones no deben pesar en el drawdown de una cuenta fondeada. Para vincularlos de todos modos, añade \"account\":\"TU_NUMERO\" a tu mensaje de alerta.",
       "También puedes enviar tu propio JSON a esta URL, con los campos: symbol, direction, volume, entry_price, exit_price, profit.",
     ],
   },
@@ -246,6 +249,7 @@ const guide: GuideContent = {
     ],
     notes: [
       "Der gesendete P&L ist der von TradingView berechnete, in der Kontowährung der Strategie.",
+      "Diese Trades landen in deinem Journal OHNE Kontozuordnung: eine Pine-Strategie läuft auf einem Chart, nicht auf einem Broker-Konto, und ihre Ausführungen dürfen den Drawdown eines finanzierten Kontos nicht belasten. Um sie trotzdem zuzuordnen, füge \"account\":\"DEINE_NUMMER\" zu deiner Alarm-Nachricht hinzu.",
       "Du kannst auch eigenes JSON an diese URL senden, mit den Feldern: symbol, direction, volume, entry_price, exit_price, profit.",
     ],
   },

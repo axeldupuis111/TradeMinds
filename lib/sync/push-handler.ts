@@ -292,8 +292,13 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   // repli sur le challenge actif unique si le compte n'est pas fourni/mappé.
   const accountMap = await getChallengeAccountMap(admin, userId);
   const fallbackChallengeId = await resolveActiveChallengeId(admin, userId);
-  const resolveChallenge = (account: string): string | null =>
-    challengeRattache(account, accountMap, fallbackChallengeId);
+  /**
+   * ⚠️ LE RAIL COMPTE, PAS SEULEMENT LE NUMÉRO. Une stratégie TradingView ne
+   * tourne sur aucun compte de courtier : le repli « unique challenge en
+   * cours » n'a rien à supposer pour elle. Voir lib/sync/rattachement.ts.
+   */
+  const resolveChallenge = (account: string, source: string): string | null =>
+    challengeRattache(account, accountMap, fallbackChallengeId, source);
 
   // Cumul du P&L des trades insérés par challenge (pour l'alerte drawdown ciblée).
   const batchPnlByChallenge = new Map<string, number>();
@@ -305,7 +310,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     const insertRows = toInsert.map((r) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { _account, ...fields } = r;
-      const challengeId = resolveChallenge(_account);
+      const challengeId = resolveChallenge(_account, String(fields.source));
       if (challengeId) {
         batchPnlByChallenge.set(challengeId, (batchPnlByChallenge.get(challengeId) ?? 0) + netOf(r));
       }
@@ -339,7 +344,8 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     const tradeId = existingMap.get(`${row.source}:${row.external_id}`)!;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user_id: _uid, source: _src, external_id: _eid, _account, ...updateFields } = row;
-    const repairedChallengeId = orphanIds.has(tradeId) ? resolveChallenge(_account) : null;
+    // Même règle qu’à l’insertion : le rail d’origine entre dans la décision.
+    const repairedChallengeId = orphanIds.has(tradeId) ? resolveChallenge(_account, String(_src)) : null;
     const { error: updateErr } = await admin
       .from("trades")
       .update(

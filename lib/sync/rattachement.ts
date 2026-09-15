@@ -39,9 +39,40 @@
  */
 
 /**
+ * LES RAILS QUI NE TOURNENT PAS SUR UN COMPTE DE COURTIER.
+ *
+ * ── POURQUOI LE REPLI NE VAUT PAS POUR EUX ──────────────────────────────────
+ *
+ * Le repli sur « l'unique challenge en cours » se justifie ainsi : un expert
+ * advisor est INSTALLÉ SUR un compte MetaTrader, un cBot sur un compte cTrader,
+ * un add-on sur un compte NinjaTrader. Quand il n'annonce pas son numéro, le
+ * compte existe quand même, et il n'y en a qu'un candidat.
+ *
+ * ⚠️⚠️ UNE STRATÉGIE PINE TOURNE SUR UN GRAPHIQUE, PAS SUR UN COMPTE. Ses
+ * exécutions sont celles du moteur de backtest de TradingView, à des prix
+ * simulés, et le snippet distribué n'a aucun numéro de compte à envoyer parce
+ * qu'il n'en existe aucun.
+ *
+ * Mesuré le 2026-09-15 en testant le webhook de bout en bout : un trade venu
+ * d'une alerte TradingView se rattachait au challenge Tradovate actif du
+ * compte. Ces trades entrent donc dans le P&L du challenge, dans sa courbe
+ * d'équité, et dans le DRAWDOWN sur lequel le gardien de challenge décide de
+ * prévenir ou non. La fonctionnalité qui promet d'avertir « avant que tu fasses
+ * sauter ton compte » se serait prononcée sur des trades qui ne sont pas passés
+ * sur ce compte.
+ *
+ * ⚠️ On ne devine donc pas : le trade entre au journal sans challenge, comme un
+ * import CSV sans compte. Le trader qui VEUT le rattacher le dit, en ajoutant
+ * `"account": "…"` à son message d'alerte (le parseur l'accepte déjà), et le
+ * guide le documente.
+ */
+const RAILS_SANS_COMPTE = new Set(["tradingview"]);
+
+/**
  * @param numeroFourni  numéro envoyé par le robot (« » s'il n'en envoie pas)
  * @param carte         numéro de compte → challenge, déclarés par le trader
  * @param challengeActifUnique  repli : son seul challenge en cours, ou `null`
+ * @param source        le rail d'où vient le trade (`mt4`, `tradingview`…)
  * @returns le challenge, ou `null` s'il ne faut PAS deviner
  */
 export function challengeRattache(
@@ -49,6 +80,7 @@ export function challengeRattache(
   /** `null` : la lecture a échoué, on ne sait pas ce que le trader a déclaré. */
   carte: Map<string, string> | null,
   challengeActifUnique: string | null,
+  source?: string,
 ): string | null {
   /**
    * ⚠️⚠️ UNE CARTE ILLISIBLE N'EST PAS UNE CARTE VIDE. Sans ce cas, une
@@ -71,6 +103,14 @@ export function challengeRattache(
      */
     if (carte.size > 0) return null;
   }
+
+  /**
+   * ⚠️ CE RAIL NE TOURNE SUR AUCUN COMPTE (voir RAILS_SANS_COMPTE ci-dessus).
+   * Le repli suppose un compte qui existe et qui s'est tu ; ici il n'y en a
+   * pas, et deviner ferait entrer des exécutions simulées dans le drawdown
+   * d'un compte financé.
+   */
+  if (source && RAILS_SANS_COMPTE.has(source)) return null;
 
   // Rien à comparer : ni numéro envoyé, ni numéro déclaré. On peut deviner,
   // et seulement sur un unique challenge en cours (l'appelant s'en assure).
