@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ecouterDemandesCoach } from "@/lib/coach-bus";
 import { coachActionMeta, useCoachChat } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
+import CoachThinking from "@/components/coach/CoachThinking";
 import { describePage } from "@/lib/coach-page-context";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -82,7 +83,9 @@ export default function CoachDock() {
     const el = scrollRef.current;
     if (!el) return;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight;
-  }, [chat.messages]);
+    // L'indicateur d'attente occupe de la place et change d'étape : sans le
+    // suivre, il apparaissait sous le bord bas du panneau.
+  }, [chat.messages, chat.loading, chat.step]);
 
   // Échap ferme le dock. Une seule façon de sortir d'un dialogue, c'est une
   // façon de trop peu : si la croix devient inatteignable (mise en page
@@ -240,15 +243,21 @@ export default function CoachDock() {
             )}
             {chat.messages.map((msg, i) => (
               <div key={msg.id ?? i} className={msg.role === "user" ? "text-right" : ""}>
-                <div
-                  className={`inline-block max-w-[92%] text-left rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "bg-accent/15 text-foreground"
-                      : "bg-background border border-border text-foreground-muted"
-                  }`}
-                >
-                  {msg.content || (chat.loading ? "…" : "")}
-                </div>
+                {/* Bulle vide : rien à montrer. Le flux crée le message de
+                    réponse AVANT le premier mot ; afficher « … » à sa place
+                    doublait l'indicateur d'attente rendu juste en dessous, qui
+                    lui dit ce que le coach est en train de faire. */}
+                {(msg.content || msg.role === "user") && (
+                  <div
+                    className={`inline-block max-w-[92%] text-left rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-accent/15 text-foreground"
+                        : "bg-background border border-border text-foreground-muted"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                )}
                 {/* Rien n'est fait tant que le trader n'a pas tranché. */}
                 {(msg.confirms ?? []).map((item, ci) => (
                   <CoachConfirmBox
@@ -288,6 +297,7 @@ export default function CoachDock() {
                 )}
               </div>
             ))}
+            {chat.loading && <CoachThinking step={chat.step} t={t} compact />}
           </div>
 
           <footer className="border-t border-border p-3">

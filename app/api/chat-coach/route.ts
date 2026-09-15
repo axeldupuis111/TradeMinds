@@ -16,6 +16,7 @@ import {
 import { glossariesForStrategy } from "@/lib/coach-method-glossaries";
 import { buildCoachSystemBlocks } from "@/lib/coach-system-prompt";
 import { createDashStripper } from "@/lib/coach-typography";
+import { familleOutil } from "@/lib/coach-steps";
 import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
 import { differerCatalogue } from "@/lib/coach-tool-search";
 import type { PlanType } from "@/lib/PlanContext";
@@ -444,12 +445,26 @@ export async function POST(request: Request) {
           produced = true;
           controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
         };
+        /**
+         * Événement d'étape : ce que le coach est en train de faire.
+         *
+         * ⚠️ NE COMPTE PAS COMME UNE RÉPONSE PRODUITE. `produced` décide du
+         * remboursement du quota quand le tout premier appel modèle échoue ;
+         * un « je réfléchis » émis avant cet appel ne doit surtout pas faire
+         * payer un message qui n'a rien rendu.
+         */
+        const sendMeta = (obj: unknown) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        };
         // Compteurs de tous les tours : un message du trader peut déclencher
         // plusieurs appels modèle, c'est leur SOMME qui est le coût réel.
         const roundUsages: AiUsage[] = [];
         const toolsCalled: string[] = [];
         try {
           let toolCallsUsed = 0;
+          // Le premier appel modèle peut rester muet plusieurs secondes (il
+          // commence souvent par choisir un outil). On le dit avant, pas après.
+          sendMeta({ t: "step", k: "thinking" });
           for (let round = 0; round < MAX_ROUNDS; round++) {
             const claudeStream = client.messages.stream({
               model: coachModel,
@@ -512,6 +527,9 @@ export async function POST(request: Request) {
               }
               toolCallsUsed += 1;
               toolsCalled.push(tu.name);
+              // L'outil s'exécute maintenant : une lecture de journal ou un
+              // export peuvent tenir la seconde, et c'est du silence à l'écran.
+              sendMeta({ t: "step", k: familleOutil(tu.name), n: tu.name });
               const outcome = await executeCoachTool(
                 sb,
                 userId,
@@ -535,6 +553,8 @@ export async function POST(request: Request) {
 
             conversation.push({ role: "assistant", content: final.content });
             conversation.push({ role: "user", content: results });
+            // Les outils ont répondu : le tour suivant rédige.
+            sendMeta({ t: "step", k: "writing" });
             // Séparateur visuel entre le texte pré-action et la confirmation.
             send({ t: "text", d: "\n\n" });
           }

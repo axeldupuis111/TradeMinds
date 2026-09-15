@@ -15,6 +15,7 @@ import {
   type ChatMessage,
 } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
+import CoachThinking from "@/components/coach/CoachThinking";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -539,7 +540,9 @@ export default function AnalysisPage() {
     if (distanceFromBottom < 120) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [chatMessages]);
+    // L'indicateur d'attente change de taille quand il annonce une nouvelle
+    // étape : sans le suivre, il tombe sous le bord bas de la conversation.
+  }, [chatMessages, chatLoading, chat.step]);
 
   const loadOlderChat = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1750,15 +1753,12 @@ export default function AnalysisPage() {
                   )}
                 </div>
               ))}
+              {/* Trois points muets auparavant : ils disaient « ça tourne »
+                  sans dire quoi, et surtout sans dire depuis combien de temps.
+                  L'indicateur nomme l'étape réellement en cours. */}
               {chatLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-surface border border-border rounded-xl px-4 py-2.5 rounded-bl-sm">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
+                  <CoachThinking step={chat.step} t={t} />
                 </div>
               )}
               <div ref={chatEndRef} />

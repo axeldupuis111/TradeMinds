@@ -12,6 +12,7 @@
 
 import type { Traduire } from "@/lib/LanguageContext";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { COACH_STEP_KEYS, type CoachStepKey } from "@/lib/coach-steps";
 import { DEMO_COACH } from "@/lib/demo-fixtures";
 import type { Lang } from "@/lib/translations";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "@/lib/plan-limits";
@@ -311,6 +312,17 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  /**
+   * Étape en cours du coach, ou null quand il ne travaille pas.
+   *
+   * Le silence entre l'envoi et le premier mot pouvait durer plusieurs
+   * secondes sans rien à l'écran : lu comme une panne, pas comme une
+   * réflexion. Ce qui est affiché ici vient d'événements réels du serveur
+   * (voir lib/coach-steps.ts) ; la seule étape posée par le client est la
+   * première, « je rassemble tes données », qui couvre exactement le temps
+   * où la requête est partie mais où rien n'est encore revenu.
+   */
+  const [step, setStep] = useState<CoachStepKey | null>(null);
   const [dailyCount, setDailyCount] = useState(0);
   /** Messages déjà consommés sur le mois en cours (disjoncteur mensuel). */
   const [monthlyCount, setMonthlyCount] = useState(0);
@@ -470,6 +482,9 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     setMessages(next);
     setInput("");
     setLoading(true);
+    // Première étape, posée avant même que la requête parte : le serveur passe
+    // ce temps à lire le journal, la fiche stratégie et la mémoire du coach.
+    setStep("context");
     loadingRef.current = true;
     if (plan === "free") track("taster_used");
 
@@ -480,6 +495,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       const turn = turns[Math.min(userCount - 1, turns.length - 1)];
       setMessages([...next, { role: "assistant", content: `${t("demo_coach_note")}\n\n${turn.answer}` }]);
       setLoading(false);
+      setStep(null);
       loadingRef.current = false;
       return;
     }
@@ -534,8 +550,16 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
         try {
           const evt = JSON.parse(trimmed) as
             | { t: "text"; d: string }
+            | { t: "step"; k: string }
             | { t: "action"; a: CoachActionEvent; u?: CoachUndo }
             | { t: "confirm"; c: CoachConfirm };
+          // Étape : ne touche pas au contenu du message, seulement à
+          // l'indicateur. Une clé inconnue (serveur plus récent que le
+          // navigateur d'un onglet resté ouvert) retombe sur « outil ».
+          if (evt.t === "step") {
+            setStep(COACH_STEP_KEYS.includes(evt.k as CoachStepKey) ? (evt.k as CoachStepKey) : "tool");
+            return;
+          }
           if (evt.t === "text") answer += evt.d;
           else if (evt.t === "action") {
             if (evt.a.type === "export_ready" && evt.a.filename && evt.a.csv) {
@@ -622,6 +646,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       }]);
     } finally {
       setLoading(false);
+      setStep(null);
       loadingRef.current = false;
     }
   }, [input, messages, loading, remaining, dailyCount, supabase, lang, demoMode, plan, pageContext, t, onAnswered]);
@@ -705,7 +730,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   return {
     messages, setMessages,
     input, setInput,
-    loading, send, undo, resolveConfirm, refresh,
+    loading, step, send, undo, resolveConfirm, refresh,
     dailyCount, setDailyCount,
     remaining, limit, canChat, isPaidPlan, freeTasterUsed,
     monthlyRemaining, monthlyLimit,
