@@ -4,6 +4,17 @@
 
 import { localDateKey, localHour, localWeekday, addDaysToDateKey } from "./timezone";
 
+/**
+ * Nombre de bilans de séance exigés pour entrer au classement.
+ *
+ * ⚠️ IL VIT ICI PARCE QU'IL S'AFFICHAIT EN DUR. L'écran bouchait lui-même le
+ * trou de la phrase `leaderboard_not_ranked` par un remplacement de chaîne,
+ * avec un 3 écrit à la main, pendant que la route gardait son propre 3 de son
+ * côté : deux sources pour le même seuil, et un bouchage qui court-circuitait
+ * la traduction, donc interdisait tout accord de pluriel.
+ */
+export const MIN_BILANS_POUR_CLASSEMENT = 3;
+
 export interface ReviewLike {
   created_at: string;
   discipline_score: number | null;

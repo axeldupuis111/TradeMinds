@@ -5,6 +5,7 @@ import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
 import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
+import { MIN_BILANS_POUR_CLASSEMENT } from "@/lib/leaderboard-extras";
 import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Gem, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket, FileDown, Gift, Snowflake } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -338,7 +339,13 @@ export default function LeaderboardPage() {
                 </div>
               );
             })() : (
-              <p className="text-xs text-muted mt-3 text-center">{t("leaderboard_not_ranked").replace("{n}", "3")}</p>
+              // ⚠️ `.replace("{n}", "3")` COURT-CIRCUITAIT LA TRADUCTION : le seuil
+              // était écrit en dur à côté de celui de la route, et un remplacement
+              // de chaîne ne résout aucun accord de pluriel. La phrase passe
+              // maintenant par `t()` avec sa valeur.
+              <p className="text-xs text-muted mt-3 text-center">
+                {t("leaderboard_not_ranked", { n: MIN_BILANS_POUR_CLASSEMENT })}
+              </p>
             )}
           </div>
         );

@@ -3,14 +3,22 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
-import { computeAllTimeStats } from "@/lib/leaderboard-extras";
+import { MIN_BILANS_POUR_CLASSEMENT, computeAllTimeStats } from "@/lib/leaderboard-extras";
 import { PODIUM_FLAIR, getCommunityChallenge, isoWeekKey, previousWeekKey } from "@/lib/community-challenges";
 import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
 
 export const dynamic = "force-dynamic";
 
 type Mode = "discipline" | "sessions" | "streak";
-const MIN_SESSIONS = 3; // éligibilité : au moins 3 sessions sur la période
+/**
+ * Éligibilité : au moins ce nombre de BILANS DE SÉANCE sur la période.
+ *
+ * ⚠️ CE N'EST PAS UN NOMBRE DE SÉANCES, malgré ce que l'écran a longtemps
+ * écrit. Une ligne de `sessions` (le rituel d'avant-marché) ne compte pas ici :
+ * seule une ligne de `session_reviews`, produite par l'onglet Analyse IA,
+ * porte un score de discipline, et sans score il n'y a rien à classer.
+ */
+const MIN_SESSIONS = MIN_BILANS_POUR_CLASSEMENT;
 
 interface ReviewRow { user_id: string; discipline_score: number | null; created_at: string }
 
