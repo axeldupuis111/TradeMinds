@@ -149,6 +149,26 @@ const ALIASES: Record<string, string> = {
   "consumer confidence": "consumer_confidence",
   "consumer sentiment": "consumer_sentiment",
   "umich consumer sentiment": "consumer_sentiment",
+  /**
+   * ⚠️⚠️ LE FLUX ÉCRIT « UoM », PAS « UMich ». L'alias du dessus a été écrit
+   * d'après une supposition sur le vocabulaire du flux, et le flux dit
+   * « Prelim UoM Consumer Sentiment » / « Revised UoM Consumer Sentiment ».
+   * Résultat : la leçon `consumer_sentiment`, rédigée à la main dans quatre
+   * langues et écrite POUR l'enquête du Michigan, n'était atteignable par
+   * personne — vérifié contre les 448 titres réellement reçus.
+   */
+  "uom consumer sentiment": "consumer_sentiment",
+  /** GfK est nommément cité dans la leçon générique sur la confiance. */
+  "gfk consumer confidence": "consumer_confidence",
+  /**
+   * ⚠️ CE QUI N'EST PAS RATTACHÉ, ET POURQUOI. « Westpac Consumer Sentiment »
+   * (australien) reste sans leçon longue : `consumer_sentiment` parle du panel
+   * de mille ménages AMÉRICAINS et des anticipations suivies par la Fed. Lui
+   * servir cette fiche referait le défaut corrigé le 2026-09-15, quand le
+   * rapport emploi australien recevait celle du NFP. Même raison pour « ZEW
+   * Economic Sentiment » (analystes financiers, pas consommateurs) et
+   * « Economy Watchers Sentiment » (employés du secteur des services).
+   */
 
   // Trade / housing / energy
   "trade balance": "trade_balance",
