@@ -940,7 +940,18 @@ export default function AnalysisPage() {
       });
       track("analysis_pdf_export");
     } catch (e) {
+      /**
+       * ⚠️⚠️ LE TRADER A CLIQUÉ, ET RIEN NE SE PASSAIT. Le `finally` remet le
+       * bouton dans son état normal, aucun fichier n'arrive, et ce `catch` ne
+       * faisait qu'un `console.error` : l'export échouait sans un mot, sur une
+       * fonctionnalité réservée aux plans payants.
+       *
+       * ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÉCRITE : l'export PDF d'Analytics affiche
+       * `t("pdf_error")` depuis toujours, et la clé existe dans les quatre
+       * langues. Trois exports, un seul prévenait.
+       */
       console.error("PDF export failed:", e);
+      setError(t("pdf_error"));
     } finally {
       setExportingPdf(false);
     }

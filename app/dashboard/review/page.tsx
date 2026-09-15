@@ -252,10 +252,18 @@ export default function MonthlyReviewPage() {
   }
 
   const [exporting, setExporting] = useState(false);
+  /**
+   * ⚠️ L'ÉCHEC DE L'EXPORT SE DIT À CÔTÉ DU BOUTON QU'ON VIENT DE CLIQUER.
+   * Ce `catch` ne faisait qu'un `console.error` : le bouton redevenait normal,
+   * aucun fichier n'arrivait, et rien n'était affiché. L'export d'Analytics,
+   * lui, prévient depuis toujours avec la même clé.
+   */
+  const [exportErreur, setExportErreur] = useState<string | null>(null);
 
   async function exportPdf() {
     if (!stats || !month) return;
     setExporting(true);
+    setExportErreur(null);
     try {
       const locale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang as "fr" | "en" | "de" | "es"] ?? "en-US";
       const { jsPDF } = await import("jspdf");
@@ -439,6 +447,7 @@ export default function MonthlyReviewPage() {
       doc.save(`TradeDiscipline-bilan-${month.key}.pdf`);
     } catch (err) {
       console.error("[Review PDF] error:", err);
+      setExportErreur(t("pdf_error"));
     } finally {
       setExporting(false);
     }
@@ -477,11 +486,16 @@ export default function MonthlyReviewPage() {
           <p className="text-muted mt-1">{t("review_subtitle")}</p>
         </div>
         {isPaid && hasContent && (
-          <button onClick={exportPdf} disabled={exporting}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-foreground text-sm hover:bg-surface transition-colors disabled:opacity-50 shrink-0">
-            <FileDown className="w-4 h-4" />
-            {exporting ? t("pdf_generating") : t("review_export_pdf")}
-          </button>
+          <div className="shrink-0">
+            <button onClick={exportPdf} disabled={exporting}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-foreground text-sm hover:bg-surface transition-colors disabled:opacity-50">
+              <FileDown className="w-4 h-4" />
+              {exporting ? t("pdf_generating") : t("review_export_pdf")}
+            </button>
+            {exportErreur && (
+              <p role="alert" className="text-xs text-loss mt-1.5 max-w-[16rem]">{exportErreur}</p>
+            )}
+          </div>
         )}
       </div>
 
