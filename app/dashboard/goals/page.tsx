@@ -16,6 +16,7 @@ import { Trash2, Plus, Target, CheckCircle2, PenLine, Layers, Flame, Repeat, Spa
 import { useCallback, useEffect, useState } from "react";
 import { pourcent, langueCourante } from "@/lib/nombres";
 import { bornesDePeriode, cleDePeriode } from "@/lib/periode-objectif";
+import { objectifAtteint } from "@/lib/objectif-atteint";
 import { browserTimezone } from "@/lib/timezone";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
@@ -321,7 +322,7 @@ function goalStatus(g: Goal): { status: "met" | "failed" | "progress"; priority:
    */
   if (g.hadData === false) return { status: "progress", priority: 2 };
   const failing = !g.met && g.comparator === "lte" && g.value > g.target;
-  if (g.met) return { status: "met", priority: 3 };
+  if (objectifAtteint(g)) return { status: "met", priority: 3 };
   if (failing) return { status: "failed", priority: 0 };
   return { status: "progress", priority: 1 };
 }
@@ -409,9 +410,11 @@ export default function GoalsPage() {
     try {
       const raw = localStorage.getItem("goals_met_snapshot");
       const prev: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-      const newlyMet = metric.some((g) => g.met && prev[g.id] === false);
+      // ⚠️ MÊME RÈGLE QUE L'ANNEAU : sans activité sur la période, pas de
+      // victoire, donc pas de confettis. Le produit félicitait l'inactivité.
+      const newlyMet = metric.some((g) => objectifAtteint(g) && prev[g.id] === false);
       const snapshot: Record<string, boolean> = {};
-      for (const g of metric) snapshot[g.id] = g.met;
+      for (const g of metric) snapshot[g.id] = objectifAtteint(g);
       localStorage.setItem("goals_met_snapshot", JSON.stringify(snapshot));
       if (newlyMet) setShowConfetti(true);
     } catch {
@@ -645,8 +648,13 @@ export default function GoalsPage() {
   function periodLabel(p: Period) { return t(`goals_period_${p}`); }
 
   const metricGoals = goals.filter((g): g is MetricGoal => g.kind === "metric");
-  const customGoals = goals.filter((g): g is CustomGoal => g.kind === "custom");
-  const achieved = metricGoals.filter((g) => g.met).length + customGoals.filter((g) => g.done).length;
+  /**
+   * ⚠️⚠️ CE COMPTEUR IGNORAIT `hadData`, ET LA PUCE D'À CÔTÉ NON. L'anneau
+   * annonçait « 2/5 » quand `counts` (quinze lignes plus bas, via
+   * `goalStatus`) disait « 5 en cours » : les deux objectifs PLAFOND d'un
+   * trader qui n'avait pas tradé du mois y étaient comptés comme gagnés.
+   */
+  const achieved = goals.filter(objectifAtteint).length;
 
   const existing = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
   // Recommandations non encore ajoutées (par métrique + période) ni rejetées.

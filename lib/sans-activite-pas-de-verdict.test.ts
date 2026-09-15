@@ -90,14 +90,18 @@ describe("un objectif sans activité", () => {
 
   it("le verdict d'absence précède celui d'atteinte", () => {
     /**
-     * ⚠️ L'ORDRE EST LA RÈGLE. Placé après `if (g.met)`, le contrôle ne servirait
-     * à rien : c'est justement `met` qui vaut `true` à tort quand rien ne s'est
-     * passé.
+     * ⚠️ L'ORDRE EST LA RÈGLE. Placé après le verdict d'atteinte, le contrôle ne
+     * servirait à rien : c'est justement `met` qui vaut `true` à tort quand rien
+     * ne s'est passé.
+     *
+     * ⚠️ LE VERDICT D'ATTEINTE PASSE MAINTENANT PAR `objectifAtteint`, la règle
+     * partagée : `goalStatus` était le SEUL endroit à l'appliquer, et trois
+     * autres écrans lisaient `met` tout cru (voir objectif-atteint.test.ts).
      */
     const debut = page.indexOf("function goalStatus");
     const corps = page.slice(debut, debut + 900);
     const absence = corps.indexOf("hadData");
-    const atteinte = corps.indexOf("if (g.met)");
+    const atteinte = corps.indexOf("objectifAtteint(g)");
     expect(absence, "le contrôle d'absence a disparu").toBeGreaterThan(-1);
     expect(atteinte, "le verdict d'atteinte a disparu").toBeGreaterThan(-1);
     expect(

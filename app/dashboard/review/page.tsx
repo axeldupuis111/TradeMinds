@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import { objectifAtteint, type ObjectifJugeable } from "@/lib/objectif-atteint";
 import LectureRatee from "@/components/LectureRatee";
 import { currencySymbol, money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
@@ -174,9 +175,13 @@ export default function MonthlyReviewPage() {
             if (!r.ok) throw new Error(`goals ${r.status}`);
             return r.json();
           }).then((g) => {
-            const list = (g.goals ?? []) as { kind: string; met?: boolean; done?: boolean }[];
+            const list = (g.goals ?? []) as ObjectifJugeable[];
             const monthly = list.filter((x) => x.kind === "metric" || x.kind === "custom");
-            const met = monthly.filter((x) => x.met || x.done).length;
+            // ⚠️ SANS ACTIVITÉ, PAS DE VERDICT : un objectif plafond est
+            // atteint par construction tant que rien ne s'est passé. Le
+            // bilan annonçait donc « 2/5 objectifs atteints » à un trader
+            // qui n'avait pas ouvert une position du mois.
+            const met = monthly.filter(objectifAtteint).length;
             setGoalsSummary({ met, total: monthly.length });
           }).catch(() => setGoalsSummary(null));
         } else {
