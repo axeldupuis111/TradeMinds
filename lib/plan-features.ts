@@ -93,7 +93,30 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true },
   { key: "plan_feat_monthly_review",    free: false,         plus: true,             premium: true },
   { key: "plan_feat_pdf_export",        free: false,         plus: true,             premium: true },
-  { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true },
+  /**
+   * ⚠️⚠️ ANNONCÉ PAYANT, OUVERT À TOUS DANS LES FAITS, ET DEPUIS TOUJOURS. Ni
+   * la case des Réglages, ni la page `/profile/[username]`, ni le passage à un
+   * plan inférieur ne regardaient le plan : la page LIT `plan` puis ne s'en
+   * sert jamais. Trois couches, aucune qui applique la règle.
+   *
+   * ⚠️ TRANCHÉ DANS LE SENS DE L'OUVERTURE, le 2026-09-16, et c'est un choix
+   * commercial, pas un renoncement :
+   *
+   *   - poser le verrou ne rapporterait RIEN aujourd'hui : les quatre seuls
+   *     profils publics existants appartiennent à des comptes premium, donc il
+   *     n'y a aucun revenu à récupérer ;
+   *   - la page se termine par un appel à l'inscription et porte sa propre
+   *     image de partage (`opengraph-image.tsx`) : c'est une surface
+   *     d'ACQUISITION, et le chiffre qui fait mal ici est l'activation, pas la
+   *     fuite de valeur ;
+   *   - elle n'affiche aucun montant (taux, compteurs et série seulement), donc
+   *     l'ouvrir ne montre rien qu'un compte gratuit devrait cacher.
+   *
+   * ⚠️ ET CE N'EST PAS « ON LAISSE COMME C'EST » : la ligne passe à `free: true`
+   * pour que le tableau de tarifs, la landing et le compteur « N
+   * fonctionnalités verrouillées » disent enfin la même chose que le code.
+   */
+  { key: "plan_feat_public_profile",    free: true,          plus: true,             premium: true },
   // ── Automatisation & protection (exclusif Premium) ──
   { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true, groupKey: "plan_group_automation" },
   { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true },
