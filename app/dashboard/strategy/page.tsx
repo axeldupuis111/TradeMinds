@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import LectureRatee from "@/components/LectureRatee";
 import { money } from "@/lib/account-currency";
-import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
+import { useDeviseDesLignes } from "@/lib/hooks/useDisplayCurrency";
 import Link from "next/link";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -86,7 +86,6 @@ const TAG_CATEGORY_COLORS: Record<string, string> = {
 export default function StrategyPage() {
   const { t, lang } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
-  const displayCurrency = useDisplayCurrency();
   const { maxStrategies, demoMode, loading: planLoading } = usePlan();
   const { selectedAccount } = useActiveAccount();
   const supabase = createClient();
@@ -136,7 +135,25 @@ export default function StrategyPage() {
     pnl: number;
     avgWin: number;
     avgLoss: number;
+    /**
+     * Les comptes d'où viennent ces trades.
+     *
+     * ⚠️⚠️ SANS EUX, LA CARTE ADDITIONNAIT DES DEVISES. Elle affichait la
+     * devise des comptes ACTIFS (`useDisplayCurrency`), alors que les trades
+     * d'une fiche viennent de tout le journal, comptes clôturés compris.
+     * Mesuré le 2026-09-15 : « P&L TOTAL -6 342,63 $ » pour une fiche dont les
+     * 63 trades sont en majorité sur des comptes clos EN EUROS.
+     */
+    comptes: (string | null)[];
   } | null>(null);
+  /**
+   * ⚠️ LA DEVISE VIENT DES TRADES DE LA FICHE, PAS DES COMPTES ACTIFS. Voir
+   * `useDeviseDesLignes` : poser la question sur le mauvais ensemble est
+   * exactement ce qui collait un « $ » à un total en euros.
+   */
+  const { devise: displayCurrency, melangees: devisesMelangees } = useDeviseDesLignes(
+    perf?.comptes ?? [],
+  );
   const pendingNavRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -154,11 +171,11 @@ export default function StrategyPage() {
       // Lecture paginée : ce bloc annonce le winrate et le P&L de la stratégie,
       // et une lecture non bornée s'arrête à 1 000 trades sans le dire (voir
       // lib/supabase-paginate.ts).
-      const data = await fetchAllRows<{ pnl: number | null; commission: number | null; swap: number | null }>(
+      const data = await fetchAllRows<{ pnl: number | null; commission: number | null; swap: number | null; challenge_id: string | null }>(
         (from, to) =>
           supabase
             .from("trades")
-            .select("pnl, commission, swap")
+            .select("pnl, commission, swap, challenge_id")
             .eq("user_id", user.id)
             .eq("strategy_id", existingId)
             .not("pnl", "is", null)
@@ -167,7 +184,7 @@ export default function StrategyPage() {
       );
       if (cancelled || data === null) return;
       const nets = data.map((tr) => (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0));
-      if (nets.length === 0) { setPerf({ count: 0, winrate: 0, pnl: 0, avgWin: 0, avgLoss: 0 }); return; }
+      if (nets.length === 0) { setPerf({ count: 0, winrate: 0, pnl: 0, avgWin: 0, avgLoss: 0, comptes: [] }); return; }
       const wins = nets.filter((n) => n > 0);
       const losses = nets.filter((n) => n < 0);
       setPerf({
@@ -176,6 +193,7 @@ export default function StrategyPage() {
         pnl: nets.reduce((s, n) => s + n, 0),
         avgWin: wins.length ? wins.reduce((s, n) => s + n, 0) / wins.length : 0,
         avgLoss: losses.length ? losses.reduce((s, n) => s + n, 0) / losses.length : 0,
+        comptes: data.map((tr) => tr.challenge_id),
       });
     })();
     return () => { cancelled = true; };
@@ -990,7 +1008,27 @@ export default function StrategyPage() {
           {/* Performance of this strategy */}
           <div className="bg-card border border-border rounded-xl p-4">
             <h3 className="text-sm font-semibold text-foreground mb-3">{t("strategy_perf_card")}</h3>
-            {perf && perf.count > 0 ? (
+            {perf && perf.count > 0 && devisesMelangees ? (
+              /* ⚠️ AUCUN TOTAL SOUS UN SEUL SYMBOLE quand la fiche a été jouée
+                 sur des comptes de devises différentes : la somme ne désigne
+                 aucune somme d'argent. Le nombre de trades et le taux de
+                 réussite, eux, ne dépendent d'aucune monnaie et restent. */
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-surface border border-border p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_total")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{perf.count}</p>
+                  </div>
+                  <div className="rounded-lg bg-surface border border-border p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{pourcent(perf.winrate)}</p>
+                  </div>
+                </div>
+                <p role="status" className="rounded-lg border border-border bg-surface p-3 text-xs text-foreground-muted">
+                  {t("analytics_devises_melangees_bloc")}
+                </p>
+              </div>
+            ) : perf && perf.count > 0 ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg bg-surface border border-border p-3">

@@ -4,7 +4,7 @@ import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { objectifAtteint, type ObjectifJugeable } from "@/lib/objectif-atteint";
 import LectureRatee from "@/components/LectureRatee";
 import { currencySymbol, money } from "@/lib/account-currency";
-import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
+import { useDeviseDuJournal } from "@/lib/hooks/useDisplayCurrency";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
@@ -51,7 +51,17 @@ const EMOTION_EMOJI: Record<string, string> = {
   calm: "\u{1F60C}", greedy: "\u{1F4B0}", hesitant: "\u{1F615}", overconfident: "\u{1F913}", excited: "\u{1F929}", fearful: "\u{1F628}",
 };
 
-function fmtMoney(n: number, currency: string) { return money(n, currency, { signed: true }); }
+/**
+ * ⚠️⚠️ DEVISE VIDE = LA VUE MÊLE PLUSIEURS MONNAIES, et aucun total n'a alors
+ * de sens : ce bilan agrège tout le journal, comptes clôturés compris. Le
+ * contrôle est ICI plutôt qu'aux trente-quatre endroits qui affichent un
+ * montant, parce qu'une liste de trente-quatre gardes à tenir à jour est
+ * exactement ce qui produit ce genre de défaut.
+ */
+function fmtMoney(n: number, currency: string) {
+  if (!currency) return "\u2014";
+  return money(n, currency, { signed: true });
+}
 // Format compact pour les petits espaces : +1,2k / -340.
 function fmtMoneyShort(n: number) {
   const a = Math.abs(n);
@@ -115,7 +125,16 @@ function Sparkline({ data }: { data: number[] }) {
 export default function MonthlyReviewPage() {
   const { t, lang } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
-  const displayCurrency = useDisplayCurrency();
+  /**
+   * ⚠️⚠️ CETTE PAGE AGRÈGE TOUT LE JOURNAL, comptes clôturés compris, et la
+   * devise se déduisait des seuls comptes ACTIFS : un trader qui a fermé un
+   * compte en euros et ouvert un compte en dollars lisait donc ses anciens
+   * euros sous un « $ ». Voir `useDeviseDuJournal`, et la cause détaillée dans
+   * `lib/devises-melangees.test.ts`.
+   */
+  const { devise: deviseDuJournal, melangees: devisesMelangees } = useDeviseDuJournal();
+  /** Vide quand les monnaies se mêlent : `fmtMoney` rend alors un tiret. */
+  const displayCurrency = devisesMelangees ? "" : deviseDuJournal;
   const { plan, demoMode, loading: abonnementEnCours } = usePlan();
   const isPaid = plan === "plus" || plan === "premium";
   const [monthParam, setMonthParam] = useState<string | null>(null);
@@ -1136,7 +1155,16 @@ function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; titl
 function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void }) {
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(true, onClose);
-  const displayCurrency = useDisplayCurrency();
+  /**
+   * ⚠️⚠️ CETTE PAGE AGRÈGE TOUT LE JOURNAL, comptes clôturés compris, et la
+   * devise se déduisait des seuls comptes ACTIFS : un trader qui a fermé un
+   * compte en euros et ouvert un compte en dollars lisait donc ses anciens
+   * euros sous un « $ ». Voir `useDeviseDuJournal`, et la cause détaillée dans
+   * `lib/devises-melangees.test.ts`.
+   */
+  const { devise: deviseDuJournal, melangees: devisesMelangees } = useDeviseDuJournal();
+  /** Vide quand les monnaies se mêlent : `fmtMoney` rend alors un tiret. */
+  const displayCurrency = devisesMelangees ? "" : deviseDuJournal;
   const { t, lang } = useLanguage();
   const reduced = useReducedMotion();
   const [data, setData] = useState<DayDetail | null>(null);

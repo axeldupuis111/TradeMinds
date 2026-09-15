@@ -278,6 +278,79 @@ describe("les totaux en devises mêlées", () => {
     ).toHaveLength(1); // la seule occurrence restante est le filtre ci-dessus
   });
 
+  /**
+   * ── LA MÊME CAUSE, QUATRE PAGES PLUS LOIN ───────────────────────────────────
+   *
+   * ⚠️⚠️ `useDisplayCurrency` DÉDUISAIT LA DEVISE DES SEULS COMPTES ACTIFS, et
+   * quatre pages qui agrègent TOUT le journal s'en servaient : stratégies,
+   * bilan mensuel, objectifs, analyse IA. C'est mot pour mot la cause décrite en
+   * haut de ce fichier, corrigée sur Analytics et laissée ailleurs.
+   *
+   * ⚠️ MESURÉ LE 2026-09-15 SUR LA PAGE STRATÉGIE : « P&L TOTAL -6 342,63 $ »
+   * pour une fiche dont les 63 trades viennent en majorité de comptes clos EN
+   * EUROS — le seul compte actif étant en dollars. Le même total s'affichait
+   * « -6 343 € » sur Analytics, à un clic de là.
+   *
+   * ⚠️ ET LA CARTE DES DEVISES CONNAÎT MAINTENANT LES COMPTES CLÔTURÉS :
+   * `ActiveAccountContext` n'en chargeait que les actifs, ce qui rendait la
+   * question insoluble pour toute page qui agrège l'historique.
+   */
+  it("le contexte des comptes connaît la devise des comptes clôturés", () => {
+    const src = lire("lib/ActiveAccountContext.tsx");
+    expect(src, "la carte des devises n'est plus exposée").toContain("devisesParCompte");
+    const requete = src.slice(src.indexOf('.select("id, currency, synced_currency")'));
+    expect(
+      requete.slice(0, 200),
+      "la lecture des devises filtre sur le statut : les comptes clos redeviennent invisibles",
+    ).not.toContain('.eq("status", "active")');
+  });
+
+  it("les pages qui agrègent tout le journal n'emploient plus la devise des comptes actifs", () => {
+    for (const chemin of [
+      "app/dashboard/goals/page.tsx",
+      "app/dashboard/review/page.tsx",
+      "app/dashboard/analysis/page.tsx",
+    ]) {
+      const src = lire(chemin);
+      expect(src, `${chemin} déduit encore sa devise des comptes actifs`).not.toMatch(
+        /useDisplayCurrency\(\)/,
+      );
+      expect(src, `${chemin} ne sait plus dire qu'il mêle des devises`).toContain(
+        "useDeviseDuJournal()",
+      );
+    }
+    // La page Stratégie, elle, connaît les comptes de SES trades : elle pose la
+    // question sur les lignes affichées plutôt que sur tout le journal.
+    const strategie = lire("app/dashboard/strategy/page.tsx");
+    expect(strategie).toContain("useDeviseDesLignes(");
+    expect(strategie, "les comptes des trades de la fiche ne sont plus lus").toContain(
+      "challenge_id",
+    );
+  });
+
+  /**
+   * ⚠️ LE CONTRÔLE EST DANS LE FORMATEUR, PAS AUX TRENTE-QUATRE ENDROITS qui
+   * affichent un montant. Une liste de trente-quatre gardes à tenir à jour est
+   * exactement ce qui produit ce genre de défaut.
+   */
+  it("les formateurs de ces pages rendent un tiret plutôt qu'un total faux", () => {
+    for (const [chemin, formateur] of [
+      ["app/dashboard/review/page.tsx", "fmtMoney"],
+      ["app/dashboard/analysis/page.tsx", "fmtEuro"],
+    ] as const) {
+      const src = lire(chemin);
+      const debut = src.indexOf(`function ${formateur}(`);
+      expect(debut, `${formateur} introuvable dans ${chemin}`).toBeGreaterThan(-1);
+      expect(
+        src.slice(debut, debut + 400),
+        `${formateur} affiche encore un montant quand la devise est inconnue`,
+      ).toMatch(/if \(!currency\) return/);
+      expect(src, `${chemin} ne vide plus la devise sur un mélange`).toContain(
+        'devisesMelangees ? "" :',
+      );
+    }
+  });
+
   it("le message de blocage existe dans les quatre langues", () => {
     for (const [nom, dico] of Object.entries({ fr: frDict, en: enDict, es: esDict, de: deDict })) {
       const texte = (dico as Record<string, string>)["analytics_devises_melangees_bloc"];

@@ -8,7 +8,7 @@ import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
-import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
+import { useDeviseDuJournal } from "@/lib/hooks/useDisplayCurrency";
 import {
   coachActionMeta,
   useCoachChat,
@@ -328,7 +328,14 @@ function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: Cat
   );
 }
 
+/**
+ * ⚠️⚠️ DEVISE VIDE = LA VUE MÊLE PLUSIEURS MONNAIES. Cette page agrège tout le
+ * journal, comptes clôturés compris : un total qui ajoute des euros à des
+ * dollars ne désigne aucune somme d'argent, et lui coller l'un des deux
+ * symboles est un mensonge que rien à l'écran ne rattrape.
+ */
 function fmtEuro(n: number, currency: string): string {
+  if (!currency) return "\u2014";
   return money(n, currency, { digits: 2, signed: n > 0 }).replace(/,00(?=\D*$)/, "");
 }
 
@@ -463,7 +470,16 @@ function getFilteredTrades(trades: { close_time: string }[], period: PeriodKey) 
 export default function AnalysisPage() {
   const { t, lang } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
-  const displayCurrency = useDisplayCurrency();
+  /**
+   * ⚠️⚠️ CETTE PAGE AGRÈGE TOUT LE JOURNAL, comptes clôturés compris, et la
+   * devise se déduisait des seuls comptes ACTIFS : un trader qui a fermé un
+   * compte en euros et ouvert un compte en dollars lisait donc ses anciens
+   * euros sous un « $ ». Voir `useDeviseDuJournal`, et la cause détaillée dans
+   * `lib/devises-melangees.test.ts`.
+   */
+  const { devise: deviseDuJournal, melangees: devisesMelangees } = useDeviseDuJournal();
+  /** Vide quand les monnaies se mêlent : `fmtEuro` rend alors un tiret. */
+  const displayCurrency = devisesMelangees ? "" : deviseDuJournal;
   const { canUseAI, aiRemaining, plan, refreshPlan, demoMode, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);

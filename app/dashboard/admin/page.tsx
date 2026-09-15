@@ -28,7 +28,14 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [targetEmail, setTargetEmail] = useState("");
-  const [targetPlan, setTargetPlan] = useState<"free" | "plus">("plus");
+  /**
+   * ⚠️⚠️ « PREMIUM » MANQUAIT, ET C'EST LE PLAN DE TREIZE COMPTES. La route
+   * `/api/admin/update-plan` accepte `free | plus | premium` depuis le début ;
+   * ce menu n'en proposait que deux. Le plan le plus cher, celui des
+   * partenaires et des comptes offerts, ne pouvait ni s'accorder ni se
+   * retirer depuis l'écran prévu pour ça : il fallait passer par la base.
+   */
+  const [targetPlan, setTargetPlan] = useState<"free" | "plus" | "premium">("plus");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
@@ -588,11 +595,12 @@ export default function AdminPage() {
             <label htmlFor="admin-admin-plan" className="block text-sm text-muted mb-1">{t("admin_plan")}</label>
             <select id="admin-admin-plan"
               value={targetPlan}
-              onChange={(e) => setTargetPlan(e.target.value as "free" | "plus")}
+              onChange={(e) => setTargetPlan(e.target.value as "free" | "plus" | "premium")}
               className={inputClass}
             >
               <option value="free">Free</option>
               <option value="plus">Plus</option>
+              <option value="premium">Premium</option>
             </select>
           </div>
 

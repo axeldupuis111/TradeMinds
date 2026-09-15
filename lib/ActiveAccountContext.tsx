@@ -60,6 +60,19 @@ interface ActiveAccountContextValue {
   selectedAccount: ActiveAccount | null;
   setSelectedAccountId: (id: string) => void;
   loading: boolean;
+  /**
+   * LA DEVISE DE CHAQUE COMPTE, CLÔTURÉS COMPRIS.
+   *
+   * ⚠️⚠️ `accounts` NE CONTIENT QUE LES COMPTES ACTIFS, et c'est voulu : c'est
+   * lui qui remplit le sélecteur, où proposer un compte clos n'aurait pas de
+   * sens. Mais les TOTAUX des pages qui agrègent (stratégies, bilan, objectifs,
+   * analyse) portent sur tous les trades du journal, y compris ceux des comptes
+   * clos. Déduire leur devise de la seule liste active, c'est poser la question
+   * sur le mauvais ensemble : mesuré le 2026-09-15, la page Stratégie annonçait
+   * « -6 342,63 $ » pour une fiche dont les trades viennent en majorité de
+   * comptes clos EN EUROS, le seul compte actif étant en dollars.
+   */
+  devisesParCompte: Map<string, string>;
 }
 
 const LS_KEY = "td_active_account";
@@ -70,12 +83,14 @@ const ActiveAccountContext = createContext<ActiveAccountContextValue>({
   selectedAccount: null,
   setSelectedAccountId: () => {},
   loading: true,
+  devisesParCompte: new Map(),
 });
 
 export function ActiveAccountProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const [accounts, setAccounts] = useState<ActiveAccount[]>([]);
   const [selectedAccountId, setSelectedAccountIdState] = useState<string | null>(null);
+  const [devisesParCompte, setDevisesParCompte] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const setSelectedAccountId = useCallback((id: string) => {
@@ -127,6 +142,25 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
 
       setAccounts(list);
 
+      /**
+       * ⚠️ SANS FILTRE DE STATUT : un compte clôturé garde ses trades dans le
+       * journal, donc sa devise reste nécessaire pour savoir si un total en
+       * mêle plusieurs. La lecture est minuscule (trois colonnes) et part en
+       * même temps que le reste.
+       */
+      const { data: toutes } = await supabase
+        .from("prop_challenges")
+        .select("id, currency, synced_currency")
+        .eq("user_id", user.id);
+      setDevisesParCompte(
+        new Map(
+          (toutes || []).map((c) => [
+            c.id as string,
+            (c.synced_currency as string | null) || (c.currency as string | null) || "EUR",
+          ]),
+        ),
+      );
+
       // Restore last selection from localStorage if still valid.
       // "" est un choix valide : il signifie « Tous les comptes » et doit
       // survivre au rechargement (sinon l'utilisateur retombe sur un compte
@@ -171,7 +205,7 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
 
   return (
     <ActiveAccountContext.Provider
-      value={{ accounts, selectedAccountId, selectedAccount, setSelectedAccountId, loading }}
+      value={{ accounts, selectedAccountId, selectedAccount, setSelectedAccountId, loading, devisesParCompte }}
     >
       {children}
     </ActiveAccountContext.Provider>
