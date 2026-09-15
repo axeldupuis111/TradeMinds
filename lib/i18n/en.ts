@@ -427,6 +427,7 @@ const dict: Record<string, string> = {
   "period_last_30_days": "Last 30 days",
   "period_all": "All history",
   "period_trades_count": "{n} {n|trade|trades} in this period",
+  "analysis_conforming_ratio": "{ok}/{total} {total|trade|trades}",
   "period_no_trades": "No trades in this period",
   "period_warning_large": "Analysing {n} {n|trade|trades}: this may take 30 to 60 seconds.",
   "analysis_loading": "AI is analysing your trades…",

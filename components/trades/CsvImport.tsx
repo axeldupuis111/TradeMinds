@@ -800,7 +800,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
               disabled={importing || (activeAccounts.length > 0 && !selectedChallengeId)}
               className="px-5 py-2 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
-              {importing ? t("csv_importing") : `${t("csv_import_btn")} ${preview.length} trades`}
+              {importing ? t("csv_importing") : `${t("csv_import_btn")} ${t("common_trades_count", { n: preview.length })}`}
             </button>
             <button
               onClick={() => { setPreview([]); setDetectedAccountNumber(null); setMatchedChallengeId(null); setAccountNotFound(false); }}

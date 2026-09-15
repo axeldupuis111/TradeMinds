@@ -71,7 +71,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 {t("analytics_insight_worst_day")}
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {worstDay.name} ({worstDay.count} trades)
+                {worstDay.name} ({t("common_trades_count", { n: worstDay.count })})
               </p>
               <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(worstDay.pnl)}`}>
                 {money(worstDay.pnl, currency, { digits: 2, signed: true })} · WR {pourcent(worstDay.winrate)}
@@ -91,7 +91,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 {t("analytics_insight_best_hour")}
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {bestHour.name} ({bestHour.count} trades)
+                {bestHour.name} ({t("common_trades_count", { n: bestHour.count })})
               </p>
               <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(bestHour.pnl)}`}>
                 {money(bestHour.pnl, currency, { digits: 2, signed: true })} · WR {pourcent(bestHour.winrate)}

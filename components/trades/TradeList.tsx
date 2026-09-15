@@ -1436,7 +1436,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             <div className="flex items-center justify-between gap-3 flex-wrap mt-4">
               <p className="text-sm text-muted">
                 {totalPages > 1 && `${t("trades_page")} ${page + 1} / ${totalPages} · `}
-                {total} trades
+                {t("common_trades_count", { n: total })}
               </p>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted" htmlFor="trades-page-size">

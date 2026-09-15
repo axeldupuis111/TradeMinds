@@ -721,7 +721,7 @@ export default function AnalyticsPage() {
         <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
           {formatPnl(entry.pnl, pageCurrency)}
         </p>
-        <p style={{ color: c.axis }}>{entry.count} trades · WR {pourcent(entry.winrate)}</p>
+        <p style={{ color: c.axis }}>{t("common_trades_count", { n: entry.count })} · WR {pourcent(entry.winrate)}</p>
       </div>
     );
   };
@@ -734,7 +734,7 @@ export default function AnalyticsPage() {
       <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         <p style={{ color: point.tradePnl >= 0 ? c.profit : c.loss }}>
-          {money(point.tradePnl, pageCurrency, { digits: 2, signed: true })} ({point.count} trades)
+          {money(point.tradePnl, pageCurrency, { digits: 2, signed: true })} ({t("common_trades_count", { n: point.count })})
         </p>
         <p style={{ color: point.cumulative >= 0 ? c.profit : c.loss }}>
           Cumulé : {money(point.cumulative, pageCurrency, { digits: 2, signed: true })}
@@ -748,7 +748,7 @@ export default function AnalyticsPage() {
     return (
       <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{money(Number(label), pageCurrency)}</p>
-        <p style={{ color: c.axis }}>{payload[0].value} trades</p>
+        <p style={{ color: c.axis }}>{t("common_trades_count", { n: Number(payload[0].value) })}</p>
       </div>
     );
   };
@@ -1401,7 +1401,7 @@ export default function AnalyticsPage() {
                             {money(disciplineStats.rulesFollowed.pnl, pageCurrency, { digits: 2, signed: true })}
                           </p>
                           <p className="text-xs text-foreground-muted mt-1">
-                            {disciplineStats.rulesFollowed.count} trades &mdash;{" "}
+                            {t("common_trades_count", { n: disciplineStats.rulesFollowed.count })} &mdash;{" "}
                             {disciplineStats.rulesFollowed.count > 0
                               ? ((disciplineStats.rulesFollowed.wins / disciplineStats.rulesFollowed.count) * 100).toFixed(0)
                               : 0}% WR
@@ -1419,7 +1419,7 @@ export default function AnalyticsPage() {
                             {money(disciplineStats.rulesBroken.pnl, pageCurrency, { digits: 2, signed: true })}
                           </p>
                           <p className="text-xs text-foreground-muted mt-1">
-                            {disciplineStats.rulesBroken.count} trades &mdash;{" "}
+                            {t("common_trades_count", { n: disciplineStats.rulesBroken.count })} &mdash;{" "}
                             {disciplineStats.rulesBroken.count > 0
                               ? ((disciplineStats.rulesBroken.wins / disciplineStats.rulesBroken.count) * 100).toFixed(0)
                               : 0}% WR

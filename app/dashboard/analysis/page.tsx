@@ -1259,7 +1259,7 @@ export default function AnalysisPage() {
             </div>
             <div>
               <p className="text-foreground text-lg font-semibold">
-                {displayedAnalysis.total_trades} trades
+                {t("common_trades_count", { n: displayedAnalysis.total_trades })}
               </p>
               <p className="text-muted text-sm mt-1">
                 {displayedAnalysis.violations.length} {t("analysis_violations_detected", { n: displayedAnalysis.violations.length })}
@@ -1856,7 +1856,7 @@ export default function AnalysisPage() {
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
               <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
               <p className="text-foreground text-sm font-semibold mt-4">
-                {displayedAnalysis.total_trades} trades
+                {t("common_trades_count", { n: displayedAnalysis.total_trades })}
               </p>
               <p className="text-muted text-sm mt-1">
                 {displayedAnalysis.violations.length} {t("analysis_violations_detected", { n: displayedAnalysis.violations.length })}
@@ -1974,7 +1974,7 @@ export default function AnalysisPage() {
                         {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                       </p>
                       <p className="text-muted text-[11px]">
-                        {r.total_trades} trades
+                        {t("common_trades_count", { n: r.total_trades })}
                       </p>
                     </div>
                     <span className={`text-lg font-bold tabular-nums ${r.discipline_score >= 90 ? "text-profit" : r.discipline_score >= 75 ? "text-green-400" : r.discipline_score >= 60 ? "text-yellow-400" : r.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
@@ -2093,7 +2093,12 @@ export default function AnalysisPage() {
                   {/* ⚠️ Borné à l'affichage aussi : deux analyses déjà enregistrées portent
                       un -1 en base, et on ne réécrit pas l'historique d'un trader pour
                       faire plaisir à un compteur. */}
-                  <p className="text-muted text-sm">{Math.max(0, r.conforming_trades ?? 0)}/{r.total_trades} trades</p>
+                  <p className="text-muted text-sm">
+                    {t("analysis_conforming_ratio", {
+                      ok: Math.max(0, r.conforming_trades ?? 0),
+                      total: r.total_trades,
+                    })}
+                  </p>
                 </div>
                 <span className={`text-2xl font-bold ${r.discipline_score >= 90 ? "text-profit" : r.discipline_score >= 75 ? "text-green-400" : r.discipline_score >= 60 ? "text-yellow-400" : r.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                   {r.discipline_score}

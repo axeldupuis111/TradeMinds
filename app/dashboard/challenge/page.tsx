@@ -1798,7 +1798,7 @@ export default function ChallengePage() {
                               {ac.firm}
                             </p>
                             <p className="text-[10px] text-muted tabular-nums">
-                              {s?.tradeCount ?? 0} trades
+                              {t("common_trades_count", { n: s?.tradeCount ?? 0 })}
                               {s && s.tradeCount > 0 ? ` · WR ${pourcent(s.winrate)}` : ""}
                             </p>
                           </div>
