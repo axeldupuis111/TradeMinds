@@ -321,7 +321,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Pourquoi il bouge peu, et pourquoi ça compte quand il bouge",
-          body: "Le taux évolue par dixièmes de point et sa publication surprend rarement. Mais son niveau est un repère politique : la Fed le surveille comme thermomètre du plein emploi, et une remontée de plusieurs dixièmes en quelques mois a historiquement annoncé les retournements de cycle.",
+          body: "Le taux évolue par dixièmes de point et sa publication surprend rarement. Mais son niveau est un repère politique : la banque centrale du pays le surveille comme thermomètre du plein emploi, et une remontée de plusieurs dixièmes en quelques mois a historiquement annoncé les retournements de cycle.",
         },
         {
           heading: "Toujours lu avec le reste du rapport",
@@ -341,7 +341,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Publié avec le NFP, premier vendredi du mois.",
+        "Aux États-Unis, publié avec le NFP le premier vendredi du mois ; ailleurs, selon le calendrier du pays.",
         "Un dixième de point d'écart suffit à faire réagir le marché.",
         "Un taux qui baisse parce que des gens ont cessé de chercher n'est pas une bonne nouvelle.",
       ],
@@ -354,7 +354,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Why it barely moves, and why that matters when it does",
-          body: "The rate moves in tenths of a point and rarely surprises. But its level is a policy landmark: the Fed watches it as its thermometer for full employment, and a rise of several tenths within a few months has historically flagged turns in the cycle.",
+          body: "The rate moves in tenths of a point and rarely surprises. But its level is a policy landmark: the central bank watches it as its thermometer for full employment, and a rise of several tenths within a few months has historically flagged turns in the cycle.",
         },
         {
           heading: "Always read with the rest of the report",
@@ -374,7 +374,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Released with the NFP, first Friday of the month.",
+        "In the US, released with the NFP on the first Friday of the month; elsewhere, on that country's own schedule.",
         "A single tenth of a point is enough to move the market.",
         "A rate falling because people stopped looking is not good news.",
       ],
@@ -387,7 +387,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Warum sie kaum schwankt und das umso mehr zählt",
-          body: "Die Quote bewegt sich in Zehntelpunkten und überrascht selten. Ihr Niveau ist aber ein politischer Orientierungspunkt: die Fed liest sie als Thermometer der Vollbeschäftigung, und ein Anstieg um mehrere Zehntel in wenigen Monaten hat historisch Wendepunkte im Zyklus angekündigt.",
+          body: "Die Quote bewegt sich in Zehntelpunkten und überrascht selten. Ihr Niveau ist aber ein politischer Orientierungspunkt: die Notenbank liest sie als Thermometer der Vollbeschäftigung, und ein Anstieg um mehrere Zehntel in wenigen Monaten hat historisch Wendepunkte im Zyklus angekündigt.",
         },
         {
           heading: "Immer mit dem übrigen Bericht lesen",
@@ -407,7 +407,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erscheint mit den NFP, erster Freitag im Monat.",
+        "In den USA mit den NFP am ersten Freitag im Monat; anderswo nach dem Kalender des jeweiligen Landes.",
         "Ein Zehntelpunkt Abweichung reicht für eine Marktreaktion.",
         "Eine Quote, die sinkt, weil Menschen die Suche aufgaben, ist keine gute Nachricht.",
       ],
@@ -420,7 +420,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Por qué se mueve poco y por qué importa cuando se mueve",
-          body: "La tasa avanza por décimas y rara vez sorprende. Pero su nivel es una referencia política: la Fed la vigila como termómetro del pleno empleo, y una subida de varias décimas en pocos meses ha anunciado históricamente los giros de ciclo.",
+          body: "La tasa avanza por décimas y rara vez sorprende. Pero su nivel es una referencia política: el banco central la vigila como termómetro del pleno empleo, y una subida de varias décimas en pocos meses ha anunciado históricamente los giros de ciclo.",
         },
         {
           heading: "Siempre se lee con el resto del informe",
@@ -440,7 +440,7 @@ export const EMPLOI: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Se publica con las NFP, primer viernes del mes.",
+        "En EE. UU. se publica con las NFP el primer viernes del mes; en otros países, según su propio calendario.",
         "Una décima de diferencia basta para que el mercado reaccione.",
         "Una tasa que baja porque la gente dejó de buscar no es una buena noticia.",
       ],

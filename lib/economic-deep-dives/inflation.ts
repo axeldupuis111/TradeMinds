@@ -19,7 +19,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Pourquoi c'est souvent l'annonce la plus violente du mois",
-          body: "Le CPI décide directement des attentes de taux, et les attentes de taux valorisent tout le reste. Une surprise de deux dixièmes réécrit la trajectoire attendue de la Fed, donc le rendement à deux ans, donc le dollar, donc l'or, donc les multiples des actions. C'est le seul chiffre qui touche toutes les classes d'actifs dans la même seconde.",
+          body: "Le CPI décide directement des attentes de taux, et les attentes de taux valorisent tout le reste. Une surprise de deux dixièmes réécrit la trajectoire attendue de la banque centrale du pays concerné, donc le rendement à deux ans, donc le dollar, donc l'or, donc les multiples des actions. C'est le seul chiffre qui touche toutes les classes d'actifs dans la même seconde.",
         },
       ],
       outcomes: [
@@ -40,7 +40,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Publié vers le milieu du mois, 14h30 heure de Paris (8h30 à New York).",
+        "Publié vers le milieu du mois. L'heure dépend du pays : celle de cette annonce est en haut de la fiche.",
         "Le core prime sur le chiffre global en cas de divergence.",
         "L'effet de base peut faire baisser l'annuel sans qu'aucun prix ne baisse.",
         "Les cinq premières minutes se retournent souvent : laisse le marché choisir sa direction.",
@@ -62,7 +62,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Why it is often the most violent release of the month",
-          body: "CPI sets rate expectations directly, and rate expectations price everything else. A two-tenths surprise rewrites the expected Fed path, so the two-year yield, so the dollar, so gold, so equity multiples. It is the one number that hits every asset class in the same second.",
+          body: "CPI sets rate expectations directly, and rate expectations price everything else. A two-tenths surprise rewrites the expected path of that country's central bank, so the two-year yield, so the dollar, so gold, so equity multiples. It is the one number that hits every asset class in the same second.",
         },
       ],
       outcomes: [
@@ -83,7 +83,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Released mid-month, 8:30am New York time.",
+        "Released mid-month. The time depends on the country: this announcement's own time is at the top of the card.",
         "Core beats headline when the two disagree.",
         "The base effect can pull the yearly rate down with no price actually falling.",
         "The first five minutes often reverse: let the market pick its direction.",
@@ -105,7 +105,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Warum es oft die heftigste Zahl des Monats ist",
-          body: "Der CPI bestimmt direkt die Zinserwartungen, und die Zinserwartungen bepreisen alles andere. Zwei Zehntel Überraschung schreiben den erwarteten Fed-Pfad um, damit die zweijährige Rendite, den Dollar, das Gold, die Aktienbewertungen. Es ist die einzige Zahl, die alle Anlageklassen in derselben Sekunde trifft.",
+          body: "Der CPI bestimmt direkt die Zinserwartungen, und die Zinserwartungen bepreisen alles andere. Zwei Zehntel Überraschung schreiben den erwarteten Pfad der jeweiligen Notenbank um, damit die zweijährige Rendite, den Dollar, das Gold, die Aktienbewertungen. Es ist die einzige Zahl, die alle Anlageklassen in derselben Sekunde trifft.",
         },
       ],
       outcomes: [
@@ -126,7 +126,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Erscheint Mitte des Monats, 14:30 Uhr MEZ (8:30 Uhr in New York).",
+        "Erscheint Mitte des Monats. Die Uhrzeit hängt vom Land ab: die dieser Ankündigung steht oben auf der Karte.",
         "Bei Abweichung zählt die Kernrate mehr als die Gesamtrate.",
         "Der Basiseffekt kann die Jahresrate drücken, ohne dass ein Preis fällt.",
         "Die ersten fünf Minuten drehen oft: lass den Markt seine Richtung wählen.",
@@ -148,7 +148,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
         {
           heading: "Por qué suele ser el dato más violento del mes",
-          body: "El IPC fija directamente las expectativas de tipos, y las expectativas de tipos valoran todo lo demás. Una sorpresa de dos décimas reescribe la senda esperada de la Fed, por tanto el bono a dos años, el dólar, el oro y los múltiplos de la bolsa. Es el único dato que toca todas las clases de activo en el mismo segundo.",
+          body: "El IPC fija directamente las expectativas de tipos, y las expectativas de tipos valoran todo lo demás. Una sorpresa de dos décimas reescribe la senda esperada del banco central del país, por tanto el bono a dos años, el dólar, el oro y los múltiplos de la bolsa. Es el único dato que toca todas las clases de activo en el mismo segundo.",
         },
       ],
       outcomes: [
@@ -169,7 +169,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Se publica a mediados de mes, 8:30 de Nueva York.",
+        "Se publica a mediados de mes. La hora depende del país: la de este anuncio está arriba en la ficha.",
         "El subyacente manda sobre el general cuando difieren.",
         "El efecto base puede bajar la tasa anual sin que ningún precio baje.",
         "Los cinco primeros minutos suelen darse la vuelta: deja que el mercado elija dirección.",
@@ -206,7 +206,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Souvent le lendemain du CPI, 14h30 heure de Paris.",
+        "Souvent le lendemain du CPI du même pays.",
         "Réaction plus faible que le CPI, sauf quand les deux se contredisent.",
         "Une hausse des coûts ne devient de l'inflation que si les entreprises peuvent la répercuter.",
       ],
@@ -239,7 +239,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Often the day after CPI, 8:30am New York time.",
+        "Often the day after the same country's CPI.",
         "A weaker reaction than CPI, except when the two contradict each other.",
         "Rising costs only become inflation if firms can pass them on.",
       ],
@@ -272,7 +272,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Oft am Tag nach dem CPI, 14:30 Uhr MEZ.",
+        "Oft am Tag nach dem CPI desselben Landes.",
         "Schwächere Reaktion als beim CPI, außer wenn beide sich widersprechen.",
         "Steigende Kosten werden nur dann Inflation, wenn Firmen sie weitergeben können.",
       ],
@@ -305,7 +305,7 @@ export const INFLATION: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "A menudo el día después del IPC, 8:30 de Nueva York.",
+        "A menudo el día después del IPC del mismo país.",
         "Reacción más floja que el IPC, salvo cuando ambos se contradicen.",
         "Una subida de costes solo se convierte en inflación si las empresas pueden trasladarla.",
       ],

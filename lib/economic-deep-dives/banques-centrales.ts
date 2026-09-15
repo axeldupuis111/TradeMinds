@@ -206,7 +206,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Trois semaines après la réunion, 20h00 heure de Paris pour la Fed.",
+        "Trois semaines après la réunion ; l'heure dépend de la banque centrale, celle de cette annonce est en haut de la fiche.",
         "Impact très variable : nul si les données ont changé depuis, fort sinon.",
         "Cherche les conditions annoncées (« si X, alors Y ») : c'est le vrai contenu.",
       ],
@@ -239,7 +239,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Three weeks after the meeting, 2:00pm New York time for the Fed.",
+        "Three weeks after the meeting; the time depends on the central bank, and this announcement's own time is at the top of the card.",
         "Very uneven impact: nil if the data has moved on, large otherwise.",
         "Look for stated conditions ('if X, then Y'): that is the real content.",
       ],
@@ -272,7 +272,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Drei Wochen nach der Sitzung, für die Fed um 20:00 Uhr MEZ.",
+        "Drei Wochen nach der Sitzung; die Uhrzeit hängt von der Notenbank ab, die dieser Ankündigung steht oben auf der Karte.",
         "Sehr unterschiedliche Wirkung: null, wenn die Daten weitergelaufen sind, sonst groß.",
         "Suche nach genannten Bedingungen (wenn X, dann Y): das ist der eigentliche Inhalt.",
       ],
@@ -305,7 +305,7 @@ export const BANQUES_CENTRALES: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Tres semanas después de la reunión, 14:00 de Nueva York en el caso de la Fed.",
+        "Tres semanas después de la reunión; la hora depende del banco central, y la de este anuncio está arriba en la ficha.",
         "Impacto muy variable: nulo si los datos han cambiado, fuerte si no.",
         "Busca las condiciones enunciadas (si X, entonces Y): ese es el contenido real.",
       ],

@@ -56,6 +56,39 @@ describe("les explications longues du calendrier", () => {
     }
   });
 
+  /**
+   * ⚠️⚠️ UNE LEÇON ÉCRITE POUR LA VERSION AMÉRICAINE, SERVIE À TOUS LES PAYS.
+   *
+   * VU EN PRODUCTION le 2026-09-15, une heure après la mise en ligne : le CPI
+   * BRITANNIQUE (08h00 à Londres) affichait « Publié vers le milieu du mois,
+   * 14h30 heure de Paris » et parlait de la trajectoire attendue de la Fed. Le
+   * flux sert la même annonce pour une dizaine de devises, et `indicatorId`
+   * retire justement le préfixe de nationalité pour les faire converger : une
+   * leçon unique est donc lue depuis tous les pays où l'indicateur existe.
+   *
+   * La règle : pour ces indicateurs-là, aucun horaire fixe dans les points
+   * pratiques. L'heure exacte de CETTE annonce est déjà en haut de la fiche,
+   * et c'est la seule qui soit vraie.
+   */
+  const MULTI_PAYS = [
+    "cpi", "ppi", "gdp", "retail_sales", "unemployment_rate", "rate_decision",
+    "fomc_minutes", "manufacturing_pmi", "services_pmi", "trade_balance",
+    "current_account", "building_permits",
+  ];
+  it("un indicateur de plusieurs pays n'annonce pas l'horaire d'un seul", () => {
+    // 14h30 · 8:30am · 14:30 Uhr : les trois formes utilisées dans les quatre langues.
+    const horaire = /\d{1,2}\s?h\s?\d{2}|\d{1,2}:\d{2}|\d{1,2}\s?(am|pm)\b/i;
+    for (const id of MULTI_PAYS) {
+      const record = DEEP_DIVES[id];
+      expect(record, `${id} n'existe pas`).toBeTruthy();
+      for (const lang of LANGS) {
+        for (const point of record[lang].watch) {
+          expect(horaire.test(point), `${id}/${lang} fixe une heure : « ${point} »`).toBe(false);
+        }
+      }
+    }
+  });
+
   it("se résout depuis un titre du flux", () => {
     expect(lookupDeepDive("Non-Farm Employment Change", "fr")).toBeTruthy();
     expect(lookupDeepDive("Core CPI m/m", "en")).toBeTruthy();

@@ -31,7 +31,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Vers le milieu du mois, 14h30 heure de Paris.",
+        "Vers le milieu du mois. L'heure dépend du pays : celle de cette annonce est en haut de la fiche.",
         "Lis le groupe de contrôle plutôt que le chiffre global.",
         "Les révisions du mois précédent changent parfois complètement la lecture.",
       ],
@@ -64,7 +64,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Around mid-month, 8:30am New York time.",
+        "Around mid-month. The time depends on the country: this announcement's own time is at the top of the card.",
         "Read the control group rather than the headline.",
         "Revisions to the previous month sometimes flip the reading entirely.",
       ],
@@ -97,7 +97,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Etwa zur Monatsmitte, 14:30 Uhr MEZ.",
+        "Etwa zur Monatsmitte. Die Uhrzeit hängt vom Land ab: die dieser Ankündigung steht oben auf der Karte.",
         "Lies die Kontrollgruppe statt der Gesamtzahl.",
         "Revisionen des Vormonats drehen die Lesart manchmal komplett.",
       ],
@@ -130,7 +130,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Hacia mediados de mes, 8:30 de Nueva York.",
+        "Hacia mediados de mes. La hora depende del país: la de este anuncio está arriba en la ficha.",
         "Lee el grupo de control en vez del dato general.",
         "Las revisiones del mes anterior a veces cambian por completo la lectura.",
       ],
@@ -436,7 +436,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Vers le milieu du mois, 14h30 heure de Paris, avec les mises en chantier.",
+        "Vers le milieu du mois, avec les mises en chantier du même pays.",
         "Série sensible à la météo : un hiver rude fausse un mois.",
         "Lis-la avec les taux hypothécaires, qui en sont la cause principale.",
       ],
@@ -469,7 +469,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Around mid-month, 8:30am New York time, alongside housing starts.",
+        "Around mid-month, alongside the same country's housing starts.",
         "Weather-sensitive series: a harsh winter distorts a month.",
         "Read it with mortgage rates, which are its main driver.",
       ],
@@ -502,7 +502,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Etwa zur Monatsmitte, 14:30 Uhr MEZ, zusammen mit den Baubeginnen.",
+        "Etwa zur Monatsmitte, zusammen mit den Baubeginnen desselben Landes.",
         "Wetterempfindliche Reihe: ein harter Winter verzerrt einen Monat.",
         "Lies sie zusammen mit den Hypothekenzinsen, ihrer Hauptursache.",
       ],
@@ -535,7 +535,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Hacia mediados de mes, 8:30 de Nueva York, junto a los inicios de vivienda.",
+        "Hacia mediados de mes, junto a los inicios de vivienda del mismo país.",
         "Serie sensible al clima: un invierno duro distorsiona un mes.",
         "Léela junto a los tipos hipotecarios, que son su causa principal.",
       ],
@@ -571,7 +571,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Début de mois pour les États-Unis, 14h30 heure de Paris.",
+        "Début de mois pour les États-Unis ; les autres pays suivent leur propre calendrier.",
         "Donnée en valeur : une hausse du prix du pétrole creuse le déficit sans changement de volume.",
         "Compte surtout pour AUD, CAD et NZD, peu pour les grandes devises.",
       ],
@@ -604,7 +604,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Early in the month for the US, 8:30am New York time.",
+        "Early in the month for the US; other countries follow their own schedule.",
         "A value figure: a higher oil price widens the deficit with no change in volume.",
         "Matters mostly for AUD, CAD and NZD, much less for the major currencies.",
       ],
@@ -637,7 +637,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Für die USA Anfang des Monats, 14:30 Uhr MEZ.",
+        "Für die USA Anfang des Monats; andere Länder folgen ihrem eigenen Kalender.",
         "Ein Wert: ein höherer Ölpreis weitet das Defizit ohne Mengenänderung.",
         "Zählt vor allem für AUD, CAD und NZD, weit weniger für die großen Währungen.",
       ],
@@ -670,7 +670,7 @@ export const CROISSANCE: Record<string, DeepDiveRecord> = {
         },
       ],
       watch: [
-        "Principios de mes en EE. UU., 8:30 de Nueva York.",
+        "Principios de mes en EE. UU.; los demás países siguen su propio calendario.",
         "Dato en valor: una subida del precio del petróleo agranda el déficit sin cambio de volumen.",
         "Cuenta sobre todo para AUD, CAD y NZD, mucho menos para las grandes divisas.",
       ],
