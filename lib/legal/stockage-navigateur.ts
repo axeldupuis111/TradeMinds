@@ -143,10 +143,10 @@ export function recenserEcritures(racineDepot: string): EcritureStockage[] {
         ajouter(support ?? trouve[1], premierArgument(source, regex.lastIndex));
       }
     }
-    // `document.cookie = ...` n'est pas un appel : pas d'argument à extraire.
+    // `document.cookie = ...` n'est pas un appel : pas d'argument à extraire,
+    // donc on ne garde rien de la correspondance, seulement le fait qu'elle existe.
     const affectation = /document\.cookie\s*=/g;
-    let trouve: RegExpExecArray | null;
-    while ((trouve = affectation.exec(source)) !== null) ajouter("cookie", "document.cookie");
+    while (affectation.exec(source) !== null) ajouter("cookie", "document.cookie");
   }
   return ecritures.sort((a, b) => a.empreinte.localeCompare(b.empreinte));
 }
