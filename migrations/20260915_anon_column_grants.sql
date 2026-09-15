@@ -34,8 +34,36 @@
 -- retire à `anon` le droit de tout lire, et on lui rend exactement les colonnes
 -- que la page publique consulte, filtres et tris compris.
 --
--- ⚠️ `authenticated` n'est PAS touché : un utilisateur connecté garde son accès
--- complet, borné à ses propres lignes par RLS.
+-- ⚠️ `authenticated` n'est PAS touché ici : un utilisateur connecté garde son
+-- accès complet à SES colonnes, ce dont Réglages a besoin (son email, son
+-- jeton, sa mémoire coach).
+--
+-- ⚠️⚠️ CE QUI RESTE, ET POURQUOI CE FICHIER NE LE CORRIGE PAS.
+-- La politique RLS de `profiles` expose les lignes `public_profile = true` aux
+-- DEUX rôles, pas seulement à `anon`. Un utilisateur CONNECTÉ (n'importe lequel
+-- des ~50 comptes) peut donc encore lire, sur les 4 profils publics, les mêmes
+-- colonnes : `mt_sync_token`, `email`, `coach_memory`. C'est moins grave que la
+-- fuite anonyme (il faut un compte, et seuls les profils publics sont touchés),
+-- mais c'est réel.
+--
+-- Un privilège au niveau colonne NE PEUT PAS le corriger : il est global au
+-- rôle, alors qu'on veut « toutes les colonnes de MA ligne, quelques colonnes
+-- des lignes publiques ». Les colonnes et les lignes ne se composent pas.
+--
+-- La vraie correction est au niveau RLS, et elle est plus lourde :
+--   1. restreindre la politique SELECT de base à `auth.uid() = id` (chacun ne
+--      voit que sa propre ligne sur la table de base) ;
+--   2. servir les profils publics par une VUE ne portant que les colonnes
+--      sûres (`id, username, plan, founding_member, founding_since`), et faire
+--      lire la page /profile/[username] depuis cette vue ;
+--   3. idem pour `trades` et `session_reviews` (vue publique = colonnes sûres).
+--
+-- Non fait ici À DESSEIN : ça touche la façon dont la page publique lit ses
+-- données et la politique dont dépend le tableau de bord de CHAQUE utilisateur.
+-- Mal posée, elle enferme tout le monde hors de ses propres données. C'est une
+-- décision d'Axel, à appliquer et vérifier avec soin, pas un correctif à
+-- pousser à l'aveugle. La fuite ANONYME, elle, est fermée par ce fichier :
+-- c'est la plus grave (aucun compte requis) et la plus vérifiable.
 --
 -- ⚠️⚠️ APRÈS CETTE MIGRATION, LES QUATRE JETONS EXPOSÉS RESTENT COMPROMIS.
 -- Ils ont été publiquement lisibles ; les faire tourner est une décision qui
