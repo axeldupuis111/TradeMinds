@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Fragment, useEffect, useState } from "react";
 import { pourcent } from "@/lib/nombres";
 import { enDate, enDateEtHeure } from "@/lib/dates";
+import { Toast, useToast } from "@/components/ui/Toast";
 import { langueCourante } from "@/lib/nombres";
 
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
@@ -36,6 +37,7 @@ export default function AdminPage() {
    * retirer depuis l'écran prévu pour ça : il fallait passer par la base.
    */
   const [targetPlan, setTargetPlan] = useState<"free" | "plus" | "premium">("plus");
+  const { toast, showToast } = useToast();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
@@ -274,7 +276,7 @@ export default function AdminPage() {
       .update({ status: "handled" })
       .eq("id", id);
     if (error) {
-      alert("Marquage impossible : " + error.message);
+      showToast("error", "Marquage impossible : " + error.message);
       return;
     }
     setContactMessages((prev) => prev.map((m) => m.id === id ? { ...m, status: "handled" } : m));
@@ -364,6 +366,7 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-2xl">
+      <Toast toast={toast} />
       <h1 className="text-2xl font-bold text-foreground">{t("admin_title")}</h1>
       <p className="text-muted mt-1">{t("admin_subtitle")}</p>
 

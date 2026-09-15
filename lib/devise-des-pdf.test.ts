@@ -112,7 +112,14 @@ describe("les rapports PDF", () => {
   it("refusent d'exporter une sélection qui mêle les devises", () => {
     const src = lire("components/analytics/ExportPdfButton.tsx");
     expect(src).toContain("if (devisesMelangees) {");
-    expect(src).toContain('alert(t("pdf_devises_melangees"));');
+    /**
+     * ⚠️ LE REFUS EST RESTÉ, C'EST SA FORME QUI A CHANGÉ. Il passait par
+     * `alert()`, la boîte native du navigateur : mesuré en pilotant le site, le
+     * clic sur « Exporter PDF » gelait l'onglet le temps que quelqu'un ferme
+     * une fenêtre que rien, dans la page, ne pouvait fermer. Le message passe
+     * désormais par le bandeau du produit (voir pas-de-boite-native.test.ts).
+     */
+    expect(src).toContain('showToast("error", t("pdf_devises_melangees"));');
     for (const [nom, dico] of Object.entries({ fr: frDict, en: enDict, es: esDict, de: deDict })) {
       const texte = (dico as Record<string, string>)["pdf_devises_melangees"];
       expect(texte, `pdf_devises_melangees manque en ${nom}`).toBeTruthy();

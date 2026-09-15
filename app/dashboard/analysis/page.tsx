@@ -3,6 +3,7 @@
 import { tradesConformes } from "@/lib/trades-conformes";
 import { langueCourante } from "@/lib/nombres";
 import { enTextePlat, stripLongDashes } from "@/lib/coach-typography";
+import { Toast, useToast } from "@/components/ui/Toast";
 import { PRIX_EN_CENTIMES, prixLisible } from "@/lib/prix";
 import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
@@ -478,6 +479,7 @@ export default function AnalysisPage() {
    * `lib/devises-melangees.test.ts`.
    */
   const { devise: deviseDuJournal, melangees: devisesMelangees } = useDeviseDuJournal();
+  const { toast, showToast } = useToast();
   /** Vide quand les monnaies se mêlent : `fmtEuro` rend alors un tiret. */
   const displayCurrency = devisesMelangees ? "" : deviseDuJournal;
   const { canUseAI, aiRemaining, plan, refreshPlan, demoMode, loading: planLoading } = usePlan();
@@ -590,13 +592,15 @@ export default function AnalysisPage() {
     const { error } = await supabase.from("chat_messages").delete().eq("user_id", user.id);
     setClearingChat(false);
     if (error) {
-      alert(t("save_failed"));
+      showToast("error", t("save_failed"));
       return;
     }
     setChatMessages([]);
     setHasOlderChat(false);
     setShowOlderChat(false);
-  }, [supabase, t, setChatMessages, setHasOlderChat]);
+    // ⚠️ `showToast` est stable (useCallback sans dépendance dans useToast) :
+    // le citer ici ne recrée pas ce callback à chaque rendu.
+  }, [supabase, t, setChatMessages, setHasOlderChat, showToast]);
 
   // sendChatMessage et undoCoachAction vivent désormais dans
   // lib/hooks/useCoachChat, partagés avec le dock global (composants/coach).
@@ -1067,6 +1071,7 @@ export default function AnalysisPage() {
 
   return (
     <div>
+      <Toast toast={toast} />
       <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
       <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
 
@@ -1144,8 +1149,12 @@ export default function AnalysisPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => {
+                /* ⚠️ MESSAGE D'ATTENTE, PAS UN POINT DE DÉCISION. En `alert()`
+                   il BLOQUAIT le lancement : le trader devait fermer une boîte
+                   native avant que l'analyse commence, pour lire qu'elle allait
+                   être longue. En bandeau, elle démarre tout de suite. */
                 if (selectedPeriod === "all" && filteredTradeCount > 200) {
-                  alert(t("period_warning_large", { n: String(filteredTradeCount) }));
+                  showToast("success", t("period_warning_large", { n: String(filteredTradeCount) }));
                 }
                 runAnalysis();
               }}

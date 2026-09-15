@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { FileDown } from "lucide-react";
 import { useState } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
+import { Toast, useToast } from "@/components/ui/Toast";
 
 interface ExportPdfButtonProps {
   /** Trades déjà filtrés par la page (période + compte + filtres avancés). */
@@ -36,6 +37,13 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel, cur
   const supabase = createClient();
   const [generating, setGenerating] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
+  /**
+   * ⚠️⚠️ CES TROIS MESSAGES PASSAIENT PAR `alert()`, la boîte native du
+   * navigateur : elle bloque l'onglet entier, s'affiche sans style sous un
+   * en-tête « tradediscipline.app indique », et ressemble à une panne plutôt
+   * qu'à une réponse — sur une fonctionnalité payante.
+   */
+  const { toast, showToast } = useToast();
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(showLocked, () => setShowLocked(false));
 
@@ -53,11 +61,11 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel, cur
     // Données = exactement la sélection en cours de la page (période + compte).
     const selection = (trades || []).filter((tr) => tr.open_time).slice().sort((a, b) => a.open_time.localeCompare(b.open_time));
     if (selection.length === 0) {
-      alert(t("pdf_no_data"));
+      showToast("error", t("pdf_no_data"));
       return;
     }
     if (devisesMelangees) {
-      alert(t("pdf_devises_melangees"));
+      showToast("error", t("pdf_devises_melangees"));
       return;
     }
 
@@ -100,7 +108,7 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel, cur
       doc.save(`TradeDiscipline-analytics-${slug(periodLabel)}-${slug(accountLabel)}-${new Date().toISOString().split("T")[0]}.pdf`);
     } catch (err) {
       console.error("PDF generation error:", err);
-      alert(t("pdf_error"));
+      showToast("error", t("pdf_error"));
     } finally {
       setGenerating(false);
     }
@@ -108,6 +116,7 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel, cur
 
   return (
     <>
+      <Toast toast={toast} />
       <Button
         variant="secondary"
         size="md"
