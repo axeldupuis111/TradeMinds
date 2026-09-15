@@ -72,19 +72,20 @@ export function Analyse({
       </h4>
       <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_syn_intro")}</p>
       {/* ⚠️ « 1 pas encore regardés » : la même faute que « 1 journées » et
-          « 3 année(s) », vue à l'écran, et elle se remarque autant. Trois
-          segments séparés, chacun avec sa forme au singulier. */}
+          « 3 année(s) », vue à l'écran, et elle se remarque autant.
+
+          ⚠️⚠️ ET LA PREMIÈRE CORRECTION AVAIT PRIS LA RÈGLE ANGLAISE : six clés
+          sœurs choisies par `=== 1`. En français, ZÉRO prend le singulier, donc
+          une synthèse sans aucun bloc établi affichait « établis : 0 ». La
+          version française de cette clé-là avait en prime une forme inversée
+          (« établis : {n} » au milieu de cinq « {n} … »), invisible tant qu'on
+          ne tombait pas sur le pluriel. L'accord est maintenant dans la chaîne,
+          et c'est `Intl.PluralRules` qui tranche, langue par langue. */}
       <p className="mt-1.5 text-[11px] tabular-nums text-foreground-muted">
         {[
-          t(synthese.etablis === 1 ? "bt_syn_compte_etabli" : "bt_syn_compte_etablis", {
-            n: synthese.etablis,
-          }),
-          t(synthese.pasEtablis === 1 ? "bt_syn_compte_non_etabli" : "bt_syn_compte_non_etablis", {
-            n: synthese.pasEtablis,
-          }),
-          t(synthese.pasRegardes === 1 ? "bt_syn_compte_non_vu" : "bt_syn_compte_non_vus", {
-            n: synthese.pasRegardes,
-          }),
+          t("bt_syn_compte_etabli", { n: synthese.etablis }),
+          t("bt_syn_compte_non_etabli", { n: synthese.pasEtablis }),
+          t("bt_syn_compte_non_vu", { n: synthese.pasRegardes }),
         ].join(" · ")}
       </p>
 

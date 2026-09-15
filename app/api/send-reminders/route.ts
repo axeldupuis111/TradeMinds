@@ -54,11 +54,20 @@ const REMINDER_COPY: Record<Lang, {
     cta: "Session starten",
     footer: "Du kannst diese Erinnerung in Einstellungen → Benachrichtigungen deaktivieren.",
   },
+  /**
+   * ⚠️⚠️ « INICIAR SESIÓN » TOUT COURT VEUT DIRE « SE CONNECTER » EN
+   * ESPAGNOL, et c'est exactement ce que disent `nav_login` et
+   * `login_signin` dans le dictionnaire. Le bouton de ce rappel quotidien
+   * portait ce libellé-là : l'abonné hispanophone lisait « connecte-toi »
+   * sur l'appel à l'action du seul e-mail qu'il reçoit tous les jours.
+   * Le possessif lève l'ambiguïté, et c'est déjà le choix du produit
+   * ailleurs (`onboarding_cta_session` : « Iniciar mi sesión »).
+   */
   es: {
     subject: "Hora de operar con disciplina",
     heading: "¿Listo para operar hoy?",
     body: "Inicia tu sesión en TradeDiscipline para mantenerte fiel a tu estrategia. Completa tu checklist previo a operar y registra tu estado emocional antes de empezar.",
-    cta: "Iniciar sesión",
+    cta: "Iniciar mi sesión",
     footer: "Puedes desactivar este recordatorio en Ajustes → Notificaciones.",
   },
 };

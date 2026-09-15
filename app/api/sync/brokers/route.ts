@@ -51,6 +51,8 @@ export async function POST(req: Request) {
   let totalSynced = 0;
   let failed = 0;
   let processed = 0;
+  /** Les motifs d'échec de ce passage, pour distinguer une panne d'un cas isolé. */
+  const motifs: string[] = [];
 
   const startedAt = Date.now();
   const all = (connections ?? []) as unknown as BrokerConnectionRow[];
@@ -82,11 +84,37 @@ export async function POST(req: Request) {
       }
     } catch (err) {
       failed++;
-      console.error(
-        `[Broker Cron] ${conn.broker} ${conn.id} failed:`,
-        err instanceof Error ? err.message : err,
-      );
+      const motif = err instanceof Error ? err.message : String(err);
+      motifs.push(motif);
+      console.error(`[Broker Cron] ${conn.broker} ${conn.id} failed:`, motif);
     }
+  }
+
+  /**
+   * UNE PANNE DU RAIL CRIE ; UN JETON EXPIRÉ CHEZ UN UTILISATEUR, NON.
+   *
+   * ⚠️⚠️ CE CRON N'ALERTAIT QUE S'IL NE POUVAIT PAS LIRE LA LISTE. Si toutes
+   * les connexions échouaient — jeton OAuth révoqué côté Tradovate, contrat
+   * d'API changé, panne du courtier — la route répondait 200 avec un
+   * `failed: N` que personne ne lit, et la synchro automatique restait morte.
+   * C'est le rail sur lequel repose le partenariat NinjaTrader/Tradovate.
+   *
+   * ⚠️ LE CRITÈRE EST « TOUTES ÉCHOUENT AVEC LE MÊME MOTIF » : c'est la
+   * signature d'une panne côté plateforme. Un jeton expiré chez un trader
+   * donne un motif isolé, et ce trader le voit déjà dans ses Réglages
+   * (`status: error`, `last_error`) : ce n'est pas une urgence pour Axel.
+   *
+   * ⚠️ ET ÇA SE RÉPÈTE À CHAQUE PASSAGE TANT QUE C'EST CASSÉ, volontairement :
+   * une alerte qu'on n'envoie qu'une fois se perd, et un rail de synchro mort
+   * ne se remarque autrement qu'au message d'un abonné.
+   */
+  const motifUnique = new Set(motifs).size === 1 ? motifs[0] : null;
+  if (processed > 0 && failed === processed && motifUnique) {
+    await alertCronFailure(
+      "sync/brokers",
+      `Les ${failed} connexion(s) traitée(s) ont TOUTES échoué avec le même motif, ` +
+        `ce qui ressemble à une panne du rail plutôt qu'à un compte isolé.\n\nMotif : ${motifUnique}`,
+    );
   }
 
   return NextResponse.json({
