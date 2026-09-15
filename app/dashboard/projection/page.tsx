@@ -71,7 +71,22 @@ import {
   YAxis,
 } from "recharts";
 import { useChartColors } from "@/lib/useChartColors";
-import { pourcent } from "@/lib/nombres";
+import { nombre, pourcent } from "@/lib/nombres";
+/**
+ * Les nombres d'un constat de cohérence, mis en forme pour un lecteur.
+ *
+ * ⚠️ `String(14.3)` donne « 14.3 » quelle que soit la langue. La règle du
+ * produit veut `nombre()`, qui pose le séparateur du lecteur ; `remplir()` sait
+ * relire ces nombres mis en forme pour décider des accords.
+ */
+function valeursLisibles(valeurs: Record<string, number>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [cle, valeur] of Object.entries(valeurs)) {
+    out[cle] = nombre(valeur, Number.isInteger(valeur) ? 0 : 1);
+  }
+  return out;
+}
+
 
 /** Horizons proposés. Quinze ans parce que c'est ce que l'utilisateur demandait. */
 const HORIZONS = [1, 2, 5, 10, 15] as const;
@@ -902,12 +917,15 @@ function EncartCoherence({ coherence, t }: { coherence: Coherence; t: Traduire }
           {coherence.constats.map((c) => {
             const st = STYLES[c.gravite];
             const Icone = st.icone;
-            // La copie vit dans i18n et porte des {jetons} ; le module de
-            // cohérence ne rend que des nombres. On les substitue ici.
-            let texte = t(c.code);
-            for (const [cle, valeur] of Object.entries(c.valeurs)) {
-              texte = texte.replaceAll(`{${cle}}`, String(valeur));
-            }
+            /**
+             * ⚠️⚠️ LA SUBSTITUTION À LA MAIN LAISSAIT LES ACCORDS BRUTS et le
+             * séparateur décimal de JavaScript : « 3 {pertes|perte|pertes}
+             * d'affilée à 5 % te coûtent -14.3 % du capital ».
+             * `replaceAll("{pertes}")` ne touche pas `{pertes|perte|pertes}`.
+             * `t()` passe par `remplir()`, qui accorde dans la langue du
+             * lecteur ; les nombres arrivent déjà mis en forme.
+             */
+            const texte = t(c.code, valeursLisibles(c.valeurs));
             return (
               <li key={c.code} className="flex items-start gap-3">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5", st.fond)}>

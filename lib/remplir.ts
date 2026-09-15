@@ -58,6 +58,36 @@ function estSingulier(valeur: number, langue: string): boolean {
 }
 
 /**
+ * LE NOMBRE DERRIÈRE UNE VALEUR, MÊME DÉJÀ MISE EN FORME.
+ *
+ * ⚠️⚠️ LA RÈGLE DU PRODUIT VEUT QU'UN NOMBRE AFFICHÉ PASSE PAR `nombre()`
+ * (séparateur décimal du lecteur, voir separateur-decimal.test.ts). Un appelant
+ * qui la respecte passe donc « 1 000 » ou « 14,3 », et `Number()` rendait NaN :
+ * l'accord se décidait alors au hasard, dans la langue même où il compte.
+ *
+ * ⚠️ ET LE DÉCODAGE NE PEUT PAS ÊTRE DEVINÉ : « 1,000 » vaut mille en anglais et
+ * un en français. On demande donc à `Intl` les séparateurs de CETTE langue, au
+ * lieu d'inventer une heuristique qui se trompera sur l'une des quatre.
+ */
+function versNombre(valeur: string | number, langue: string): number {
+  if (typeof valeur === "number") return valeur;
+  try {
+    const parties = new Intl.NumberFormat(langue).formatToParts(1000.1);
+    const groupe = parties.find((p) => p.type === "group")?.value ?? "";
+    const decimal = parties.find((p) => p.type === "decimal")?.value ?? ".";
+    let net = valeur.trim();
+    if (groupe) net = net.split(groupe).join("");
+    // Les espaces fines et insécables passent parfois à côté du séparateur
+    // annoncé par Intl selon la version du moteur.
+    net = net.replace(/[\s  ]/g, "");
+    net = net.split(decimal).join(".");
+    return Number(net);
+  } catch {
+    return Number(valeur);
+  }
+}
+
+/**
  * @param langue La langue du lecteur. ⚠️ Le défaut français n'est pas un choix
  * de confort : `t()` la passe toujours, et un appelant qui l'oublie doit obtenir
  * la langue de rédaction du produit plutôt qu'une règle étrangère silencieuse.
@@ -76,7 +106,10 @@ export function remplir(
       // ⚠️ Une valeur absente laisse le gabarit INTACT plutôt que de choisir un
       // accord au hasard : c'est visible à l'écran, donc réparable.
       if (valeur === undefined) return brut;
-      return estSingulier(Number(valeur), langue) ? un : plusieurs;
+      const n = versNombre(valeur, langue);
+      // Valeur illisible : le pluriel est la forme la moins souvent fausse.
+      if (!Number.isFinite(n)) return plusieurs;
+      return estSingulier(n, langue) ? un : plusieurs;
     },
   );
   if (valeurs) {

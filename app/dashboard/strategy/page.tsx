@@ -12,7 +12,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { verifierCoherence } from "@/lib/strategy-coherence";
 import { cn } from "@/lib/cn";
-import { pourcent } from "@/lib/nombres";
+import { nombre, pourcent } from "@/lib/nombres";
+/**
+ * Les nombres d'un constat de cohérence, mis en forme pour un lecteur.
+ *
+ * ⚠️ `String(14.3)` donne « 14.3 » quelle que soit la langue. La règle du
+ * produit veut `nombre()`, qui pose le séparateur du lecteur ; `remplir()` sait
+ * relire ces nombres mis en forme pour décider des accords.
+ */
+function valeursLisibles(valeurs: Record<string, number>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [cle, valeur] of Object.entries(valeurs)) {
+    out[cle] = nombre(valeur, Number.isInteger(valeur) ? 0 : 1);
+  }
+  return out;
+}
+
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const SESSION_LABELS: Record<string, string> = {
@@ -854,12 +869,26 @@ export default function StrategyPage() {
                   </span>
                 </div>
                 {coherence.constats.map((c) => {
-                  // La copie vit dans i18n et porte des {jetons} ; le module de
-                  // cohérence ne rend que des nombres.
-                  let texte = t(c.code);
-                  for (const [cle, valeur] of Object.entries(c.valeurs)) {
-                    texte = texte.replaceAll(`{${cle}}`, String(valeur));
-                  }
+                  /**
+                   * ⚠️⚠️ DEUX FAUTES EN UNE LIGNE, VISIBLES À L'ÉCRAN. La
+                   * substitution se faisait à la main, `{cle}` par `{cle}` :
+                   *
+                   *   - les ACCORDS restaient bruts. Le trader lisait « 3
+                   *     {pertes|perte|pertes} d'affilée à 5 % te coûtent -14.3 %
+                   *     du capital », au milieu de la carte « Ta fiche
+                   *     tient-elle debout ? ». `replaceAll("{pertes}")` ne
+                   *     touche pas `{pertes|perte|pertes}` ;
+                   *   - et le SÉPARATEUR DÉCIMAL était celui de JavaScript :
+                   *     « -14.3 % » en français, sur une page où tout le reste
+                   *     s'écrit avec une virgule.
+                   *
+                   * ⚠️ `t()` sait faire les deux : il passe par `remplir()`, qui
+                   * résout les accords dans la langue du lecteur. Les nombres,
+                   * eux, arrivent DÉJÀ mis en forme, comme partout ailleurs
+                   * dans le produit. L'onglet Backtest le faisait déjà
+                   * correctement, dix lignes de code plus loin.
+                   */
+                  const texte = t(c.code, valeursLisibles(c.valeurs));
                   const couleur =
                     c.gravite === "bloquant" ? "text-loss" : c.gravite === "serieux" ? "text-gold" : "text-muted";
                   return (
