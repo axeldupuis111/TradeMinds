@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sansCommentaires } from "./sans-commentaires";
 
 /**
@@ -68,14 +68,89 @@ describe("les crons d'e-mails", () => {
   }
 });
 
+/**
+ * ⚠️⚠️ CE BLOC A ÉTÉ RÉÉCRIT PARCE QUE SA PREMIÈRE VERSION ÉTAIT INTERMITTENTE,
+ * ET QUE C'EST PIRE QU'UN TEST ROUGE.
+ *
+ * Elle appelait `alertEnvoisEchoues` pour de vrai et se contentait de vérifier
+ * qu'aucun appel ne LEVAIT. Deux défauts :
+ *
+ *   - elle ne vérifiait pas la règle. « Ça ne plante pas » est vrai que la
+ *     fonction alerte, se taise, ou ne fasse rien du tout ;
+ *   - elle dépendait de l'AMBIANCE. `sendAdminAlert` ne s'abstient que faute de
+ *     `RESEND_API_KEY` et de destinataire. Vitest partage `process.env` entre
+ *     les fichiers d'un même worker : le jour où l'un d'eux pose ces variables,
+ *     ce test part sur le RÉSEAU, devient lent, et peut envoyer un vrai e-mail
+ *     depuis la suite de tests.
+ *
+ * Elle est passée en isolation et a échoué une fois dans la suite complète, ce
+ * qui est exactement la signature de ce genre de dépendance.
+ *
+ * Ici, l'envoi est doublé : le réseau est hors d'atteinte par construction, et
+ * on vérifie CE QUI EST DÉCIDÉ, pas seulement que rien n'explose.
+ */
+const envois: { subject: string }[] = [];
+vi.mock("resend", () => ({
+  Resend: class {
+    emails = {
+      send: (o: { subject: string }) => {
+        envois.push({ subject: o.subject });
+        return Promise.resolve({ error: null });
+      },
+    };
+  },
+}));
+
 describe("le seuil d'alerte des envois", () => {
-  it("se tait sur un échec isolé, crie quand rien n'est passé", async () => {
+  const AVANT = { cle: process.env.RESEND_API_KEY, dest: process.env.ADMIN_ALERT_EMAIL };
+
+  beforeEach(() => {
+    envois.length = 0;
+    // ⚠️ Posées ICI et retirées après : les laisser fuiterait dans les autres
+    // fichiers du même worker, c'est-à-dire le défaut qu'on vient de corriger.
+    process.env.RESEND_API_KEY = "cle-de-test";
+    process.env.ADMIN_ALERT_EMAIL = "destinataire@test.invalid";
+  });
+
+  afterEach(() => {
+    if (AVANT.cle === undefined) delete process.env.RESEND_API_KEY;
+    else process.env.RESEND_API_KEY = AVANT.cle;
+    if (AVANT.dest === undefined) delete process.env.ADMIN_ALERT_EMAIL;
+    else process.env.ADMIN_ALERT_EMAIL = AVANT.dest;
+  });
+
+  it("se tait quand aucun envoi n'a échoué", async () => {
     const { alertEnvoisEchoues } = await import("./cron-alert");
-    // Sans clé Resend ni destinataire configurés, la fonction ne fait rien et
-    // n'échoue pas : on vérifie surtout qu'elle ne lève dans aucun des cas.
-    await expect(alertEnvoisEchoues("test", 0, 10)).resolves.toBeUndefined();
-    await expect(alertEnvoisEchoues("test", 1, 10)).resolves.toBeUndefined();
-    await expect(alertEnvoisEchoues("test", 10, 10)).resolves.toBeUndefined();
+    await alertEnvoisEchoues("test", 0, 10);
+    expect(envois).toEqual([]);
+  });
+
+  it("se tait sur un échec isolé, qui est normal", async () => {
+    /**
+     * ⚠️ Une adresse morte ou une boîte pleine arrive. Alerter dessus
+     * apprendrait à ignorer l'alerte, ce qui coûte plus cher que le défaut
+     * qu'elle signale.
+     */
+    const { alertEnvoisEchoues } = await import("./cron-alert");
+    await alertEnvoisEchoues("test", 1, 10);
+    await alertEnvoisEchoues("test", 9, 10);
+    expect(envois).toEqual([]);
+  });
+
+  it("crie quand AUCUN envoi n'est passé", async () => {
+    const { alertEnvoisEchoues } = await import("./cron-alert");
+    await alertEnvoisEchoues("send-reminders", 10, 10);
+    expect(envois.length, "zéro réussite sur dix tentatives n'a pas alerté").toBe(1);
+    expect(envois[0].subject).toContain("send-reminders");
+  });
+
+  it("ne touche jamais au réseau, même sans clé configurée", async () => {
+    // Le cas réel des tests : rien n'est configuré, donc rien ne part.
+    delete process.env.RESEND_API_KEY;
+    delete process.env.ADMIN_ALERT_EMAIL;
+    const { alertEnvoisEchoues } = await import("./cron-alert");
+    await alertEnvoisEchoues("test", 10, 10);
+    expect(envois).toEqual([]);
   });
 
   it("le seuil est écrit comme « tous les envois », pas comme un nombre choisi", () => {

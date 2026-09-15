@@ -895,7 +895,19 @@ function DeleteModal({
 
 export default function ChallengePage() {
   const { t, lang } = useLanguage();
-  const { maxAccounts, demoMode } = usePlan();
+  /**
+   * ⚠️⚠️ `loading` FAIT PARTIE DE LA RÉPONSE. Tant que le plan n'est pas lu,
+   * le contexte rend ses valeurs initiales, qui sont celles du plan GRATUIT
+   * (`maxAccounts: 1`). Sans ce drapeau, un abonné Premium voyait, le temps
+   * du chargement, la bannière « Limite de comptes atteinte » AVEC son bouton
+   * « Passer à l'offre supérieure », et le formulaire grisé : on vendait à
+   * quelqu'un ce qu'il paie déjà. Sur une connexion lente, ça dure.
+   *
+   * ⚠️ LA PAGE STRATÉGIE TENAIT DÉJÀ CETTE RÈGLE (elle attend `planLoading`
+   * avant de se prononcer sur sa propre limite). Une règle écrite, appliquée
+   * à un écran sur deux.
+   */
+  const { maxAccounts, demoMode, loading: planLoading } = usePlan();
   const supabase = createClient();
   const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
 
@@ -1395,7 +1407,7 @@ export default function ChallengePage() {
         </h2>
         <div className="h-px bg-border mt-2 mb-4" />
 
-        {maxAccounts !== null && activeAccounts.length >= maxAccounts && (
+        {!planLoading && maxAccounts !== null && activeAccounts.length >= maxAccounts && (
           <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 mb-4 flex items-center gap-3">
             <svg className="w-5 h-5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1405,7 +1417,7 @@ export default function ChallengePage() {
           </div>
         )}
 
-        <div className="space-y-4" style={maxAccounts !== null && activeAccounts.length >= maxAccounts ? { opacity: 0.4, pointerEvents: "none" as const } : {}}>
+        <div className="space-y-4" style={!planLoading && maxAccounts !== null && activeAccounts.length >= maxAccounts ? { opacity: 0.4, pointerEvents: "none" as const } : {}}>
           {/* Account type selector */}
           <div>
             <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>
