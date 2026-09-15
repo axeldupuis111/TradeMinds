@@ -2401,10 +2401,21 @@ function Footer() {
           ].map((col) => (
             <div key={col.heading}>
               <p className="font-semibold text-xs uppercase tracking-wider mb-4" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{col.heading}</p>
-              <ul className="space-y-2.5">
+              {/* ⚠️⚠️ CIBLES TACTILES DE SEIZE PIXELS DE HAUT, mesurées à 375 px
+                  de large : un `<a>` en `display: inline` sans remplissage fait
+                  exactement la hauteur de sa ligne de texte. WCAG 2.2 demande
+                  24 px (2.5.8, niveau AA), et onze liens de ce pied de page en
+                  étaient là, espacés de dix pixels — « Terms of Sale » et
+                  « Terms of Service » à portée d'un même pouce.
+
+                  ⚠️ L'EXCEPTION « LIEN DANS UNE PHRASE » NE S'APPLIQUE PAS : ce
+                  sont des liens de navigation dans une liste, pas des liens en
+                  ligne dans un texte. `inline-block` + `py-1` porte la cible à
+                  24 px sans toucher au rythme visuel de la colonne. */}
+              <ul className="space-y-1.5">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <a href={l.href} className="text-sm transition-colors hover:text-[rgb(var(--foreground))]" style={{ color: COPY, fontStyle: "normal" }}>{l.label}</a>
+                    <a href={l.href} className="inline-block py-1 text-sm transition-colors hover:text-[rgb(var(--foreground))]" style={{ color: COPY, fontStyle: "normal" }}>{l.label}</a>
                   </li>
                 ))}
               </ul>

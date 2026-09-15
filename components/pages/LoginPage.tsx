@@ -249,7 +249,12 @@ export default function LoginPage() {
               <label htmlFor="password" className="block text-sm text-muted mb-1.5">{t("login_password")}</label>
               <div className="relative">
                 <input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 pr-10 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0" placeholder="••••••••" />
-                <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors" tabIndex={-1} aria-label="Toggle password visibility">
+                {/* ⚠️⚠️ CIBLE DE SEIZE PIXELS SUR SEIZE, mesurée à 375 px de
+                    large : l'icône faisait toute la surface cliquable. WCAG 2.2
+                    demande 24 px (2.5.8, niveau AA), et celle-ci est collée au
+                    bord d'un champ de saisie, donc à un doigt du mauvais geste.
+                    Le remplissage agrandit la cible sans bouger l'icône. */}
+                <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-muted hover:text-foreground transition-colors" tabIndex={-1} aria-label="Toggle password visibility">
                   {showPassword ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                   ) : (
@@ -299,7 +304,11 @@ export default function LoginPage() {
                     setLoading(false);
                     setSuccess(t("login_reset_sent"));
                   }}
-                  className="text-xs text-muted hover:text-accent transition-colors"
+                  /* ⚠️ Le chemin de récupération : c'est le lien que touche
+                     quelqu'un qui n'arrive déjà pas à entrer. `inline-block` +
+                     `py-1.5` porte la cible de 16 à 28 px sans décaler la mise
+                     en page. */
+                  className="inline-block py-1.5 text-xs text-muted hover:text-accent transition-colors"
                 >
                   {t("login_forgot_password")}
                 </button>
@@ -358,7 +367,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setSignupMode(!signupMode); setError(null); setSuccess(null); setNotice(null); setNeedsConfirmation(false); }}
-                className="text-sm text-muted"
+                className="inline-block py-1.5 text-sm text-muted"
               >
                 {signupMode ? t("login_have_account") : t("login_no_account")}{" "}
                 <span className="text-accent hover:underline">
@@ -370,7 +379,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center mt-6">
-          <Link href={localizedHref("/", lang)} className="text-sm text-muted hover:text-foreground">{t("login_back")}</Link>
+          <Link href={localizedHref("/", lang)} className="inline-block py-1.5 text-sm text-muted hover:text-foreground">{t("login_back")}</Link>
         </p>
       </main>
     </div>

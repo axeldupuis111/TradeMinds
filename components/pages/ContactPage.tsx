@@ -96,8 +96,12 @@ export default function ContactPage() {
             </form>
           )}
 
+          {/* ⚠️ Lien isolé, donc hors de l'exception « lien dans une phrase » :
+              `py-1.5` porte la cible de 16 à 28 px (WCAG 2.2, 2.5.8, niveau AA).
+              L'adresse e-mail plus haut reste telle quelle, elle est bien au
+              milieu d'une phrase. */}
           <div className="mt-8 text-center">
-            <Link href={localizedHref("/faq", lang)} className="text-accent text-sm hover:underline">{t("contact_faq_link")}</Link>
+            <Link href={localizedHref("/faq", lang)} className="inline-block py-1.5 text-accent text-sm hover:underline">{t("contact_faq_link")}</Link>
           </div>
         </div>
       </main>

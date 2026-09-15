@@ -63,7 +63,9 @@ export default function FaqPage() {
 
           <div className="mt-8 text-center">
             <p className="text-muted text-sm">{t("faq_more_questions")}</p>
-            <Link href={localizedHref("/contact", lang)} className="text-accent text-sm hover:underline mt-1 inline-block">{t("faq_contact_link")}</Link>
+            {/* ⚠️ `py-1.5` porte la cible de 20 à 32 px : WCAG 2.2 en demande 24
+                (2.5.8, niveau AA), et c'est le seul lien de sortie de cette page. */}
+            <Link href={localizedHref("/contact", lang)} className="text-accent text-sm hover:underline mt-1 inline-block py-1.5">{t("faq_contact_link")}</Link>
           </div>
         </div>
       </main>

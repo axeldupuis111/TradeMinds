@@ -85,13 +85,21 @@ export default function LegalDocView({ content, related }: Props) {
             {doc.footerNote && <p className="text-muted text-xs italic pt-2">{doc.footerNote}</p>}
           </div>
 
-          <div className="mt-12 pt-8 border-t border-border flex flex-wrap gap-4">
+          {/* ⚠️⚠️ CIBLES TACTILES DE VINGT PIXELS DE HAUT, mesurées à 375 px de
+              large. WCAG 2.2 en demande 24 (2.5.8, niveau AA), et l'exception
+              « lien dans une phrase » ne couvre PAS cette rangée : c'est de la
+              navigation, quatre liens côte à côte, dont trois se ressemblent
+              (« Terms of Sale », « Privacy Policy », « Legal Notice »).
+
+              ⚠️ Les liens du CORPS du document, eux, restent tels quels : ceux-là
+              sont bien au milieu d'une phrase, et l'exception s'applique. */}
+          <div className="mt-12 pt-8 border-t border-border flex flex-wrap gap-x-4 gap-y-1">
             {related?.map((r) => (
-              <Link key={r.href} href={r.href} className="text-sm text-accent hover:underline">
+              <Link key={r.href} href={r.href} className="inline-block py-1.5 text-sm text-accent hover:underline">
                 {t(r.labelKey)}
               </Link>
             ))}
-            <Link href={localizedHref("/", lang)} className="text-sm text-muted hover:text-foreground">
+            <Link href={localizedHref("/", lang)} className="inline-block py-1.5 text-sm text-muted hover:text-foreground">
               &larr; {COMPANY.brand}
             </Link>
           </div>
