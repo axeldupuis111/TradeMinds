@@ -1068,6 +1068,7 @@ const dict: Record<string, string> = {
   "analytics_all_accounts": "Tous les comptes",
   "analytics_devises_melangees": "Cette vue mélange plusieurs devises : les totaux sont donnés séparément, et le facteur de profit n'a pas de sens ici. Choisis un compte pour des chiffres comparables.",
   "analytics_devises_melangees_bloc": "Le reste de cette page additionne des montants. Tant que la vue mêle plusieurs devises, ces totaux ne désigneraient aucune somme d'argent : choisis un compte ci-dessus pour les afficher.",
+  "strategy_devises_melangees": "Cette fiche a été jouée sur des comptes de devises différentes : additionner leurs résultats ne donnerait aucun montant réel. Le nombre de trades et le taux de réussite, eux, ne dépendent d'aucune monnaie.",
   "analytics_devises_melangees_court": "plusieurs devises",
   "analytics_no_data": "Aucune donnée pour cette période.",
   "analytics_by_day": "Performance par jour de la semaine",

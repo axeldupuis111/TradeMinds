@@ -1068,6 +1068,7 @@ const dict: Record<string, string> = {
   "analytics_all_accounts": "Alle Konten",
   "analytics_devises_melangees": "Diese Ansicht mischt mehrere Währungen: die Summen werden getrennt angezeigt, und der Profitfaktor ergibt hier keinen Sinn. Wähle ein Konto für vergleichbare Zahlen.",
   "analytics_devises_melangees_bloc": "Der Rest dieser Seite summiert Beträge. Solange die Ansicht mehrere Währungen mischt, würden diese Summen keinen echten Geldbetrag bezeichnen: Wähle oben ein Konto, um sie anzuzeigen.",
+  "strategy_devises_melangees": "Dieses Regelwerk wurde auf Konten in verschiedenen Währungen gehandelt: ihre Ergebnisse zu addieren ergäbe keinen realen Betrag. Anzahl der Trades und Trefferquote hängen dagegen von keiner Währung ab.",
   "analytics_devises_melangees_court": "mehrere Währungen",
   "analytics_no_data": "Keine Daten für diesen Zeitraum.",
   "analytics_by_day": "Performance nach Wochentag",

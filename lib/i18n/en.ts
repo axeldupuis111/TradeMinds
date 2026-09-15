@@ -1068,6 +1068,7 @@ const dict: Record<string, string> = {
   "analytics_all_accounts": "All accounts",
   "analytics_devises_melangees": "This view mixes several currencies: totals are shown separately, and the profit factor is meaningless here. Pick one account for comparable figures.",
   "analytics_devises_melangees_bloc": "The rest of this page adds amounts together. While the view mixes several currencies, those totals would not name any real sum of money: pick an account above to display them.",
+  "strategy_devises_melangees": "This playbook was traded on accounts in different currencies: adding their results would not produce any real amount. The trade count and win rate, on the other hand, do not depend on a currency.",
   "analytics_devises_melangees_court": "several currencies",
   "analytics_no_data": "No data for this period.",
   "analytics_by_day": "Performance by day of week",

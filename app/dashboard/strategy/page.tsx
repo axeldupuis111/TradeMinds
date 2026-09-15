@@ -1025,7 +1025,7 @@ export default function StrategyPage() {
                   </div>
                 </div>
                 <p role="status" className="rounded-lg border border-border bg-surface p-3 text-xs text-foreground-muted">
-                  {t("analytics_devises_melangees_bloc")}
+                  {t("strategy_devises_melangees")}
                 </p>
               </div>
             ) : perf && perf.count > 0 ? (
