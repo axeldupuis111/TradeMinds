@@ -41,10 +41,26 @@ describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () =
 
   it("« Mes Trades » a un état de lecture ratée, distinct de l'état vide", () => {
     const src = lire("components/trades/TradeList.tsx");
-    // La lecture lit son erreur…
-    expect(src, "l'erreur de lecture n'est plus lue").toMatch(
-      /const \{ data, count, error \} = await query\.range/,
+    /**
+     * La lecture lit son erreur…
+     *
+     * ⚠️ IL Y EN A DEUX DEPUIS LE 2026-09-16, et les deux doivent la lire. Le
+     * filtre gagnant/perdant porte sur `pnl + commission + swap`, que PostgREST
+     * ne sait pas filtrer : quand il est actif, la liste lit TOUT puis découpe
+     * elle-même, au lieu de filtrer la seule page déjà rapportée. Une lecture
+     * paginée rend `null` là où une lecture simple rend `error` ; les deux
+     * mènent au même état d'échec.
+     */
+    expect(src, "l'erreur de la lecture simple n'est plus lue").toMatch(
+      /const \{ data, count, error \} = await construire\(\)\.range/,
     );
+    expect(src, "la lecture complète ne distingue plus l'échec du vide").toMatch(
+      /const toutes = await fetchAllRows<Trade>[^]{0,200}if \(toutes === null\)/,
+    );
+    expect(
+      (src.match(/setLectureEchouee\(true\)/g) ?? []).length,
+      "une des deux lectures ne signale plus son échec",
+    ).toBeGreaterThanOrEqual(2);
     // … et l'écran a bien DEUX branches distinctes.
     expect(src).toContain("lectureEchouee ? (");
     expect(src).toContain('t("trades_load_failed")');

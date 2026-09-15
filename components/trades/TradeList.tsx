@@ -582,46 +582,88 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
-    let query = applySqlFilters(
-      supabase
-        .from("trades")
-        .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
-        .eq("user_id", user.id)
-        .eq("status", "closed"),
-    );
+    /** La requête de la page, filtres et tri compris, sans sa plage. */
+    const construire = () => {
+      let q = applySqlFilters(
+        supabase
+          .from("trades")
+          .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("status", "closed"),
+      );
+      if (sort.column === null) {
+        q = q.order("open_time", { ascending: false }).order("id", { ascending: false });
+      } else {
+        q = q
+          .order(COLUMN_TO_DB[sort.column], { ascending: sort.direction === "asc", nullsFirst: sort.direction === "desc" })
+          .order("id", { ascending: false });
+      }
+      return q;
+    };
 
-    if (sort.column === null) {
-      query = query.order("open_time", { ascending: false }).order("id", { ascending: false });
+    /**
+     * ⚠️⚠️ LE FILTRE GAGNANT/PERDANT NE S'APPLIQUAIT QU'À LA PAGE COURANTE.
+     *
+     * Il porte sur `pnl + commission + swap`, que PostgREST ne sait pas
+     * filtrer : il se calcule donc en JS. Mais il était appliqué APRÈS la
+     * pagination, sur les seules lignes déjà rapportées, pendant que le
+     * compteur venait du `count` SERVEUR, qui l'ignore.
+     *
+     * Mesuré le 2026-09-16 sur 85 trades, 20 par page, filtre « Gagnants » :
+     * page 1 montrait 3 lignes, page 2 en montrait 9, et l'en-tête annonçait
+     * « Filtré · 85 trades affichés » sur 5 pages. Le trader devait parcourir
+     * cinq pages pour voir ses 39 gagnants, chacune avec un nombre de lignes
+     * apparemment arbitraire.
+     *
+     * ⚠️ LA CORRECTION LIT TOUT AVANT DE DÉCOUPER, et seulement quand ce filtre
+     * est actif : le total, la pagination et les lignes désignent alors le même
+     * ensemble. Les autres filtres, eux, restent entièrement en SQL.
+     */
+    /**
+     * ⚠️ LE TRI SE FAIT PAR `keepByResult`, PAS PAR UNE COPIE DU CALCUL. La
+     * suppression en lot et l'export CSV s'en servent déjà ; une deuxième
+     * définition de « gagnant » sur le même écran finirait par diverger de la
+     * première (`pnl ?? 0` contre `pnl`, par exemple, pour un trade sans
+     * résultat), et la liste ne montrerait plus ce que l'export exporte.
+     */
+    const filtreEnJs = filters.result === "win" || filters.result === "loss";
+
+    let rows: Trade[];
+    let compte: number;
+
+    if (filtreEnJs) {
+      // ⚠️ Lecture PAGINÉE : non bornée, elle s'arrêterait à mille lignes en
+      // silence et le filtre porterait sur un journal amputé (supabase-paginate).
+      const toutes = await fetchAllRows<Trade>((d, f) => construire().range(d, f));
+      if (toutes === null) {
+        console.error("[trades] lecture du journal incomplete pour le filtre resultat");
+        setLectureEchouee(true);
+        setLoading(false);
+        return;
+      }
+      const retenues = keepByResult(toutes);
+      compte = retenues.length;
+      rows = retenues.slice(from, from + pageSize);
     } else {
-      query = query
-        .order(COLUMN_TO_DB[sort.column], { ascending: sort.direction === "asc", nullsFirst: sort.direction === "desc" })
-        .order("id", { ascending: false });
-    }
-
-    const { data, count, error } = await query.range(from, to);
-    if (error) {
-      console.error("[trades] lecture du journal refusee :", error.message);
-      setLectureEchouee(true);
-      setLoading(false);
-      return;
+      const { data, count, error } = await construire().range(from, to);
+      if (error) {
+        console.error("[trades] lecture du journal refusee :", error.message);
+        setLectureEchouee(true);
+        setLoading(false);
+        return;
+      }
+      // Aucun dédoublonnage d'affichage ici : ouvrir trois positions identiques
+      // à la même seconde (même paire, même prix) est un scénario de trading
+      // courant, et masquer les copies faisait disparaître des trades réels tout
+      // en les gardant dans les stats. Les vrais doublons de synchro sont déjà
+      // impossibles : index unique (user_id, source, external_id) en base.
+      rows = (data || []) as Trade[];
+      compte = count || 0;
     }
     setLectureEchouee(false);
 
-    // Aucun dédoublonnage d'affichage ici : ouvrir trois positions identiques
-    // à la même seconde (même paire, même prix) est un scénario de trading
-    // courant, et masquer les copies faisait disparaître des trades réels tout
-    // en les gardant dans les stats. Les vrais doublons de synchro sont déjà
-    // impossibles : index unique (user_id, source, external_id) en base.
-    let rows = (data || []) as Trade[];
-
-    if (filters.result === "win") {
-      rows = rows.filter((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0) > 0);
-    } else if (filters.result === "loss") {
-      rows = rows.filter((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0) <= 0);
-    }
-
     setTrades(rows);
-    setTotal(count || 0);
+    setTotal(compte);
     setLoading(false);
 
     // Load checklist items for each distinct strategy in this page
