@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ecouterDemandesCoach } from "@/lib/coach-bus";
 import { coachActionMeta, useCoachChat } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
+import ContenuDuMessage from "@/components/coach/ContenuDuMessage";
 import CoachThinking from "@/components/coach/CoachThinking";
 import { describePage } from "@/lib/coach-page-context";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -249,13 +250,13 @@ export default function CoachDock() {
                     lui dit ce que le coach est en train de faire. */}
                 {(msg.content || msg.role === "user") && (
                   <div
-                    className={`inline-block max-w-[92%] text-left rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                    className={`inline-block max-w-[92%] text-left rounded-xl px-3 py-2 text-sm ${
                       msg.role === "user"
                         ? "bg-accent/15 text-foreground"
                         : "bg-background border border-border text-foreground-muted"
                     }`}
                   >
-                    {msg.content}
+                    <ContenuDuMessage role={msg.role} content={msg.content} />
                   </div>
                 )}
                 {/* Rien n'est fait tant que le trader n'a pas tranché. */}

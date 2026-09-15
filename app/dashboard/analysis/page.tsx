@@ -26,7 +26,7 @@ import { fetchAllRows } from "@/lib/supabase-paginate";
 import { track } from "@/lib/track";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ContenuDuMessage from "@/components/coach/ContenuDuMessage";
 import { enDate } from "@/lib/dates";
 
 // Action posée par le coach (chip affiché sous le message assistant).
@@ -1680,13 +1680,7 @@ export default function AnalysisPage() {
                         ? "bg-accent text-on-accent rounded-br-sm"
                         : "bg-surface border border-border text-foreground rounded-bl-sm"
                     }`}>
-                      {msg.role === "assistant" ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>li]:mb-0.5 [&>strong]:font-semibold [&>em]:italic">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      )}
+                      <ContenuDuMessage role={msg.role} content={msg.content} />
                     </div>
                     {/* Le dock global est masqué sur cette page : sans ce bloc,
                         le coach annonçait un bouton de validation invisible. */}
