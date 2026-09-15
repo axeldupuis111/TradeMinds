@@ -21,6 +21,8 @@ import {
   readTicket,
   readAccountSnapshot,
   accountSnapshotRejectReason,
+  avertissementsDuTrade,
+  nombreLisible,
   brokerOffsetSeconds,
   type PushTrade,
 } from "./push-parse";
@@ -158,12 +160,22 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   // (l'EA l'imprime dans son journal) et dans les logs serveur.
   const validTrades: PushTrade[] = [];
   const errors: { ticket: string; reason: string }[] = [];
+  /**
+   * Ce qui a été accepté malgré un défaut. ⚠️ « Jamais silencieux » ne veut pas
+   * dire « toujours refusé » : un stop illisible ne justifie pas de perdre le
+   * trade, mais le trader doit savoir que son journal ne le portera pas.
+   */
+  const warnings: { ticket: string; reason: string }[] = [];
   let skipped = 0;
 
   for (const raw of rawTrades) {
     const reason = tradeRejectReason(raw);
     if (reason === null) {
-      validTrades.push(raw as PushTrade);
+      const t = raw as PushTrade;
+      validTrades.push(t);
+      for (const a of avertissementsDuTrade(t)) {
+        if (warnings.length < 20) warnings.push({ ticket: readTicket(raw), reason: a });
+      }
     } else {
       skipped++;
       if (errors.length < 20) errors.push({ ticket: readTicket(raw), reason });
@@ -183,6 +195,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       synced: 0,
       skipped,
       errors,
+      ...(warnings.length ? { warnings } : {}),
       ...accountFields,
     });
   }
@@ -237,11 +250,17 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       exit_price: t.close_price,
       open_time: toIso(t.open_time, tzOffset),
       close_time: toIso(t.close_time, tzOffset),
-      pnl: t.profit,
-      commission: t.commission ?? 0,
-      swap: t.swap ?? 0,
-      sl: t.sl ?? null,
-      tp: t.tp ?? null,
+      /**
+       * ⚠️ NORMALISÉS, PAS RECOPIÉS. Les clients concatènent du texte : une
+       * chaîne numérique doit devenir un nombre, et une chaîne illisible ne
+       * doit JAMAIS atteindre la base (elle y faisait échouer tout le lot).
+       * `profit` est garanti lisible ici par `tradeRejectReason`.
+       */
+      pnl: nombreLisible(t.profit) as number,
+      commission: nombreLisible(t.commission) ?? 0,
+      swap: nombreLisible(t.swap) ?? 0,
+      sl: nombreLisible(t.sl),
+      tp: nombreLisible(t.tp),
       status: "closed" as const,
       source: mapSource(t.source),
       external_id: String(t.ticket),
@@ -254,6 +273,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       synced: 0,
       skipped: skipped + validTrades.length, // all valid ones were frozen
       errors,
+      ...(warnings.length ? { warnings } : {}),
       ...accountFields,
     });
   }
@@ -408,5 +428,5 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     await checkTiltInsight(admin, userId, lang);
   }
 
-  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors, ...accountFields });
+  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors, ...(warnings.length ? { warnings } : {}), ...accountFields });
 }

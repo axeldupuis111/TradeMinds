@@ -127,12 +127,50 @@ export function toIso(
 }
 
 /**
+ * UN NOMBRE LISIBLE, OU `null`.
+ *
+ * ⚠️⚠️ LES CLIENTS CONCATÈNENT DU TEXTE, PAS DU JSON TYPÉ. `DoubleToString`
+ * (MQL) écrit « 1.#INF » ou « -nan(ind) » pour un double non initialisé, ce qui
+ * arrive terminal déconnecté — l'état exact déjà capturé pour l'état de compte
+ * (voir clients-contract.test.ts). Ces chaînes traversaient la validation, qui
+ * ne regardait AUCUN champ d'argent, et faisaient échouer l'écriture en base.
+ *
+ * ⚠️ UNE CHAÎNE NUMÉRIQUE EST ACCEPTÉE (« 7.50 ») : plusieurs clients citent
+ * leurs nombres, et les refuser casserait des installations qui marchent.
+ */
+export function nombreLisible(v: unknown): number | null {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (s === "") return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
  * Explique pourquoi un trade est refusé, ou renvoie null s'il est valide.
  *
  * Le rail push répond toujours 200 (les clients MQL/NinjaScript rejouent mal
  * les erreurs HTTP) : sans motif explicite, un trade mal formé disparaissait
  * en silence. Le motif est renvoyé dans la réponse pour que l'EA l'affiche
  * dans son journal.
+ *
+ * ── CE QUI MANQUAIT, MESURÉ CONTRE LA PRODUCTION LE 2026-09-15 ──────────────
+ *
+ * ⚠️⚠️ LES CHAMPS D'ARGENT N'ÉTAIENT PAS VALIDÉS DU TOUT. Huit champs de forme
+ * étaient contrôlés (ticket, symbole, sens, volume, prix, heures) et aucun des
+ * cinq qui portent le résultat. Rejoué sur le vrai rail :
+ *
+ *   - `profit` ABSENT ou `null` → HTTP 200, `synced: 1`, et un trade écrit en
+ *     base avec `pnl: null`. En JavaScript `null + 0` vaut 0 : le trade compte
+ *     alors comme un break-even sur les écrans qui somment, et disparaît de
+ *     ceux qui filtrent `pnl not null`. Deux chiffres pour le même journal.
+ *   - `profit`, `commission`, `swap` ou `sl` illisible → **HTTP 500**, avec
+ *     « Erreur lors de l'enregistrement des trades. » pour seule explication.
+ *   - ET UN SEUL MAUVAIS TRADE EMPORTAIT TOUT LE LOT : un envoi de deux trades
+ *     dont un corrompu perdait aussi le bon.
  */
 export function tradeRejectReason(t: unknown): string | null {
   if (!t || typeof t !== "object") return "trade absent ou illisible";
@@ -156,7 +194,44 @@ export function tradeRejectReason(t: unknown): string | null {
     return "heure d'ouverture nulle (deal d'ouverture introuvable dans l'historique chargé)";
   if (!toIso(o.close_time as string | number)) return "heure de clôture nulle ou invalide";
 
+  // ── Les champs d'argent ────────────────────────────────────────────────
+  // Le résultat est la raison d'être du trade : un trade sans lui n'a rien à
+  // faire dans un journal, et vaut mieux refusé avec un motif qu'écrit à vide.
+  if (o.profit === undefined || o.profit === null) return "profit absent";
+  if (nombreLisible(o.profit) === null) return `profit illisible : ${String(o.profit)}`;
+
+  // Frais optionnels, mais ils changent le résultat NET : illisibles, le P&L
+  // affiché serait faux sans que rien ne le dise.
+  for (const champ of ["commission", "swap"] as const) {
+    const v = o[champ];
+    if (v === undefined || v === null) continue;
+    if (nombreLisible(v) === null) return `${champ} illisible : ${String(v)}`;
+  }
+
+  /**
+   * ⚠️ `sl` ET `tp` NE SONT PAS DANS CETTE LISTE, ET C'EST DÉLIBÉRÉ : ils ne
+   * changent aucun montant. Refuser un trade entier parce que son stop est
+   * illisible ferait perdre le trade pour une décoration ; il est enregistré
+   * sans stop, et l'envoi le SIGNALE (voir `avertissementsDuTrade`).
+   */
   return null;
+}
+
+/**
+ * Ce qui a été accepté malgré un défaut, pour que le client l'imprime.
+ *
+ * ⚠️ « JAMAIS SILENCIEUX » NE VEUT PAS DIRE « TOUJOURS REFUSÉ ». Un stop
+ * illisible ne justifie pas de perdre le trade, mais le trader doit savoir que
+ * son journal ne portera pas ce stop-là.
+ */
+export function avertissementsDuTrade(t: PushTrade): string[] {
+  const out: string[] = [];
+  for (const champ of ["sl", "tp"] as const) {
+    const v = (t as unknown as Record<string, unknown>)[champ];
+    if (v === undefined || v === null) continue;
+    if (nombreLisible(v) === null) out.push(`${champ} illisible (${String(v)}), trade enregistré sans`);
+  }
+  return out;
 }
 
 export function isValidTrade(t: unknown): t is PushTrade {
