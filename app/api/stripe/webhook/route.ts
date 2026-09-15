@@ -439,9 +439,11 @@ async function handleSubscriptionDeleted(
   }
 
   // Downgrade profiles.plan en free
+  // ⚠️ Et la date de fin repart à `null` : elle a fait son office, la garder
+  // rétrograderait à nouveau un compte qui se réabonnerait plus tard.
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ plan: 'free' })
+    .update({ plan: 'free', plan_expires_at: null })
     .eq('id', userId)
 
   if (profileError) {
@@ -891,7 +893,7 @@ async function handleChargeRefunded(
   // Remboursement intégral : le client ne paie plus, il ne garde pas l'accès.
   const { error } = await supabase
     .from('profiles')
-    .update({ plan: 'free' })
+    .update({ plan: 'free', plan_expires_at: null })
     .eq('id', userId)
   if (error) {
     console.error('[Webhook] Error revoking plan after refund:', error)
@@ -993,5 +995,46 @@ async function upsertSubscription(
   if (error) {
     console.error('[Webhook] Error upserting subscription:', error)
     throw error
+  }
+
+  /**
+   * ⚠️⚠️ `profiles.plan_expires_at` ÉTAIT LU PAR TROIS PORTIERS ET ÉCRIT PAR
+   * PERSONNE. Mesuré le 2026-09-16 : `lib/PlanContext.tsx`, `lib/api-auth.ts` et
+   * `/api/leaderboard` rétrogradent tous un plan dont la date est passée, et la
+   * colonne valait `null` pour les cinquante et un comptes de la base. Le filet
+   * de sécurité existait à la lecture, pas à l'écriture.
+   *
+   * Ce qu'il rattrape : la résiliation qui n'atterrit pas. Stripe réessaie un
+   * webhook pendant trois jours puis abandonne ; si `subscription.deleted` se
+   * perd, le compte garde son plan payant POUR TOUJOURS. C'est déjà arrivé de
+   * l'autre côté (incident du 2026-07-27) et le code s'en méfie explicitement :
+   * « la résiliation n'atterrit pas et le compte garde un plan payant ».
+   *
+   * ⚠️ LA DATE NE VIENT QUE D'UNE RÉSILIATION DEMANDÉE, JAMAIS D'UNE FIN DE
+   * PÉRIODE ORDINAIRE. Poser `current_period_end` sur un abonnement qui se
+   * renouvelle ferait de ce filet une bombe : le jour où un webhook de
+   * renouvellement se perdrait, on couperait l'accès d'un client qui PAIE. Ici,
+   * la date n'est posée que lorsque le client a lui-même demandé l'arrêt, et
+   * elle vaut exactement le jour qu'il a choisi.
+   *
+   * ⚠️ ET ELLE EST REMISE À `null` DANS LE CAS CONTRAIRE, ce qui couvre la
+   * reprise : un abonné qui annule puis se ravise repart sans date de fin.
+   */
+  const finDAcces = isCancelingAtPeriodEnd ? subscriptionData.current_period_end : null
+
+  const { error: expiryErr } = await supabase
+    .from('profiles')
+    .update({ plan_expires_at: finDAcces })
+    .eq('id', userId)
+
+  if (expiryErr) {
+    // Ne pas jeter : l'abonnement, lui, est bien enregistré. Mais le dire, parce
+    // qu'un filet qu'on croit tendu et qui ne l'est pas est pire que pas de filet.
+    console.error('[Webhook] plan_expires_at non écrit:', expiryErr.message)
+    await alertWebhookFailure(
+      'Stripe',
+      `plan_expires_at non écrit pour ${userId} (${subscription.id}) : ${expiryErr.message}. ` +
+        `Si la résiliation se perd, ce compte gardera son plan payant.`
+    )
   }
 }

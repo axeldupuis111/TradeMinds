@@ -114,9 +114,31 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         />
       )}
 
+      {/**
+       * ⚠️⚠️ FERMÉ, CE TIROIR RESTAIT DANS L'ORDRE DE TABULATION. Mesuré le
+       * 2026-09-16 à 386 px de large sur « Mes Trades » : la page comptait 32
+       * commandes atteignables au clavier, dont 18 dans ce tiroir, posées de
+       * x = -230 px à x = -16 px, c'est-à-dire entièrement hors de l'écran. Et
+       * elles venaient en PREMIER, juste après le lien d'évitement.
+       *
+       * Quelqu'un qui navigue au clavier ou au balayage sur un téléphone
+       * appuyait donc dix-huit fois sur Tab en voyant le focus disparaître,
+       * avant d'atteindre quoi que ce soit de visible. Un lecteur d'écran, lui,
+       * annonçait toute la navigation comme si elle était à l'écran.
+       *
+       * ⚠️ LA CORRECTION EST `invisible`, PAS `hidden` : `visibility: hidden`
+       * retire l'élément de l'ordre de tabulation ET de l'arbre d'accessibilité,
+       * tout en restant animable. En transition, la visibilité s'applique à la
+       * FIN pour la fermeture et au DÉBUT pour l'ouverture : le tiroir glisse
+       * encore dans les deux sens. `display: none` aurait supprimé l'animation.
+       *
+       * ⚠️ ET `lg:visible` EST OBLIGATOIRE : au-dessus de 1024 px ce même
+       * élément n'est plus un tiroir mais la barre latérale permanente, où
+       * `open` vaut toujours faux.
+       */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card/80 backdrop-blur-xl border-r border-border/70 flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${
-          open ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card/80 backdrop-blur-xl border-r border-border/70 flex flex-col transition-[transform,visibility] duration-200 lg:visible lg:translate-x-0 lg:static lg:z-auto ${
+          open ? "visible translate-x-0" : "invisible -translate-x-full"
         }`}
       >
         {/* Logo */}

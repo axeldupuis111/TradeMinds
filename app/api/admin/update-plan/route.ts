@@ -80,9 +80,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    /**
+     * ⚠️ `plan_expires_at` REPART À `null` AVEC CHAQUE OCTROI MANUEL. Un plan
+     * donné à la main (partenaire, testeur, geste commercial) n'a pas de date
+     * de fin : la garder ferait expirer un cadeau à la date d'une résiliation
+     * Stripe que cet octroi vient justement de remplacer.
+     */
     const { error: updateError } = await adminClient
       .from("profiles")
-      .update({ plan, daily_ai_count: 0 })
+      .update({ plan, daily_ai_count: 0, plan_expires_at: null })
       .eq("id", targetProfile.id);
 
     if (updateError) {
