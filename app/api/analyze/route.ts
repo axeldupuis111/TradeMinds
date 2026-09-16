@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
+import { currencySymbol, isSupportedCurrency } from "@/lib/account-currency";
 import { NextResponse } from "next/server";
 import {
   computeCounterfactual,
@@ -86,6 +87,23 @@ interface AnalyzeRequest {
     emotion?: string | null;
     vision_review?: { grade?: string; setup_validity?: string; summary?: string; advice?: string } | null;
   }[];
+  /**
+   * Devise des montants analysés, telle que l'écran l'a résolue.
+   *
+   * ⚠️⚠️ SANS ELLE, LE MODÈLE ÉCRIVAIT DES EUROS À TOUT LE MONDE. Les trades
+   * lui arrivent en nombres nus (`P&L net: -428.20`), aucun symbole nulle part,
+   * et les exemples du prompt étaient tous en euros : il imitait. Mesuré le
+   * 2026-09-16 sur un compte dont TOUS les comptes sont en dollars, analyse du
+   * 2026-07-31, titre stocké et réaffiché depuis : « 75% de winrate et +416 €
+   * cette semaine ». Dix des seize utilisateurs qui ont un compte sont en
+   * dollars.
+   *
+   * ⚠️ CHAÎNE VIDE = LA SÉLECTION MÊLE PLUSIEURS DEVISES. L'écran s'en sert
+   * déjà comme sentinelle, et l'export PDF la reçoit depuis longtemps (« sans
+   * elle, le PDF écrivait des euros ») : c'est le PROMPT qui avait été oublié,
+   * dans le même fichier, quatre-vingt-dix lignes plus loin.
+   */
+  currency?: string;
 }
 
 const SESSION_MAP: Record<string, string> = {
@@ -135,6 +153,20 @@ export async function POST(request: Request) {
     // ── 4. Parse + payload limits ──
     const body: AnalyzeRequest = await request.json();
     const { strategy, trades, language, periodLabel } = body;
+
+    /**
+     * La devise dans laquelle le modèle doit écrire ses montants.
+     *
+     * ⚠️ VALIDÉE CONTRE LA LISTE DU PRODUIT : une chaîne arbitraire venue du
+     * client finirait recopiée telle quelle dans la prose du modèle.
+     * Inconnue ou absente, on retombe sur le comportement d'avant plutôt que
+     * d'inventer une devise.
+     */
+    const deviseDemandee = typeof body.currency === "string" ? body.currency.trim().toUpperCase() : "";
+    const devisesMelangees = body.currency === "";
+    const symboleDevise = isSupportedCurrency(deviseDemandee)
+      ? currencySymbol(deviseDemandee)
+      : null;
     const langName = nomDeLangue(language);
 
     if (!trades || trades.length === 0) {
@@ -282,8 +314,33 @@ export async function POST(request: Request) {
 
     const periodInfo = periodLabel ? `Période analysée : ${periodLabel} — ${recentTrades.length} trades.\n\n` : "";
 
+    /**
+     * ⚠️⚠️ LE MODÈLE NE VOIT AUCUN SYMBOLE DANS SES DONNÉES. Les trades lui
+     * arrivent en nombres nus (`P&L net: -428.20`) et les exemples de ce prompt
+     * étaient tous en euros : il imitait les exemples. D'où « +416 € » écrit à
+     * un trader dont tous les comptes sont en dollars, phrase enregistrée dans
+     * `session_reviews` et réaffichée à chaque consultation.
+     *
+     * ⚠️ ET CE N'EST PAS UNE COQUILLE D'AFFICHAGE : cette prose est le produit.
+     * Elle est stockée, relue, exportée en PDF, et le PDF, lui, formate déjà
+     * ses nombres dans la bonne devise depuis longtemps. Les deux moitiés se
+     * contredisaient sur la même page.
+     */
+    const regleDevise = symboleDevise
+      ? `RÈGLE DE DEVISE (ABSOLUE) : tous les montants de tes données sont en ${deviseDemandee}. Écris « ${symboleDevise} » après CHAQUE montant que tu cites, et jamais un autre symbole. Les nombres qu'on te donne sont nus : c'est toi qui poses l'unité, et une unité fausse est un chiffre faux.
+`
+      : devisesMelangees
+        ? `RÈGLE DE DEVISE (ABSOLUE) : la période analysée MÊLE PLUSIEURS DEVISES. N'écris JAMAIS de total, de moyenne ni de comparaison en argent : additionner ou comparer deux devises ne désigne aucune somme réelle. Raisonne en nombre de trades, en pourcentages et en taux de réussite. Si tu dois citer un montant, ne lui mets aucun symbole et dis qu'il porte sur une seule devise.
+`
+        : `RÈGLE DE DEVISE : la devise du trader n'a pas pu être déterminée. N'écris AUCUN symbole monétaire : cite les montants en chiffres nus, ou raisonne en pourcentages.
+`;
+
+    /** Le symbole à imiter dans les exemples du prompt, jamais l'euro par défaut. */
+    const exempleDevise = symboleDevise ?? "";
+
     const prompt = `LANGUAGE RULE (ABSOLUTE, NON-NEGOTIABLE): Every single text value in your JSON response MUST be written in ${langName}. This includes all "explanation", "description", "strengths", and "recommendations" fields. Do NOT use any other language regardless of the language of the input data or labels below.
 
+${regleDevise}
 ${periodInfo}STRATÉGIE DU TRADER :
 - Nom : ${sanitizeUserInput(strategy.name) || "Non définie"}
 - Paires autorisées : ${strategy.pairs.length > 0 ? strategy.pairs.join(", ") : "Toutes"}
@@ -376,9 +433,9 @@ TYPES DE VIOLATIONS POSSIBLES :
   * "missing_setup_tag" : trade sans setup renseigné
 
 EN PLUS DES VIOLATIONS, tu produis une analyse complète de niveau professionnel :
-- "headline" : LA phrase que le trader doit retenir. Percutante, chiffrée, spécifique à SES données (ex. « Tes trades revenge t'ont coûté 340 € : sans eux, ton mois serait positif »). Jamais générique.
+- "headline" : LA phrase que le trader doit retenir. Percutante, chiffrée, spécifique à SES données (ex. « Tes trades revenge t'ont coûté 340 ${exempleDevise} : sans eux, ton mois serait positif »). Jamais générique.
 - "summary" : le verdict en 3-4 phrases. Ce qui domine la période, le problème n°1 s'il existe, le point fort n°1. Direct, sans langue de bois, mais constructif.
-- "patterns[].evidence" : pour chaque pattern, la preuve chiffrée tirée des statistiques ou des trades (ex. « 4 trades pris < 30 min après une perte : 0 gagnant, -180 € »). Pas de pattern sans preuve.
+- "patterns[].evidence" : pour chaque pattern, la preuve chiffrée tirée des statistiques ou des trades (ex. « 4 trades pris < 30 min après une perte : 0 gagnant, -180 ${exempleDevise} »). Pas de pattern sans preuve.
 - "trade_reviews" : les 5 à 10 trades les plus instructifs de la période (pires erreurs ET meilleures exécutions). Pour chacun : trade_id (l'index), grade "A" (exécution exemplaire) | "B" (correct) | "C" (discutable) | "D" (faute caractérisée), et un commentaire d'une phrase qui dit précisément ce qui était bien ou mal.
 - "action_plan" : 2 ou 3 engagements MESURABLES pour la période suivante, dérivés des problèmes détectés. Chaque item : "title" (l'engagement, formulé à l'impératif) et "target" (le critère de réussite vérifiable, ex. « 0 trade entre 14h et 16h » ou « attendre 30 min après chaque perte »). Si l'historique longitudinal montre un engagement non tenu, reformule-le en plus strict.
 

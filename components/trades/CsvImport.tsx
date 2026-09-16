@@ -1,7 +1,7 @@
 "use client";
 
 import ExportGuideModal from "@/components/trades/ExportGuideModal";
-import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
@@ -558,7 +558,30 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy: fullStrat, trades: recentTrades, language: lang, period: "last_30_days", periodLabel }),
+        body: JSON.stringify({
+          strategy: fullStrat,
+          trades: recentTrades,
+          language: lang,
+          period: "last_30_days",
+          periodLabel,
+          /**
+           * ⚠️ LA DEVISE DES COMPTES, PAS CELLE DU COMPTE IMPORTÉ. Cette
+           * analyse automatique porte sur TRENTE JOURS de journal, tous comptes
+           * confondus : envoyer `deviseDuCompte` serait juste pour l'import et
+           * faux pour l'analyse. Même règle que la page Analyse IA, pour que les
+           * deux portes écrivent la même devise.
+           *
+           * ⚠️ CHAÎNE VIDE quand les comptes n'en partagent pas une seule, ET
+           * quand il n'y en a aucun : la route n'écrit alors aucun symbole,
+           * plutôt que de supposer l'euro. C'est la supposition qui était le
+           * défaut.
+           */
+          currency:
+            commonCurrency(
+              activeAccounts.map((a) => a.id),
+              buildCurrencyMap(activeAccounts),
+            ) ?? "",
+        }),
       });
       if (!res.ok) return; // 429 quota épuisé / erreur → silencieux, l'import reste réussi
       const data = await res.json();

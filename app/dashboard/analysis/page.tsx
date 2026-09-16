@@ -832,6 +832,14 @@ export default function AnalysisPage() {
           language: lang,
           period: selectedPeriod,
           periodLabel,
+          /**
+           * ⚠️ LA MÊME DEVISE QUE L'ÉCRAN ET QUE LE PDF. L'export la recevait
+           * déjà (« sans elle, le PDF écrivait des euros ») ; le prompt, lui,
+           * ne la recevait pas, et le modèle écrivait des euros DANS LA PROSE
+           * que ce PDF imprime ensuite. Chaîne vide = devises mêlées, et la
+           * route en tire une consigne différente.
+           */
+          currency: displayCurrency,
         }),
       });
 
