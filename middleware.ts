@@ -41,6 +41,18 @@ function isPublicPath(pathname: string): boolean {
     p.startsWith("/api/waitlist") ||
     p.startsWith("/api/contact") ||
     p.startsWith("/api/founding") ||
+    /**
+     * ⚠️⚠️ SE DÉSINSCRIRE NE DEMANDE PAS DE SE CONNECTER. `estPrivee` répond
+     * « privée » pour TOUT ce qui commence par `/api` : sans cette ligne, le
+     * lien de désinscription d'un e-mail renvoie vers `/login`, et la route
+     * n'est jamais atteinte. Pire, le POST « un clic » de Gmail suit la
+     * redirection et reçoit 200 : le fournisseur croit la demande honorée
+     * pendant que les e-mails continuent de partir.
+     *
+     * La route n'est pas ouverte pour autant : elle exige un jeton signé, et
+     * tout ce qu'elle sait faire est mettre `email_notif_session` à faux.
+     */
+    p.startsWith("/api/unsubscribe") ||
     p.startsWith("/cgu") ||
     p.startsWith("/confidentialite") ||
     p.startsWith("/mentions-legales") ||

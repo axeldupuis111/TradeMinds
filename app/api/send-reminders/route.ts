@@ -5,6 +5,7 @@ import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, emailParagraph } from "@/lib/email-template";
 
 // Delivered at 8am in each trader's LOCAL timezone, before the European
@@ -72,13 +73,33 @@ const REMINDER_COPY: Record<Lang, {
   },
 };
 
-function buildEmailHtml(copy: typeof REMINDER_COPY[Lang], lang: Lang): string {
+/**
+ * ⚠️ UN LIEN, PAS UNE CONSIGNE. Le pied de page disait « tu peux désactiver ce
+ * rappel dans Réglages → Notifications » : c'est une instruction, et elle
+ * suppose que le lecteur se reconnecte. Le geste qui reste, sinon, est
+ * « signaler comme spam », et c'est la plainte qui abîme le domaine.
+ */
+const DESINSCRIPTION_LIBELLE: Record<Lang, string> = {
+  fr: "Se désinscrire de ces e-mails",
+  en: "Unsubscribe from these emails",
+  de: "Diese E-Mails abbestellen",
+  es: "Darse de baja de estos correos",
+};
+
+/** La ligne de pied de page, ou rien si aucun secret n'est configuré. */
+function ligneDeDesinscription(userId: string, lang: Lang): string[] {
+  const url = lienDeDesinscription(userId, lang);
+  if (!url) return [];
+  return [`<a href="${url}" style="color:#6e7887;text-decoration:underline">${DESINSCRIPTION_LIBELLE[lang]}</a>`];
+}
+
+function buildEmailHtml(copy: typeof REMINDER_COPY[Lang], lang: Lang, userId: string): string {
   return renderBrandEmail({
     preheader: copy.body,
     heading: copy.heading,
     bodyHtml: emailParagraph(copy.body),
     cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard/session" },
-    footerLines: [copy.footer],
+    footerLines: [copy.footer, ...ligneDeDesinscription(userId, lang)],
     lang,
   });
 }
@@ -135,7 +156,8 @@ export async function POST(req: Request) {
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
         subject: copy.subject,
-        html: buildEmailHtml(copy, lang),
+        html: buildEmailHtml(copy, lang, user.id as string),
+        headers: entetesDeDesinscription(user.id as string),
       });
       sent++;
       /**

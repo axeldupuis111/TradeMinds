@@ -6,6 +6,7 @@ import { Resend } from "resend";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, emailParagraph, statCell, statRow, EMAIL_GREEN, EMAIL_RED } from "@/lib/email-template";
 
 // Sent Wednesday late-morning in each trader's LOCAL timezone (was a fixed
@@ -96,6 +97,26 @@ const REACTIVATION_COPY: Record<Lang, {
 };
 
 /**
+ * UN LIEN, PAS UNE CONSIGNE. Le pied de page disait « tu peux desactiver ce
+ * rappel dans Reglages -> Notifications » : c'est une instruction, et elle
+ * suppose que le lecteur se reconnecte. Le geste qui reste, sinon, est
+ * « signaler comme spam », et c'est la plainte qui abime le domaine.
+ */
+const DESINSCRIPTION_LIBELLE: Record<Lang, string> = {
+  fr: "Se désinscrire de ces e-mails",
+  en: "Unsubscribe from these emails",
+  de: "Diese E-Mails abbestellen",
+  es: "Darse de baja de estos correos",
+};
+
+/** La ligne de pied de page, ou rien si aucun secret n'est configuré. */
+function ligneDeDesinscription(userId: string, lang: Lang): string[] {
+  const url = lienDeDesinscription(userId, lang);
+  if (!url) return [];
+  return [`<a href="${url}" style="color:#6e7887;text-decoration:underline">${DESINSCRIPTION_LIBELLE[lang]}</a>`];
+}
+
+/**
  * ⚠️⚠️ LE P&L CUMULE D'UN TRADER MULTI-COMPTES MELE FORCEMENT LES DEVISES,
  * et cet email-ci l'annonce depuis toujours. `resolveUserCurrency` ne regarde
  * que les comptes ACTIFS : il repondait « euro » avec assurance sur une somme
@@ -109,7 +130,8 @@ function buildEmailHtml(
   copy: typeof REACTIVATION_COPY[Lang],
   locale: string,
   currency: string,
-  lang: Lang
+  lang: Lang,
+  userId: string
 ): string {
   const formater = (devise: string, montant: number) => {
     const nf = new Intl.NumberFormat(locale, {
@@ -137,7 +159,7 @@ function buildEmailHtml(
         statCell(copy.winrate, `${Math.round(stats.winrate)} %`),
       ])}`,
     cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard" },
-    footerLines: [copy.footer],
+    footerLines: [copy.footer, ...ligneDeDesinscription(userId, lang)],
     lang,
   });
 }
@@ -264,7 +286,8 @@ async function handle(req: Request) {
         to: user.email,
         subject: copy.subject,
         html: buildEmailHtml(stats, idleDays, copy, LOCALES[lang],
-          await resolveUserCurrency(supabase, user.id as string), lang),
+          await resolveUserCurrency(supabase, user.id as string), lang, user.id as string),
+        headers: entetesDeDesinscription(user.id as string),
       });
       sent++;
     // ⚠️ Voir lib/cron-alert.ts : un échec d'envoi qui ne sort pas des logs

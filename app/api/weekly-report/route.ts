@@ -7,6 +7,7 @@ import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, statCell, statRow, EMAIL_GREEN, EMAIL_RED, EMAIL_INK } from "@/lib/email-template";
 
 // Delivered Sunday evening in each trader's LOCAL timezone (was a fixed 18:00
@@ -174,6 +175,26 @@ function computeStats(trades: TradeRow[]): WeekStats {
 }
 
 /**
+ * UN LIEN, PAS UNE CONSIGNE. Le pied de page disait « tu peux desactiver ce
+ * rappel dans Reglages -> Notifications » : c'est une instruction, et elle
+ * suppose que le lecteur se reconnecte. Le geste qui reste, sinon, est
+ * « signaler comme spam », et c'est la plainte qui abime le domaine.
+ */
+const DESINSCRIPTION_LIBELLE: Record<Lang, string> = {
+  fr: "Se désinscrire de ces e-mails",
+  en: "Unsubscribe from these emails",
+  de: "Diese E-Mails abbestellen",
+  es: "Darse de baja de estos correos",
+};
+
+/** La ligne de pied de page, ou rien si aucun secret n'est configuré. */
+function ligneDeDesinscription(userId: string, lang: Lang): string[] {
+  const url = lienDeDesinscription(userId, lang);
+  if (!url) return [];
+  return [`<a href="${url}" style="color:#6e7887;text-decoration:underline">${DESINSCRIPTION_LIBELLE[lang]}</a>`];
+}
+
+/**
  * ⚠️ TROIS FORMATEURS, PAS UN. Le total peut etre ventile (la semaine mele
  * les devises), et le meilleur comme le pire trade portent LEUR devise : ce
  * sont deux lignes, pas des termes d'une somme.
@@ -187,6 +208,7 @@ function buildEmailHtml(
   totalLisible: string,
   fmtMeilleur: Formatters,
   fmtPire: Formatters,
+  userId: string,
 ): string {
   const pnlColor = stats.pnl >= 0 ? EMAIL_GREEN : EMAIL_RED;
 
@@ -226,7 +248,7 @@ function buildEmailHtml(
       ])}
       ${bestWorst}`,
     cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard/analytics" },
-    footerLines: [copy.footer],
+    footerLines: [copy.footer, ...ligneDeDesinscription(userId, lang)],
     lang,
   });
 }
@@ -416,7 +438,8 @@ async function handle(req: Request) {
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
         subject: copy.subject(totalLisible, stats.count),
-        html: buildEmailHtml(stats, weekLabel, copy, fmt, lang, totalLisible, fmtMeilleur, fmtPire),
+        html: buildEmailHtml(stats, weekLabel, copy, fmt, lang, totalLisible, fmtMeilleur, fmtPire, user.id as string),
+        headers: entetesDeDesinscription(user.id as string),
       });
       sent++;
     // ⚠️ Voir lib/cron-alert.ts : un échec d'envoi qui ne sort pas des logs

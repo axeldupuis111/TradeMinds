@@ -51,6 +51,16 @@ describe("les guichets publics", () => {
     "token", // rails de synchro : le jeton EST l'authentification
     "joinCode", // code d'inscription secret d'un partenaire
     "params.token",
+    /**
+     * Désinscription d'un e-mail : le jeton signé (HMAC) porte l'identifiant et
+     * ne se forge pas.
+     *
+     * ⚠️ CE N'EST PAS UNE SESSION, et ça n'a pas à l'être : le porteur du lien
+     * ne peut RIEN faire d'autre que couper un envoi, ce qui est exactement ce
+     * que le lecteur demandait. Exiger une connexion, c'est renvoyer vers
+     * « signaler comme spam ».
+     */
+    "utilisateurDuJeton",
   ];
 
   /** Ce qui borne une entrée non authentifiée. */
