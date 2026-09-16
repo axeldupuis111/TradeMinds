@@ -1,5 +1,5 @@
 import { SITE_URL } from "@/lib/seo";
-import { createClient } from "@/lib/supabase/server";
+import { creerClientAnonyme } from "@/lib/supabase/anonyme";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 import PublicProfileView from "@/components/profile/PublicProfileView";
@@ -24,7 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Pseudo bloqué par la modération → même comportement qu'un profil inexistant.
   if (!isUsernameDisplayable(params.username)) return { title: "Profile - TradeDiscipline" };
 
-  const supabase = createClient();
+  // Client DELIBEREMENT anonyme : lue avec la session du visiteur, cette page
+  // publique tournerait en role `authenticated`, qui a les droits de colonne
+  // d'un compte. Voir lib/supabase/anonyme.ts.
+  const supabase = creerClientAnonyme();
   const { data } = await supabase
     .from("profiles")
     .select("username")
@@ -68,7 +71,10 @@ export default async function PublicProfilePage({ params }: Props) {
     notFound();
   }
 
-  const supabase = createClient();
+  // Client DELIBEREMENT anonyme : lue avec la session du visiteur, cette page
+  // publique tournerait en role `authenticated`, qui a les droits de colonne
+  // d'un compte. Voir lib/supabase/anonyme.ts.
+  const supabase = creerClientAnonyme();
 
   // Find profile by username (public_profile must be true)
   const { data: profile } = await supabase

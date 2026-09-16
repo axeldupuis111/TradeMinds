@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "verif:anon": "node scripts/verif-anon.mjs",
+    "verif:anon": "node scripts/verif-acces.mjs",
+    "verif:acces": "node scripts/verif-acces.mjs",
     "schema:sync": "node scripts/schema-snapshot.mjs",
     "test": "vitest run",
     "eval:coach": "vitest run --config vitest.eval.config.ts"
