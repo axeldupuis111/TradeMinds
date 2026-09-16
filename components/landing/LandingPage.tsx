@@ -16,6 +16,8 @@ import React, { useRef, useState, useEffect } from "react";
 import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
 import type { TargetAndTransition, Transition } from "framer-motion";
 import { nombre } from "@/lib/nombres";
+import { currencySymbol } from "@/lib/account-currency";
+import { monnaieDeDemo } from "@/lib/monnaie-de-demo";
 
 /* ─────────────────────────────────────────────
    ANIMATION PRIMITIVES
@@ -689,7 +691,7 @@ function StoryChip({ tone, title, body, delay, className }: { tone: "alert" | "a
 }
 
 function HeroStoryChart() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const prefersReduced = useReducedMotion();
   // Bougies client-only : Math.sin peut diverger d'un ULP entre moteurs JS
   // (Node/V8 au SSR vs JavaScriptCore/SpiderMonkey chez le visiteur) →
@@ -800,7 +802,13 @@ function HeroStoryChart() {
           { label: "DISCIPLINE", value: <><NumberCount end={85} duration={2200} />/100</>, color: "rgb(var(--accent))" },
           { label: t("preview_winrate"), value: <><NumberCount end={68} duration={2200} />%</>, color: "rgb(var(--foreground))" },
           { label: t("preview_trades"), value: <NumberCount end={47} duration={2200} />, color: "rgb(var(--foreground))" },
-          { label: t("preview_pnl_total"), value: <>+<NumberCount end={3240} duration={2400} />€</>, color: "rgb(var(--profit))" },
+          /**
+           * ⚠️ LE SYMBOLE SUIT LA LANGUE, comme dans la démo animée : il était
+           * écrit « € » en dur, donc identique sur la page anglaise. Voir
+           * `lib/monnaie-de-demo.ts`. Le compteur anime le NOMBRE ; le symbole
+           * est posé à côté, comme le fait `money()`.
+           */
+          { label: t("preview_pnl_total"), value: <>+<NumberCount end={3240} duration={2400} />{currencySymbol(monnaieDeDemo(lang))}</>, color: "rgb(var(--profit))" },
         ].map((s, i) => (
           <motion.div key={i} className="text-center" style={{ fontStyle: "normal" }}
             initial={prefersReduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}

@@ -15,22 +15,31 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { money } from "@/lib/account-currency";
+import { monnaieDeDemo } from "@/lib/monnaie-de-demo";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
+/**
+ * ⚠️⚠️ CES MONTANTS ÉTAIENT DES CHAÎNES, DONC LES MÊMES DANS LES QUATRE
+ * LANGUES : « -85€ », euro compris, sur la page anglaise. Ce sont désormais des
+ * NOMBRES, écrits par le même `money()` que le produit, dans la langue servie
+ * et dans la monnaie que cette langue laisse attendre (voir
+ * `lib/monnaie-de-demo.ts`).
+ */
 const TRADES = [
-  { time: "14:02", pair: "XAUUSD", dir: "SELL", pnl: "-85€" },
-  { time: "14:05", pair: "XAUUSD", dir: "SELL", pnl: "-120€" },
-  { time: "14:09", pair: "XAUUSD", dir: "SELL", pnl: "-95€" },
+  { time: "14:02", pair: "XAUUSD", dir: "SELL", pnl: -85 },
+  { time: "14:05", pair: "XAUUSD", dir: "SELL", pnl: -120 },
+  { time: "14:09", pair: "XAUUSD", dir: "SELL", pnl: -95 },
 ];
 
 // Durées de chaque phase (ms) — total ≈ 10,5s par boucle
 const PHASE_DURATIONS = [2400, 1800, 2800, 3200, 500];
 
 export default function LiveDemo() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const prefersReduced = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
   const inView = useInView(stageRef, { margin: "-80px" });
@@ -143,7 +152,7 @@ export default function LiveDemo() {
                       {tr.dir}
                     </span>
                     <span className="flex-1 h-px" style={{ background: "rgb(var(--border))" }} aria-hidden />
-                    <span className="font-bold tabular-nums" style={{ color: "rgb(var(--loss))", fontStyle: "normal" }}>{tr.pnl}</span>
+                    <span className="font-bold tabular-nums" style={{ color: "rgb(var(--loss))", fontStyle: "normal" }}>{money(tr.pnl, monnaieDeDemo(lang), { locale: lang })}</span>
                   </motion.div>
                 ))}
             </AnimatePresence>
