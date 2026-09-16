@@ -4,7 +4,8 @@ import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
-import { localHour, localWeekday } from "@/lib/timezone";
+import { localDateKey, localHour, localWeekday, startOfDateKeyUtc } from "@/lib/timezone";
+import { fermerLesSeancesOubliees } from "@/lib/sessions-oubliees";
 import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, emailParagraph } from "@/lib/email-template";
 
@@ -124,13 +125,23 @@ export async function POST(req: Request) {
    * suivants, et rien n'aurait signalé lesquels. Le défaut n'apparaît que le
    * jour où le produit marche.
    */
-  const users = await fetchAllRows<{ id: string; email: string | null; language: string | null; timezone: string | null }>(
+  /**
+   * ⚠️⚠️ ON LIT TOUT LE MONDE, ET LE FILTRE D'ENVOI PASSE PLUS BAS. Le ménage
+   * des séances fantômes (voir plus loin) doit tourner pour CHAQUE trader, y
+   * compris ceux qui ont coupé cet e-mail : la séance oubliée éteint le bandeau
+   * du produit, pas seulement le rappel.
+   */
+  const users = await fetchAllRows<{
+    id: string;
+    email: string | null;
+    language: string | null;
+    timezone: string | null;
+    email_notif_session: boolean | null;
+  }>(
     (from, to) =>
       supabase
         .from("profiles")
-        .select("id, email, language, timezone")
-        .eq("email_notif_session", true)
-        .not("email", "is", null)
+        .select("id, email, language, timezone, email_notif_session")
         .order("id")
         .range(from, to),
   );
@@ -140,10 +151,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 
+  /**
+   * MÉNAGE DES SÉANCES FANTÔMES, CÔTÉ SERVEUR.
+   *
+   * ⚠️⚠️ LA CORRECTION DU 2026-09-16 NE POUVAIT PAS ATTEINDRE CEUX QU'ELLE
+   * VISAIT. Elle refermait les séances oubliées au CHARGEMENT d'une page du
+   * tableau de bord. Or le tort d'une séance fantôme est précisément d'éteindre
+   * le bandeau « n'oublie pas de préparer ta séance », donc de ne plus faire
+   * revenir le trader : le ménage ne tournait jamais pour les seuls comptes qui
+   * en avaient besoin. Remesuré le 2026-09-17, un jour après : SIX séances
+   * encore actives, ouvertes depuis 7, 13, 46, 47, 52 et 98 jours. Une
+   * correction qui dépend de la visite de celui qu'elle doit ramener ne
+   * corrige rien.
+   *
+   * ⚠️ TOUS LES JOURS, pas seulement en semaine : `isReminderDue` exclut le
+   * week-end parce qu'un e-mail du samedi n'a pas de sens, mais une séance
+   * ouverte le vendredi ne doit pas traîner jusqu'au lundi.
+   *
+   * ⚠️ RÉSULTAT IGNORÉ, comme côté client : c'est un ménage idempotent, refait
+   * chaque jour. Un échec se rattrape à l'heure suivante du lendemain.
+   */
+  let nettoyees = 0;
+  for (const user of users) {
+    const tz = (user.timezone as string) || "UTC";
+    if (localHour(tz) !== REMINDER_HOUR) continue;
+    const debut = startOfDateKeyUtc(localDateKey(tz), tz);
+    if (!debut) continue;
+    await fermerLesSeancesOubliees(supabase, user.id as string, debut.toISOString());
+    nettoyees++;
+  }
+
   let sent = 0;
   let echecs = 0;
   let tentatives = 0;
   for (const user of users) {
+    // ⚠️ Le filtre d'envoi, déplacé de la requête vers ici : la lecture
+    // ci-dessus sert AUSSI au ménage, qui ne connaît pas d'opt-out.
+    if (user.email_notif_session !== true) continue;
     if (!user.email) continue;
     if (!isReminderDue((user.timezone as string) || "UTC")) continue;
 
@@ -251,5 +295,5 @@ export async function POST(req: Request) {
 
   await alertEnvoisEchoues("send-reminders", echecs, tentatives);
 
-  return NextResponse.json({ sent, echecs, pushed, total: users.length });
+  return NextResponse.json({ sent, echecs, pushed, nettoyees, total: users.length });
 }

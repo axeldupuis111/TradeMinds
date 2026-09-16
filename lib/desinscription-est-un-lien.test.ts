@@ -144,10 +144,19 @@ describe("la désinscription des e-mails récurrents", () => {
 
   it("la colonne coupée est bien celle que les trois envois interrogent", () => {
     // Sinon la page promet d'arrêter des e-mails qui continueront d'arriver.
+    //
+    // ⚠️ DEUX FORMES ACCEPTÉES, ET C'EST LA CORRECTION D'UN GARDE TROP ÉTROIT :
+    // `send-reminders` lit désormais TOUS les profils, parce que son ménage des
+    // séances oubliées doit tourner même pour ceux qui ont coupé le rappel. Le
+    // filtre d'envoi existe toujours, déplacé dans la boucle. Exiger la forme
+    // SQL aurait forcé à remettre l'opt-out dans la requête, c'est-à-dire à
+    // rouvrir le défaut des séances fantômes pour fermer celui-ci.
     for (const chemin of RECURRENTS) {
-      expect(lire(chemin), `${chemin} ne filtre pas sur email_notif_session`).toContain(
-        '.eq("email_notif_session", true)',
-      );
+      const src = lire(chemin);
+      const filtre =
+        src.includes('.eq("email_notif_session", true)') ||
+        src.includes("if (user.email_notif_session !== true) continue;");
+      expect(filtre, `${chemin} ne filtre plus sur email_notif_session`).toBe(true);
     }
   });
 
