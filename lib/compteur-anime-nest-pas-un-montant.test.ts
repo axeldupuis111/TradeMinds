@@ -175,4 +175,26 @@ describe("un compteur animé ne fabrique pas un montant", () => {
     const src = readFileSync(join(RACINE, "app/dashboard/review/page.tsx"), "utf8");
     expect(src).toMatch(/function fmtMoney\(n: number, currency: string\) \{\s*\n\s*if \(!currency\) return/);
   });
+
+  /**
+   * ⚠️⚠️ CACHER LE NOMBRE ET GARDER LA CONCLUSION QU'IL SERVAIT À TIRER NE
+   * CORRIGE RIEN. « Meilleur jour » et « Pire jour » affichaient un tiret à la
+   * place du montant, faute de devise, ET la date du jour en question. Or ce
+   * jour est DÉSIGNÉ en comparant des sommes journalières de devises
+   * différentes : en août, le meilleur jour en dollars vaut +120,64 $ et le
+   * meilleur jour en euros -1 478,45 €. La carte disparaît donc entièrement.
+   */
+  it("« meilleur jour » et « pire jour » disparaissent quand les devises se mêlent", () => {
+    const src = readFileSync(join(RACINE, "app/dashboard/review/page.tsx"), "utf8");
+    for (const cle of ["review_best_day", "review_worst_day"]) {
+      const i = src.indexOf(`t("${cle}")`);
+      expect(i, `${cle} n'est plus affichée nulle part`).toBeGreaterThan(-1);
+      // La condition vit sur la même ligne que le libellé.
+      const debutLigne = src.lastIndexOf("\n", i) + 1;
+      expect(
+        src.slice(debutLigne, i),
+        `${cle} s'affiche encore quand les devises se mêlent`,
+      ).toContain("!devisesMelangees");
+    }
+  });
 });

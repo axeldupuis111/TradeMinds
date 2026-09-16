@@ -717,8 +717,17 @@ export default function MonthlyReviewPage() {
                   )}
                   {extras && (extras.best || extras.topPair) && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl, displayCurrency)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
-                      {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl, displayCurrency)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
+                                            {/**
+                        * ⚠️ LE MONTANT ÉTAIT MASQUÉ, LA DATE ÉTAIT QUAND MÊME AFFIRMÉE.
+                        * `fmtMoney` rendait un tiret faute de devise, et la carte
+                        * annonçait tout de même « Meilleur jour · 18 août ». Or ce jour-là
+                        * est DÉSIGNÉ en comparant des sommes journalières de devises
+                        * différentes : en août, le meilleur jour en dollars vaut +120,64 $
+                        * et le meilleur jour en euros -1 478,45 €. Cacher le nombre et
+                        * garder la conclusion qu'il servait à tirer ne corrige rien.
+                        */}
+                      {!devisesMelangees && extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl, displayCurrency)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
+                      {!devisesMelangees && extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl, displayCurrency)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
                       {extras.topPair && <Highlight label={t("review_top_pair")} value={extras.topPair.pair} sub={`${extras.topPair.count} ${t("review_kpi_trades").toLowerCase()}`} />}
                     </div>
                   )}
