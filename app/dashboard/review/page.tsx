@@ -845,7 +845,18 @@ export default function MonthlyReviewPage() {
                         return (
                           <div className="rounded-xl border border-border bg-card p-4">
                             <p className="text-xs text-muted mb-1">{t("review_weekday_title")}</p>
-                            {bestWd && bestWd.pnl > 0 && (
+                            {/**
+                              * ⚠️ MÊME RÈGLE QUE « MEILLEUR JOUR » : quand les devises se
+                              * mêlent, ce n'est pas seulement le montant qui devient
+                              * indicible, c'est le CLASSEMENT lui-même. Le gagnant est
+                              * désigné en SOMMANT puis en COMPARANT des devises
+                              * différentes ; `fmtMoney` masquait le nombre et la phrase
+                              * gardait la conclusion (« Ton meilleur jour : mardi (—) »).
+                              *
+                              * Trois autres phrases de cette page avaient la même forme :
+                              * le créneau horaire et les deux verdicts d'état d'esprit.
+                              */}
+                            {!devisesMelangees && bestWd && bestWd.pnl > 0 && (
                               <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl, displayCurrency))}</p>
                             )}
                             {/* Barres divergentes : gain vers le haut, perte vers le bas (signe = direction) */}
@@ -909,7 +920,7 @@ export default function MonthlyReviewPage() {
                       <div className="rounded-xl border border-border bg-card p-4">
                         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Clock3 className="w-4 h-4 text-accent" />{t("review_hours_title")}</h2>
                         <p className="text-xs text-muted mt-0.5 mb-1">{t("review_hours_sub")}</p>
-                        {best && best.pnl > 0 && (
+                        {!devisesMelangees && best && best.pnl > 0 && (
                           <p className="text-[11px] text-profit mb-2">{t("review_hours_best").replace("{hour}", String(best.hour)).replace("{money}", fmtMoney(best.pnl, displayCurrency))}</p>
                         )}
                         <div className="flex items-stretch justify-between gap-1">
@@ -987,12 +998,12 @@ export default function MonthlyReviewPage() {
                       <div className="rounded-xl border border-border bg-card p-4">
                         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Brain className="w-4 h-4 text-accent" />{t("review_emotion_title")}</h2>
                         <p className="text-xs text-muted mt-0.5 mb-3">{t("review_emotion_sub")}</p>
-                        {worst && worst.pnl < 0 ? (
+                        {!devisesMelangees && worst && worst.pnl < 0 ? (
                           <div className="mb-3 flex items-start gap-2 rounded-lg border border-loss/30 bg-loss/[0.05] p-2.5 text-xs text-foreground">
                             <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[worst.emotion] ?? "\u{1F642}"}</span>
                             <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl, displayCurrency))}</span>
                           </div>
-                        ) : best && best.pnl > 0 ? (
+                        ) : !devisesMelangees && best && best.pnl > 0 ? (
                           <div className="mb-3 flex items-start gap-2 rounded-lg border border-profit/30 bg-profit/[0.05] p-2.5 text-xs text-foreground">
                             <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[best.emotion] ?? "\u{1F642}"}</span>
                             <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl, displayCurrency))}</span>

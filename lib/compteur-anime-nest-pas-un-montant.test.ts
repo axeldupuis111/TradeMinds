@@ -184,6 +184,71 @@ describe("un compteur animé ne fabrique pas un montant", () => {
    * différentes : en août, le meilleur jour en dollars vaut +120,64 $ et le
    * meilleur jour en euros -1 478,45 €. La carte disparaît donc entièrement.
    */
+  /**
+   * ⚠️⚠️ ET LES QUATRE AUTRES PHRASES DE LA MÊME PAGE QUI DÉSIGNAIENT UN
+   * GAGNANT. Trouvées par balayage après avoir corrigé « meilleur jour », en
+   * cherchant partout où le produit SOMME ou COMPARE des montants de trades :
+   *
+   *   « Ton meilleur jour : mardi (—). »
+   *   « Ton créneau : 14h (—). »
+   *   « Tes trades en frustration t'ont coûté — ce mois-ci. »
+   *   « Ton meilleur état d'esprit : confiant (—). »
+   *
+   * Le tiret venait de `fmtMoney`, qui refuse de nommer un montant sans devise.
+   * Mais le JOUR, le CRÉNEAU et l'ÉTAT D'ESPRIT restaient affirmés, alors qu'ils
+   * sont désignés en sommant puis en comparant des devises différentes. Masquer
+   * le nombre et garder la conclusion qu'il servait à tirer ne corrige rien.
+   */
+  it("aucune phrase du bilan ne désigne un gagnant quand les devises se mêlent", () => {
+    const src = readFileSync(join(RACINE, "app/dashboard/review/page.tsx"), "utf8");
+    const CLES = [
+      "review_weekday_best",
+      "review_hours_best",
+      "review_emotion_warning",
+      "review_emotion_best",
+    ];
+    const fautes: string[] = [];
+    for (const cle of CLES) {
+      const i = src.indexOf(`t("${cle}")`);
+      expect(i, `${cle} n'est plus affichée nulle part`).toBeGreaterThan(-1);
+      /**
+       * ⚠️ LA CONDITION NE VIT PAS SUR LA LIGNE DE LA PHRASE mais sur celle qui
+       * ouvre le bloc, deux ou trois niveaux de JSX plus haut. On REMONTE donc
+       * les accolades englobantes une par une, ce qui est une frontière, au lieu
+       * de regarder N caractères en arrière, ce qui n'en est pas une.
+       */
+      let position = i;
+      let garde = false;
+      for (let niveau = 0; niveau < 6 && position > 0; niveau++) {
+        const englobante = expressionEnglobante(src, position);
+        /**
+         * ⚠️⚠️ ON NE LIT QUE LA LIGNE D'OUVERTURE, ET C'EST TOUTE LA DIFFÉRENCE.
+         * Ma première version cherchait le marqueur DANS TOUT le bloc englobant.
+         * Elle passait au vert sur du code fautif : quatre niveaux plus haut, le
+         * bloc `{tab === "perf" && (…)}` fait neuf mille caractères et contient
+         * `devisesMelangees` pour une AUTRE carte, déjà protégée. Le garde
+         * trouvait la protection d'un VOISIN et déclarait la phrase couverte.
+         *
+         * La condition d'un bloc JSX vit sur sa ligne d'ouverture : c'est elle,
+         * et elle seule, qui protège ce qui est dedans.
+         */
+        const ligneOuvrante = englobante.split(/\r?\n/)[0];
+        if (ligneOuvrante.includes("devisesMelangees")) {
+          garde = true;
+          break;
+        }
+        // On repart de l'accolade qu'on vient de franchir.
+        position -= englobante.length + 1;
+      }
+      if (!garde) fautes.push(cle);
+    }
+    expect(
+      fautes,
+      "phrases qui désignent encore un meilleur jour, créneau ou état d'esprit " +
+        "alors que le classement mêle des devises : " + fautes.join(", "),
+    ).toEqual([]);
+  });
+
   it("« meilleur jour » et « pire jour » disparaissent quand les devises se mêlent", () => {
     const src = readFileSync(join(RACINE, "app/dashboard/review/page.tsx"), "utf8");
     for (const cle of ["review_best_day", "review_worst_day"]) {
