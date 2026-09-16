@@ -28,6 +28,7 @@ import {
   sumByCurrency,
   tradeCurrency,
 } from "@/lib/account-currency";
+import { extremesParDevise } from "@/lib/extremes-par-devise";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
@@ -480,6 +481,33 @@ export default function AnalyticsPage() {
       worstTradeRow: worstTr,
     };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * MEILLEUR ET PIRE TRADE, VENTILÉS PAR DEVISE. Le calcul vit dans
+   * `lib/extremes-par-devise.ts`, avec la mesure du défaut et son garde.
+   *
+   * ── LE DÉFAUT ─────────────────────────────────────────────────────────────
+   *
+   * ⚠️⚠️ LE CHOIX DU « MEILLEUR » COMPARAIT DES DOLLARS À DES EUROS. La boucle
+   * ci-dessus prend le maximum de `netPnl` sur TOUTE la sélection, sans regarder
+   * la devise : un trade à +120 $ et un trade à +1 180 € entrent dans la même
+   * comparaison comme s'ils portaient la même unité. Le montant affiché était
+   * juste et son symbole aussi (la ligne est retenue, pas le nombre seul) ;
+   * c'est la DÉSIGNATION du gagnant qui ne voulait rien dire.
+   *
+   * ⚠️ ET CETTE PAGE CONNAÎT DÉJÀ LA RÈGLE, trois fois, sur le même écran : le
+   * P&L total est ventilé par devise, le facteur de profit est masqué, et tout
+   * le bas de page est remplacé par une explication. Ces deux cartes-là étaient
+   * les seules à l'ignorer, entre les deux autres.
+   *
+   * Comparer relève du même interdit qu'additionner : ni l'un ni l'autre ne
+   * se fait entre deux unités.
+   */
+  const extremesDevises = useMemo(
+    () => extremesParDevise(filtered, (id) => tradeCurrency(id, currencyMap)),
+    [filtered, currencyMap],
+  );
+
 
   const profitFactor = useMemo(() => {
     const gains = filtered.filter((tr) => netPnl(tr) > 0).reduce((s, tr) => s + netPnl(tr), 0);
@@ -1104,6 +1132,7 @@ export default function AnalyticsPage() {
               devisePire={
                 worstTradeRow ? tradeCurrency(worstTradeRow.challenge_id, currencyMap) : undefined
               }
+              extremesParDevise={extremesDevises}
             />
           </StaggerItem>
 

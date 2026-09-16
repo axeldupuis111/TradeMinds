@@ -44,6 +44,20 @@ export interface AnalyticsKpiCardsProps {
   /** La devise du meilleur trade, et celle du pire : ce sont deux lignes, pas un total. */
   deviseMeilleur?: string;
   devisePire?: string;
+  /**
+   * Meilleur et pire trade DE CHAQUE DEVISE.
+   *
+   * ⚠️ Sert dès que la vue en mêle plusieurs : désigner un « meilleur trade »
+   * en comparant des dollars à des euros relève du même interdit qu'en faire
+   * la somme. Voir le calcul dans `app/dashboard/analytics/page.tsx`.
+   */
+  extremesParDevise?: {
+    devise: string;
+    meilleur: number;
+    dateMeilleur: string | null;
+    pire: number;
+    datePire: string | null;
+  }[];
 }
 
 export function AnalyticsKpiCards({
@@ -64,6 +78,7 @@ export function AnalyticsKpiCards({
   pnlParDevise,
   deviseMeilleur,
   devisePire,
+  extremesParDevise,
 }: AnalyticsKpiCardsProps) {
   const { t, lang } = useLanguage();
   const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
@@ -188,10 +203,30 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="green"
           label={t("analytics_kpi_best")}
-          value={money(best, deviseMeilleur ?? currency, { digits: 2, signed: true })}
-          trend="up"
+          value={
+            melange ? (
+              <span className="flex flex-col items-start leading-tight">
+                {extremesParDevise!.map((e) => (
+                  <span key={e.devise} className="tabular-nums">
+                    {money(e.meilleur, e.devise, { digits: 2, signed: true })}
+                    {e.dateMeilleur ? (
+                      <span className="text-foreground-muted font-normal">
+                        {" · "}
+                        {new Date(e.dateMeilleur).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit" })}
+                      </span>
+                    ) : null}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              money(best, deviseMeilleur ?? currency, { digits: 2, signed: true })
+            )
+          }
+          trend={melange ? undefined : "up"}
           sublabel={
-            bestTrade?.date
+            melange
+              ? t("analytics_devises_melangees_court")
+              : bestTrade?.date
               ? new Date(bestTrade.date).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit" })
               : undefined
           }
@@ -202,10 +237,30 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="loss"
           label={t("analytics_kpi_worst")}
-          value={money(worst, devisePire ?? currency, { digits: 2 })}
-          trend="down"
+          value={
+            melange ? (
+              <span className="flex flex-col items-start leading-tight">
+                {extremesParDevise!.map((e) => (
+                  <span key={e.devise} className="tabular-nums">
+                    {money(e.pire, e.devise, { digits: 2 })}
+                    {e.datePire ? (
+                      <span className="text-foreground-muted font-normal">
+                        {" · "}
+                        {new Date(e.datePire).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit" })}
+                      </span>
+                    ) : null}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              money(worst, devisePire ?? currency, { digits: 2 })
+            )
+          }
+          trend={melange ? undefined : "down"}
           sublabel={
-            worstTrade?.date
+            melange
+              ? t("analytics_devises_melangees_court")
+              : worstTrade?.date
               ? new Date(worstTrade.date).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit" })
               : undefined
           }
