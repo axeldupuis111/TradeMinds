@@ -174,6 +174,27 @@ describe("le prompt d'analyse", () => {
   });
 
   /**
+   * ⚠️ ET LES DEUX PORTES L'ENVOIENT. L'analyse se déclenche depuis la page
+   * Analyse IA ET automatiquement après un import CSV. Une correction posée sur
+   * une seule des deux portes est exactement le défaut que ce dépôt trouve en
+   * boucle : la devise a déjà dû être recollée sur les deux.
+   */
+  it("les deux portes de l'analyse envoient le capital", () => {
+    const portes = [
+      "app/dashboard/analysis/page.tsx",
+      "components/trades/CsvImport.tsx",
+    ];
+    const manquantes = portes.filter(
+      (f) => !readFileSync(join(RACINE, f), "utf8").includes("accountSize:"),
+    );
+    expect(
+      manquantes,
+      "portes qui n'envoient pas le capital : la règle n'y sera pas vérifiée : " +
+        manquantes.join(", "),
+    ).toEqual([]);
+  });
+
+  /**
    * ⚠️⚠️ LA RÈGLE GÉNÉRALE, celle qui aurait trouvé ce défaut toute seule :
    * chaque type pénalisé est soit compté par le serveur, soit nommément confié
    * au modèle. `max_daily_loss` n'était ni l'un ni l'autre, et personne ne

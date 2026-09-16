@@ -581,6 +581,16 @@ export default function CsvImport({ strategyId, onImported }: Props) {
               activeAccounts.map((a) => a.id),
               buildCurrencyMap(activeAccounts),
             ) ?? "",
+          /**
+           * ⚠️ MÊME RÈGLE QUE POUR LA DEVISE : le capital n'est envoyé que s'il
+           * est sans ambiguïté. La perte journalière maximale de la stratégie
+           * est un POURCENTAGE ; sans capital il n'y a pas de seuil, et avec
+           * deux comptes il y en aurait deux. Additionner des capitaux serait
+           * la même faute qu'additionner des devises.
+           */
+          ...(activeAccounts.length === 1 && activeAccounts[0].account_size > 0
+            ? { accountSize: activeAccounts[0].account_size }
+            : {}),
         }),
       });
       if (!res.ok) return; // 429 quota épuisé / erreur → silencieux, l'import reste réussi
