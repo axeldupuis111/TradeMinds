@@ -29,7 +29,15 @@ export function detectAssetType(symbol: string): AssetType {
   return "unknown";
 }
 
-const PIP_VALUES: Record<AssetType, number> = {
+/**
+ * Taille d'un pip, en unites de prix.
+ *
+ * ⚠️ EXPORTEE POUR QUE LA VALEUR PAR LOT PUISSE ETRE VERIFIEE CONTRE ELLE :
+ * `lib/position-sizing.ts` tient une troisieme table qui se deduit de
+ * celle-ci et de la taille du contrat, et rien ne le verifiait. Voir
+ * `lib/valeur-du-pip-coherente.test.ts`.
+ */
+export const PIP_VALUES: Record<AssetType, number> = {
   forex_major: 0.0001,
   forex_jpy: 0.01,
   xauusd: 0.10,

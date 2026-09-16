@@ -842,6 +842,8 @@ const dict: Record<string, string> = {
   "sizer_instrument_custom": "Andere…",
   "sizer_pip_auto": "auto",
   "sizer_pip_auto_note": "Für dich berechnet, kein Nachschlagen in MT5",
+  "sizer_pip_estime": "Schätzung",
+  "sizer_pip_estime_note": "Yen-Paare werden in JPY notiert: der Wert in {devise} hängt vom Tageskurs ab. Korrigiere ihn, wenn dein Broker einen anderen anzeigt.",
   "sizer_capped_risk_pct": "begrenzt durch deine Risikoregel pro Trade",
   "sizer_capped_daily_dd": "begrenzt durch deinen verbleibenden täglichen Drawdown",
   "sizer_capped_total_dd": "begrenzt durch deinen verbleibenden Gesamt-Drawdown",

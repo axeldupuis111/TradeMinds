@@ -33,6 +33,49 @@ export function getDefaultPipValuePerLot(symbol: string): number | null {
   return DEFAULT_PIP_VALUE_PER_LOT[detectAssetType(symbol)];
 }
 
+/**
+ * LES VALEURS QUI DÉPENDENT D'UN TAUX DE CHANGE, ET QU'ON NE PEUT DONC PAS
+ * ANNONCER COMME EXACTES.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ TROIS VALEURS SUR QUATRE SONT EXACTES PAR CONSTRUCTION, LA QUATRIÈME EST
+ * UNE PHOTO PÉRIMÉE. Le pip d'un lot vaut `taille du pip × taille du contrat`,
+ * dans la devise de COTATION :
+ *
+ *   forex_major  0,0001 × 100 000 = 10 USD   exact, la cotation est en USD
+ *   xauusd       0,10   ×     100 = 10 USD   exact
+ *   xagusd       0,01   ×   5 000 = 50 USD   exact
+ *   forex_jpy    0,01   × 100 000 = 1 000 JPY → en USD, ça DÉPEND DU TAUX
+ *
+ * La table annonce 9 USD pour les paires en yen, ce qui correspond à un USD/JPY
+ * autour de 111. Le taux bouge ; la constante, non.
+ *
+ * ⚠️ ET L'ÉCRAN L'ANNONÇAIT COMME EXACTE : le calculateur affiche le chiffre
+ * avec une pastille « AUTO » et la phrase « calculée pour toi, rien à chercher
+ * sur MT5 », exactement comme pour l'or. Le trader n'avait aucune raison de
+ * douter d'un nombre qui décide de sa taille de position.
+ *
+ * ⚠️ ON NE CORRIGE PAS LE NOMBRE : sans flux de prix, toute autre constante
+ * serait périmée de la même façon dès le lendemain. On corrige ce qu'on en DIT,
+ * et on rend le champ modifiable dans ce cas-là.
+ */
+export const PIP_VALUE_APPROXIMATIVE: Record<AssetType, boolean> = {
+  forex_major: false,
+  forex_jpy: true,
+  xauusd: false,
+  xagusd: false,
+  index: false,
+  crypto: false,
+  oil: false,
+  unknown: false,
+};
+
+/** true quand la valeur du pip dépend d'un taux de change, donc du jour. */
+export function pipValueEstApproximative(symbol: string): boolean {
+  return PIP_VALUE_APPROXIMATIVE[detectAssetType(symbol)];
+}
+
 // ---------------------------------------------------------------------------
 // Units per standard lot (contract size). Lets us convert lots → units.
 //   forex : 1 lot = 100 000 units of base currency

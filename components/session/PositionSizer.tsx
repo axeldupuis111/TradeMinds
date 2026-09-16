@@ -12,6 +12,7 @@ import {
   computeMaxRiskEur,
   getDefaultPipValuePerLot,
   getUnitsPerLot,
+  pipValueEstApproximative,
   type RiskCap,
 } from "@/lib/position-sizing";
 import {
@@ -255,7 +256,19 @@ export default function PositionSizer({ strategy }: Props) {
   // ── CFD derived ───────────────────────────────────────────────────────────
   // Pip value is auto-known for forex/metals → the user never has to find it.
   // null = broker-dependent (indices/crypto) → manual entry.
-  const autoPip = getDefaultPipValuePerLot(symbol.trim());
+  /**
+   * ⚠️⚠️ « AUTO » NE VAUT QUE POUR CE QUI EST EXACT. La valeur du pip d'une
+   * paire en yen dépend du taux USD/JPY du jour : la table en porte une
+   * constante, forcément périmée, et l'écran l'annonçait avec la même pastille
+   * verte et la même phrase « rien à chercher sur MT5 » que pour l'or, qui lui
+   * est exact. Voir `lib/position-sizing.ts`.
+   *
+   * Une valeur approximative reste PRÉ-REMPLIE (l'ordre de grandeur est juste,
+   * et la promesse du calculateur tient) mais devient MODIFIABLE, et le dit.
+   */
+  const defautPip = getDefaultPipValuePerLot(symbol.trim());
+  const pipApproximatif = defautPip !== null && pipValueEstApproximative(symbol.trim());
+  const autoPip = pipApproximatif ? null : defautPip;
   const slPipsNum = parseFloat(slPips);
   const pipValueNum = autoPip ?? parseFloat(pipValue);
 
@@ -593,9 +606,13 @@ export default function PositionSizer({ strategy }: Props) {
                         placeholder="10"
                         className={`${inputClass} ${symbol && !pipValue ? "border-amber-500/50 focus:ring-amber-500" : ""}`}
                       />
-                      {symbol && !pipValue && (
+                      {pipApproximatif ? (
+                        <p className="text-xs text-amber-400 mt-1">
+                          {t("sizer_pip_estime_note", { devise: cur })}
+                        </p>
+                      ) : symbol && !pipValue ? (
                         <p className="text-xs text-amber-400 mt-1">{t("sizer_pip_value_manual")}</p>
-                      )}
+                      ) : null}
                     </>
                   )}
                 </div>
