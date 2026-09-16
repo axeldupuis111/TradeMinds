@@ -49,7 +49,7 @@ import {
   type ProjectionTrade,
 } from "@/lib/projection";
 import { paliersDeTaille, type Palier } from "@/lib/projection-levers";
-import { analyserSegments, type AnalyseSegments, type Segment, type TradeSegmente } from "@/lib/projection-segments";
+import { MIN_TRADES_SEGMENT, analyserSegments, type AnalyseSegments, type Segment, type TradeSegmente } from "@/lib/projection-segments";
 import { mesurerStabilite, type Stabilite } from "@/lib/projection-stability";
 import { mesurerAdherence, type Adherence } from "@/lib/strategy-adherence";
 import { verifierCoherence, type Coherence, type RegleStrategie } from "@/lib/strategy-coherence";
@@ -526,6 +526,27 @@ export default function ProjectionPage() {
               {t("proj_scope_trades", { n: String(perimetre.length) })}
             </span>
           )}
+          {/**
+            * ⚠️⚠️ LE PERIMETRE ETAIT FILTRE PAR LE COMPTE ACTIF, SANS LE DIRE.
+            * Le selecteur ne choisit qu'une STRATEGIE ; les trades, eux, sont
+            * deja restreints au compte courant par `tradesDuCompte`, choisi
+            * ailleurs dans le produit. Mesure du 2026-09-16 : « Tout le journal
+            * · 4 trades cloturés » sur un journal de 85 trades, dont 57 sans
+            * aucun compte et qui disparaissent donc sous n'importe quelle
+            * selection. Le libelle promettait le journal entier et montrait le
+            * seul compte Tradovate.
+            *
+            * L'option s'appelle desormais « Toutes les strategies », ce qu'elle
+            * est, et le compte retenu est nomme a cote du compte de trades.
+            */}
+          <span className="text-foreground-muted">
+            {t("proj_scope_compte", {
+              compte: selectedAccount
+                ? `${selectedAccount.firm ?? ""} ${selectedAccount.account_number ?? ""}`.trim() ||
+                  t("proj_scope_tous_comptes")
+                : t("proj_scope_tous_comptes"),
+            })}
+          </span>
         </div>
       </header>
 
@@ -788,8 +809,23 @@ function EncartInsuffisant({
               )}
               {/* L'espérance observée oriente la suite, mais sans jamais être
                   présentée comme un résultat : c'est un échantillon trop court,
-                  et le dire est tout l'intérêt de cet écran. */}
-              {objectifTrades === null ? (
+                  et le dire est tout l'intérêt de cet écran.
+
+                  ⚠️⚠️ ET ELLE NE SE PRONONÇAIT PAS SUR LA MÉTHODE À PARTIR DE
+                  QUATRE TRADES. Relevé le 2026-09-16 : sur un périmètre de 4
+                  trades, l'écran disait « il te manque 96 trades clôturés, en
+                  dessous les chiffres ne voudraient rien dire », puis, deux
+                  lignes plus bas, « aucun nombre de trades supplémentaires ne
+                  rendra ton espérance positive, c'est la méthode qu'il faut
+                  reprendre ». Un verdict catégorique sur un échantillon que la
+                  page venait de déclarer insuffisant.
+
+                  ⚠️ LE PLANCHER N'EST PAS INVENTÉ : c'est `MIN_TRADES_SEGMENT`,
+                  le nombre à partir duquel ce même moteur accepte déjà de dire
+                  quelque chose d'un sous-ensemble (et qu'un test épingle). */}
+              {projection.trades < MIN_TRADES_SEGMENT ? (
+                <p className="text-sm text-foreground-muted">{t("proj_missing_trop_court")}</p>
+              ) : objectifTrades === null ? (
                 <p className="text-sm text-loss">{t("proj_missing_negative")}</p>
               ) : (
                 <p className="text-sm text-foreground-muted">
