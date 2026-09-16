@@ -65,6 +65,7 @@ interface ParsedRules {
   max_consecutive_losses: number | null;
   max_session_minutes: number | null;
   risk_per_trade_pct: number | null;
+  max_daily_loss: number | null;
   setup_rules: string[];
   checklist_to_setups?: Record<string, string[]>;
   strategy_tags?: StrategyTagsFromAI;
@@ -319,6 +320,7 @@ export default function StrategyPage() {
       max_consecutive_losses: data.max_consecutive_losses as number | null,
       max_session_minutes: data.max_session_minutes as number | null,
       risk_per_trade_pct: data.risk_per_trade_pct as number | null,
+      max_daily_loss: data.max_daily_loss as number | null,
       setup_rules: (data.setup_rules as string[]) || [],
       strategy_tags: existingTags,
     });
@@ -412,7 +414,7 @@ export default function StrategyPage() {
         setParsed({
           pairs: [], sessions: [], risk_reward: null, max_sl_pips: null,
           max_trades_per_day: null, max_consecutive_losses: null,
-          max_session_minutes: null, risk_per_trade_pct: null, setup_rules: [],
+          max_session_minutes: null, risk_per_trade_pct: null, max_daily_loss: null, setup_rules: [],
         });
         setIsDirty(true);
         showToast("error", res.status === 429 ? t("strategy_parse_quota") : t("strategy_parse_unavailable"));
@@ -471,6 +473,7 @@ export default function StrategyPage() {
       max_consecutive_losses: parsed.max_consecutive_losses,
       max_session_minutes: parsed.max_session_minutes,
       risk_per_trade_pct: parsed.risk_per_trade_pct,
+      max_daily_loss: parsed.max_daily_loss,
       setup_rules: parsed.setup_rules,
       checklist_setup_mapping: validatedMapping,
     };
@@ -870,6 +873,41 @@ export default function StrategyPage() {
                   max="100"
                   value={parsed.risk_per_trade_pct ?? ""}
                   onChange={(e) => updateParsedField("risk_per_trade_pct", e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder={t("strategy_not_set")}
+                  className={inputClass}
+                />
+              </div>
+              {/**
+                * ⚠️⚠️ CETTE RÈGLE ÉTAIT EXTRAITE, UTILISÉE, ET INTROUVABLE. Le bloc
+                * s'intitule « Règles extraites (modifiable) » et
+                * `max_daily_loss` n'y figurait pas, alors que :
+                *
+                *   - `/api/parse-strategy` la demande explicitement au modèle ;
+                *   - la page Session l'affiche (« Perte max journalière : 5 % ») ;
+                *   - `/api/analyze` en tire la violation `violation_max_daily_loss`,
+                *     dans l'analyse que le trader PAIE.
+                *
+                * Mesuré le 2026-09-16 : sur les quatre stratégies de ce compte, une
+                * seule portait une valeur (5 %), extraite un jour par le modèle et
+                * impossible à corriger depuis ; les trois autres valaient `null`,
+                * donc leur violation ne pouvait jamais se déclencher.
+                *
+                * ⚠️ ET LA RÉANALYSE NE LA RAFRAÎCHISSAIT PAS : le payload
+                * d'enregistrement listait huit champs sur neuf, donc relancer
+                * l'analyse mettait tout à jour SAUF celui-là. La valeur restait
+                * figée sur la toute première extraction, juste ou fausse.
+                */}
+              <div>
+                <label htmlFor="strategy-strategy-max-daily-loss" className="block text-xs text-muted mb-1" title={t("strategy_max_daily_loss_tooltip")}>
+                  {t("strategy_max_daily_loss")}
+                </label>
+                <input id="strategy-strategy-max-daily-loss"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={parsed.max_daily_loss ?? ""}
+                  onChange={(e) => updateParsedField("max_daily_loss", e.target.value ? parseFloat(e.target.value) : null)}
                   placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />

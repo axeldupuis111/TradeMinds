@@ -369,6 +369,8 @@ const dict: Record<string, string> = {
   "strategy_max_session": "Duración máx. de sesión (min)",
   "strategy_risk_pct": "Riesgo por trade (%)",
   "strategy_risk_pct_tooltip": "% del saldo de la cuenta arriesgado por trade (ej. 1 = 1 %)",
+  "strategy_max_daily_loss": "Pérdida máx. diaria (%)",
+  "strategy_max_daily_loss_tooltip": "% del saldo que te permites perder en un día antes de parar",
   "strategy_setup_rules": "Reglas de setup",
   "strategy_add_rule": "+ Añadir una regla",
   "strategy_save": "Guardar estrategia",
