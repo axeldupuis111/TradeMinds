@@ -8,6 +8,7 @@ import { sendPushToUser } from "@/lib/push";
 import { startOfLocalDayUtc } from "@/lib/timezone";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { alertGardeFouMuet } from "@/lib/cron-alert";
+import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 
 type AlertLang = "fr" | "en" | "de" | "es";
 
@@ -283,7 +284,7 @@ export async function checkDrawdownAlert(
 
     const { data: challenge, error: erreurChallenge } = await admin
       .from("prop_challenges")
-      .select("account_size, max_total_dd_pct, trailing_drawdown")
+      .select("account_size, max_total_dd_pct, trailing_drawdown, synced_balance, synced_equity, synced_at")
       .eq("id", challengeId)
       .maybeSingle();
 
@@ -348,13 +349,32 @@ export async function checkDrawdownAlert(
     }
 
     const trailing = !!challenge.trailing_drawdown;
-    // DD trailing = recul depuis le pic ; DD statique = perte depuis le solde initial.
-    const afterDD = trailing ? (peakCumulative - cumulative) : Math.max(0, -cumulative);
+
+    /**
+     * ⚠️⚠️ CETTE ALERTE MESURAIT LE DRAWDOWN SUR NOTRE JOURNAL, L'ÉCRAN LE
+     * MESURE SUR LE SOLDE. Dès qu'un courtier pousse son solde, les deux
+     * divergent de tout ce que le journal ignore (dépôts, retraits, trades
+     * passés hors synchro) : mesuré le 2026-09-17 sur un compte réel, 570 $.
+     * Une notification « tu as percé ton drawdown » qui contredit la page est
+     * pire qu'une absence de notification.
+     *
+     * ⚠️ Le décalage ne change RIEN au drawdown glissant (il s'annule entre le
+     * pic et le solde) : seul le drawdown statique, mesuré depuis le capital,
+     * bougeait. C'est exactement la moitié qui manquait.
+     */
+    const resolu = resolveAccountBalance(
+      challenge as unknown as SyncedAccountState,
+      cumulative,
+    );
+    const decalage = resolu.balance - (accountSize + cumulative);
+    const soldeApres = resolu.balance;
     // État avant ce lot : on retire le P&L du lot (le pic n'est pas relevé par une perte).
-    const beforeCumulative = cumulative - batchNetPnl;
-    const beforeDD = trailing
-      ? (peakCumulative - beforeCumulative)
-      : Math.max(0, -beforeCumulative);
+    const soldeAvant = soldeApres - batchNetPnl;
+    const pic = Math.max(accountSize, accountSize + decalage + peakCumulative);
+
+    // DD trailing = recul depuis le pic ; DD statique = perte depuis le capital.
+    const afterDD = trailing ? Math.max(0, pic - soldeApres) : Math.max(0, accountSize - soldeApres);
+    const beforeDD = trailing ? Math.max(0, pic - soldeAvant) : Math.max(0, accountSize - soldeAvant);
 
     const warn = limit * 0.8;
     const copy = DRAWDOWN_COPY[asLang(language)];

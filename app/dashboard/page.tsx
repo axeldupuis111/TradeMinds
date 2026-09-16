@@ -84,7 +84,7 @@ export default async function DashboardPage() {
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monday),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monthStart),
     supabase.from("trades").select("open_time, pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", today).order("open_time", { ascending: true }),
-    supabase.from("prop_challenges").select("id, firm, account_number, account_size, profit_target_pct, max_total_dd_pct, max_daily_dd_pct, max_daily_loss_pct, balance, type, currency, synced_currency, synced_balance, synced_equity, synced_open_positions, synced_at").eq("user_id", userId!).eq("status", "active").order("created_at", { ascending: false }),
+    supabase.from("prop_challenges").select("id, firm, account_number, account_size, profit_target_pct, max_total_dd_pct, max_daily_dd_pct, max_daily_loss_pct, trailing_drawdown, balance, type, currency, synced_currency, synced_balance, synced_equity, synced_open_positions, synced_at").eq("user_id", userId!).eq("status", "active").order("created_at", { ascending: false }),
     supabase.from("trades").select("id, open_time, close_time, pair, direction, pnl, commission, swap, challenge_id, lot_size, entry_price, exit_price").eq("user_id", userId!).order("open_time", { ascending: false }).limit(5),
     // Courbe d'équité : lecture paginée. Non bornée, elle s'arrêtait à 1 000
     // lignes en silence (voir lib/supabase-paginate.ts), et comme le tri était
@@ -152,6 +152,7 @@ export default async function DashboardPage() {
         id: a.id, firm: a.firm, account_number: a.account_number, account_size: a.account_size,
         profit_target_pct: a.profit_target_pct, max_total_dd_pct: a.max_total_dd_pct,
         max_daily_dd_pct: a.max_daily_dd_pct ?? null, max_daily_loss_pct: a.max_daily_loss_pct ?? null,
+        trailing_drawdown: a.trailing_drawdown ?? false,
         balance: a.balance, type: a.type,
         currency: a.currency ?? null, synced_currency: a.synced_currency ?? null,
         synced_balance: a.synced_balance ?? null, synced_equity: a.synced_equity ?? null,

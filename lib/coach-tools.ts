@@ -1568,12 +1568,70 @@ export async function executeCoachTool(
       case "list_accounts": {
         const { data, error } = await supabase
           .from("prop_challenges")
-          .select("id, type, firm, account_number, account_size, currency, synced_currency, balance, status, market_type, profit_target_pct, max_daily_dd_pct, max_total_dd_pct")
+          .select("id, type, firm, account_number, account_size, currency, synced_currency, balance, synced_balance, synced_equity, synced_open_positions, synced_at, status, market_type, profit_target_pct, max_daily_dd_pct, max_total_dd_pct")
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(50);
         if (error) return fail("Lecture des comptes impossible.");
-        return { result: { count: (data ?? []).length, accounts: data ?? [] } };
+        const lignes = (data ?? []) as unknown as Record<string, unknown>[];
+
+        /**
+         * ⚠️⚠️ `prop_challenges.balance` EST UN CACHE, PAS UN SOLDE. Il n'est
+         * réécrit que par deux chemins : l'instantané poussé par le client du
+         * courtier, et la page Comptes QUAND ON L'OUVRE. Un compte alimenté par
+         * import ou saisie reste donc figé sur la dernière visite de cette page.
+         * Mesuré le 2026-09-17 en production : trois comptes actifs portaient un
+         * cache faux, dont un compte réel à 668 $ près.
+         *
+         * Le coach le citait tel quel. `DashboardContent` porte déjà le
+         * commentaire qui énonce la règle (« cet écran lisait la colonne
+         * `balance` telle quelle, c'est-à-dire un CACHE ») : elle n'avait pas
+         * été appliquée ici.
+         *
+         * ⚠️ ET ON NE RETIRE PAS LE SOLDE POUR AUTANT : mesuré au banc d'essai
+         * le 2026-08-14, un `list_accounts` sans solde fait abandonner le modèle
+         * au milieu d'un calcul de position. On le RECALCULE.
+         */
+        const tousLesTrades = await fetchAllRows<{ challenge_id: string | null; pnl: number; commission: number | null; swap: number | null }>(
+          (from, to) =>
+            supabase
+              .from("trades")
+              .select("id, challenge_id, pnl, commission, swap")
+              .eq("user_id", userId)
+              .order("id", { ascending: true })
+              .range(from, to),
+        );
+        const parCompte = new Map<string, number>();
+        for (const t of tousLesTrades ?? []) {
+          if (!t.challenge_id) continue;
+          parCompte.set(t.challenge_id, (parCompte.get(t.challenge_id) ?? 0) + netPnl(t));
+        }
+
+        /** Les colonnes d'instantané servent au calcul, pas au modèle. */
+        const sansInstantane = (ligne: Record<string, unknown>) => {
+          const reste = { ...ligne };
+          delete reste.synced_equity;
+          delete reste.synced_open_positions;
+          delete reste.synced_at;
+          return reste;
+        };
+
+        const accounts = lignes.map((ligne) => {
+          const reste = sansInstantane(ligne);
+          // Lecture incomplète : on garde le cache plutôt que d'inventer un
+          // solde, et on le dit.
+          if (tousLesTrades === null) return { ...reste, balance_source: "cache" };
+          const resolu = resolveAccountBalance(
+            ligne as unknown as SyncedAccountState,
+            parCompte.get(String(ligne.id)) ?? 0,
+          );
+          return {
+            ...reste,
+            balance: Math.round(resolu.balance * 100) / 100,
+            balance_source: resolu.fromBroker ? "courtier" : "trades",
+          };
+        });
+        return { result: { count: accounts.length, accounts } };
       }
 
       case "list_economic_events": {

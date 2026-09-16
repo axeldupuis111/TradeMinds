@@ -169,3 +169,54 @@ describe("l'état du challenge vu par le coach", () => {
     expect(res.total_dd_remaining).toBe(0);
   });
 });
+
+/**
+ * ⚠️⚠️ `prop_challenges.balance` EST UN CACHE, PAS UN SOLDE. Il n'est réécrit
+ * que par l'instantané du courtier et par la page Comptes QUAND ON L'OUVRE :
+ * un compte alimenté par import ou saisie reste figé sur la dernière visite.
+ * Mesuré le 2026-09-17 en production : trois comptes actifs portaient un cache
+ * faux, dont un compte réel à 668 $ près. `DashboardContent` porte déjà le
+ * commentaire qui énonce la règle ; le coach, lui, citait le cache.
+ */
+describe("la liste des comptes vue par le coach", () => {
+  async function lister(comptes: Record<string, unknown>[], trades: unknown[]) {
+    const client = mockClient([{ data: comptes, error: null }, { data: trades, error: null }]);
+    const r = await executeCoachTool(client, USER, "list_accounts", {});
+    return (r.result as { accounts: Record<string, unknown>[] }).accounts;
+  }
+
+  it("recalcule le solde au lieu de citer la colonne figée", async () => {
+    const perime = { ...BASE, balance: 50_000, synced_balance: null, synced_at: null };
+    const [a] = await lister([perime], [
+      { id: "1", challenge_id: ACC, pnl: 668, commission: 0, swap: 0 },
+    ]);
+    expect(a.balance, "le coach cite encore le cache").toBe(50_668);
+    expect(a.balance_source).toBe("trades");
+  });
+
+  it("laisse le courtier faire autorité quand il a poussé un solde", async () => {
+    const synchro = {
+      ...BASE,
+      balance: 50_000,
+      synced_balance: 50_120.64,
+      synced_equity: 50_120.64,
+      synced_at: "2026-09-17T08:00:00Z",
+    };
+    const [a] = await lister([synchro], [
+      { id: "1", challenge_id: ACC, pnl: -449.36, commission: 0, swap: 0 },
+    ]);
+    expect(a.balance).toBeCloseTo(50_120.64, 2);
+    expect(a.balance_source).toBe("courtier");
+  });
+
+  /**
+   * ⚠️ ET LE SOLDE NE DISPARAÎT PAS DE LA LISTE. Mesuré au banc d'essai le
+   * 2026-08-14 : sans solde ici, le modèle abandonne au milieu d'un calcul de
+   * taille de position, parce qu'il vient le chercher dans cet outil.
+   */
+  it("un solde reste présent sur chaque compte", async () => {
+    const [a] = await lister([{ ...BASE, balance: 50_000 }], []);
+    expect(Object.keys(a)).toContain("balance");
+    expect(typeof a.balance).toBe("number");
+  });
+});

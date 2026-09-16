@@ -21,6 +21,7 @@ import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { resolveAccountBalance } from "@/lib/challenge-balance";
+import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -78,6 +79,8 @@ interface ActiveAccount {
   max_total_dd_pct: number;
   max_daily_dd_pct: number | null;
   max_daily_loss_pct: number | null;
+  /** Drawdown mesuré depuis le plus haut atteint, et non depuis le capital. */
+  trailing_drawdown: boolean;
   balance: number;
   type: string;
   /** Devise saisie à la création, et celle annoncée par le broker (qui prime). */
@@ -258,16 +261,47 @@ export default function DashboardContent({
   }, [displayAccount, allTrades]);
   const soldeAffiche = soldeDuCompte?.balance ?? displayAccount?.balance ?? 0;
 
-  const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
-    ? (displayAccount.account_size * displayAccount.profit_target_pct) / 100
-    : 0;
+  /**
+   * ⚠️⚠️ ET LA RÈGLE ELLE-MÊME SE CALCULE À UN SEUL ENDROIT. Ces trois lignes
+   * refaisaient à la main ce que porte `computeChallengeRules`, et il leur
+   * manquait le DRAWDOWN GLISSANT : `max(0, capital - solde)` mesure la marge
+   * depuis le capital de départ, alors qu'un compte à drawdown glissant la
+   * mesure depuis le PLUS HAUT atteint. Un compte monté à +2 000 puis
+   * redescendu à +1 000 affichait ici « 0 % consommé » avec la moitié de sa
+   * marge partie. L'erreur va dans le sens qui grille le compte, et un vrai
+   * compte du produit est dans ce cas.
+   *
+   * La page Comptes et le veilleur qui déclenche l'alerte d'arrêt passaient
+   * déjà par cette fonction ; le tableau de bord, non.
+   */
+  const reglesDuCompte = useMemo(() => {
+    if (!displayAccount) return null;
+    let courant = displayAccount.account_size + (soldeDuCompte?.curveOffset ?? 0);
+    const courbe = allTrades
+      .filter((tr) => tr.challenge_id === displayAccount.id)
+      .map((tr) => (courant += netPnl(tr)));
+    return computeChallengeRules(
+      {
+        account_size: displayAccount.account_size,
+        profit_target_pct: displayAccount.profit_target_pct,
+        max_daily_dd_pct: displayAccount.max_daily_dd_pct ?? 0,
+        max_total_dd_pct: displayAccount.max_total_dd_pct,
+        trailing_drawdown: displayAccount.trailing_drawdown,
+      },
+      soldeAffiche,
+      0,
+      courbe,
+    );
+  }, [displayAccount, soldeAffiche, soldeDuCompte, allTrades]);
+
+  const profitTargetAmount = reglesDuCompte?.profitMax ?? 0;
   const challengePct = profitTargetAmount > 0
-    ? Math.max(0, Math.min(100, ((soldeAffiche - displayAccount!.account_size) / profitTargetAmount) * 100))
+    ? Math.max(0, Math.min(100, reglesDuCompte!.objectiveProgressPct * 100))
     : null;
 
   // ── Drawdown ───────────────────────────────────────────────────────────────
-  const ddMax  = displayAccount ? displayAccount.account_size * displayAccount.max_total_dd_pct / 100 : 0;
-  const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - soldeAffiche) : 0;
+  const ddMax  = reglesDuCompte?.totalDdMax ?? 0;
+  const ddUsed = reglesDuCompte?.totalDdUsed ?? 0;
   const ddPct  = ddMax > 0 ? (ddUsed / ddMax) * 100 : 0;
 
   // ── Calendar discipline overlay (process, not P&L) ───────────────────────────
