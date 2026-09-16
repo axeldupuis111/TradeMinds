@@ -193,6 +193,35 @@ export function addDaysToDateKey(key: string, delta: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/**
+ * Nombre de JOURS CALENDAIRES entre deux clés « YYYY-MM-DD ».
+ *
+ * ── POURQUOI CE N'EST PAS UNE DURÉE DIVISÉE PAR VINGT-QUATRE HEURES ─────────
+ *
+ * ⚠️⚠️ LE CALENDRIER ÉCONOMIQUE ANNONÇAIT DEUX DÉLAIS DIFFÉRENTS POUR LE MÊME
+ * JOUR. Relevé le 2026-09-16 à 23 h, sous un seul titre « VENDREDI 18
+ * SEPTEMBRE » :
+ *
+ *   01:30  AUD  Discours de RBA Gov Bullock          dans 1 j
+ *   04:30  JPY  BOJ · Décision de taux directeur     dans 1 j
+ *   12:30  EUR  Discours de ECB President Lagarde    dans 2 j
+ *
+ * La page divisait le temps ÉCOULÉ par vingt-quatre heures et arrondissait :
+ * 26 h donnait 1, 37 h donnait 2. Les deux annonces tombent pourtant le même
+ * jour, et le lecteur compte en jours du calendrier, pas en tranches de
+ * vingt-quatre heures depuis maintenant.
+ *
+ * Le décalage horaire ne se pose pas ici : les deux clés sont déjà calculées
+ * dans le fuseau du lecteur, donc la soustraction porte sur des jours locaux.
+ */
+export function joursEntreCles(depuis: string, jusqua: string): number {
+  const enUtc = (cle: string) => {
+    const [y, m, d] = cle.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((enUtc(jusqua) - enUtc(depuis)) / 86400000);
+}
+
 /** "YYYY-MM-DD" of the Monday that starts the current week in `tz`. */
 export function weekStartLocalKey(tz?: string | null, at: Date = new Date()): string {
   const z = safeTz(tz);

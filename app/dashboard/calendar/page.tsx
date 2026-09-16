@@ -20,6 +20,7 @@ import {
   type EconomicEvent,
   type Impact,
 } from "@/lib/economic-calendar";
+import { browserTimezone, joursEntreCles, localDateKey } from "@/lib/timezone";
 import { lookupGlossary, type GlossaryEntry, type GlossaryLang } from "@/lib/economic-glossary";
 import type { DeepDive } from "@/lib/economic-deep-dives/types";
 import { EventLesson, EventOutcomes } from "@/components/calendar/EventLesson";
@@ -69,7 +70,22 @@ function relativeLabel(ev: EconomicEvent, t: Traduire): string {
     const m = mins % 60;
     return t("news_in_hours").replace("{h}", String(h)).replace("{m}", String(m).padStart(2, "0"));
   }
-  return t("cal_in_days").replace("{n}", String(Math.round(mins / (60 * 24))));
+  /**
+   * ⚠️⚠️ DES JOURS DE CALENDRIER, PAS DES TRANCHES DE VINGT-QUATRE HEURES.
+   * La version précédente divisait le temps écoulé et arrondissait, ce qui
+   * annonçait DEUX délais différents pour le même jour. Relevé le 2026-09-16 à
+   * 23 h, sous un seul titre « VENDREDI 18 SEPTEMBRE » : « dans 1 j » pour
+   * l'annonce de 01:30 (26 h) et « dans 2 j » pour celle de 12:30 (37 h).
+   *
+   * Le lecteur compte en jours du calendrier, et le titre du jour est juste
+   * au-dessus : c'est lui que le délai doit confirmer, pas contredire.
+   */
+  const fuseau = browserTimezone();
+  const jours = joursEntreCles(
+    localDateKey(fuseau),
+    localDateKey(fuseau, new Date(ev.event_time)),
+  );
+  return t("cal_in_days").replace("{n}", String(jours));
 }
 
 /** Parse a feed numeric string like "3.2%", "-1.4", "210K", "1.2M". */
