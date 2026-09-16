@@ -104,6 +104,11 @@ interface AnalyzeRequest {
    * dans le même fichier, quatre-vingt-dix lignes plus loin.
    */
   currency?: string;
+  /**
+   * Capital nominal du compte affiché, seule référence permettant de vérifier
+   * la perte journalière maximale de la stratégie, qui est un POURCENTAGE.
+   */
+  accountSize?: number;
 }
 
 const SESSION_MAP: Record<string, string> = {
@@ -245,9 +250,20 @@ export async function POST(request: Request) {
     // trades. Le modèle ne recompte donc rien : il explique et priorise, ce
     // qu'il fait bien, au lieu de dénombrer des centaines de lignes, ce qu'il
     // fait mal. On ne détaille ensuite que les trades porteurs de preuve.
+    /**
+     * ⚠️ Un capital nul, négatif ou aberrant ne sert pas de référence : la
+     * règle n'est alors pas vérifiée du tout, ce qui est le comportement
+     * d'avant, jamais pire.
+     */
+    const capitalDuCompte =
+      typeof body.accountSize === "number" && isFinite(body.accountSize) && body.accountSize > 0
+        ? body.accountSize
+        : null;
+
     const mechanicalViolations = computeMechanicalViolations(
       recentTrades as SelectionTrade[],
       strategy as SelectionStrategy,
+      capitalDuCompte,
     );
     const selection = selectSignificantTrades(
       recentTrades as SelectionTrade[],
@@ -349,6 +365,11 @@ ${periodInfo}STRATÉGIE DU TRADER :
 - Stop Loss maximum (pips) : ${strategy.max_sl_pips ?? "Non défini"}
 - Nombre max de trades/jour : ${strategy.max_trades_per_day ?? "Non défini"}
 - Trades perdants consécutifs avant stop : ${strategy.max_consecutive_losses ?? "Non défini"}
+- Perte journalière maximale : ${
+      strategy.max_daily_loss != null
+        ? `${strategy.max_daily_loss} % du capital${capitalDuCompte ? ` (soit ${Math.round((capitalDuCompte * strategy.max_daily_loss) / 100)} ${deviseDemandee || ""})`.trimEnd() : ""}`
+        : "Non définie"
+    }
 - Règles de setup :
 <user_setup_rules>
 ${rulesText}
@@ -382,7 +403,7 @@ VIOLATIONS MÉCANIQUES DÉJÀ COMPTÉES PAR LE SERVEUR (source FAISANT FOI) :
 <mechanical_violations>
 ${mechanicalBlock}
 </mechanical_violations>
-RÈGLE : pour les types wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, max_trades_day et consecutive_losses, REPRENDS EXACTEMENT les "occurrences" ci-dessus.
+RÈGLE : pour les types wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, max_trades_day, max_daily_loss et consecutive_losses, REPRENDS EXACTEMENT les "occurrences" ci-dessus.
 CES NOMS SONT DES CLÉS, PAS DES MOTS : ils vont dans le champ "type" et NULLE PART AILLEURS. N'en écris JAMAIS un seul dans une phrase rédigée (headline, summary, explanation, patterns, strengths, recommendations, commentaires) : le trader lit ces phrases telles quelles sur son tableau de bord, et "missing_tp" n'y veut rien dire. Dans une phrase, nomme la règle en français : « aucun TP renseigné », « SL au-delà du maximum », « trading poursuivi après des pertes consécutives ». Ne les recompte pas depuis les trades détaillés plus bas : tu n'en vois qu'un extrait, tout recomptage serait faux. Ton travail sur ces violations est de les EXPLIQUER (champ "explanation") et de les hiérarchiser, pas de les dénombrer. Si un type n'apparaît pas ci-dessus, il n'y a pas de violation de ce type : ne l'invente pas.
 Tu restes en revanche seul juge des violations COMPORTEMENTALES (revenge_trading, overtrading, lot_increase_after_loss, fomo) et de missing_setup_tag : appuie-les sur les statistiques agrégées et sur les trades détaillés.
 

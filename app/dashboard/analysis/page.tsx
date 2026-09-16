@@ -10,6 +10,7 @@ import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
 import { useDeviseDuJournal } from "@/lib/hooks/useDisplayCurrency";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import {
   coachActionMeta,
   useCoachChat,
@@ -483,6 +484,19 @@ export default function AnalysisPage() {
   /** Vide quand les monnaies se mêlent : `fmtEuro` rend alors un tiret. */
   const displayCurrency = devisesMelangees ? "" : deviseDuJournal;
   const { canUseAI, aiRemaining, plan, refreshPlan, demoMode, loading: planLoading } = usePlan();
+  /**
+   * ⚠️ LE CAPITAL N'EST ENVOYÉ QUE S'IL EST SANS AMBIGUÏTÉ. La perte
+   * journalière maximale de la stratégie est un POURCENTAGE : sans capital, il
+   * n'y a pas de seuil, et avec DEUX comptes il y en aurait deux. Additionner
+   * des capitaux serait la même faute que d'additionner des devises. Un seul
+   * compte actif : on l'envoie. Sinon, la règle n'est pas vérifiée, ce qui est
+   * exactement l'état d'avant.
+   */
+  const { accounts: comptesActifs } = useActiveAccount();
+  const capitalDuCompte =
+    comptesActifs.length === 1 && comptesActifs[0].account_size > 0
+      ? comptesActifs[0].account_size
+      : null;
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -840,6 +854,7 @@ export default function AnalysisPage() {
            * route en tire une consigne différente.
            */
           currency: displayCurrency,
+          ...(capitalDuCompte != null ? { accountSize: capitalDuCompte } : {}),
         }),
       });
 

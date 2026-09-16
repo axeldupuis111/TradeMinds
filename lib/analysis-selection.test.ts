@@ -32,6 +32,7 @@ const strat: SelectionStrategy = {
   max_sl_pips: 30,
   max_trades_per_day: 3,
   max_consecutive_losses: 2,
+  max_daily_loss: null,
 };
 
 const find = (vs: ReturnType<typeof computeMechanicalViolations>, type: string) =>

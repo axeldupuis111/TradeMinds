@@ -49,6 +49,8 @@ export interface SelectionStrategy {
   max_sl_pips: number | null;
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
+  /** Perte journalière maximale, en POURCENTAGE du capital du compte. */
+  max_daily_loss: number | null;
 }
 
 /** Violations dont la règle est mécanique : le serveur les compte, pas le modèle. */
@@ -60,6 +62,7 @@ export type MechanicalViolationType =
   | "missing_sl"
   | "missing_tp"
   | "max_trades_day"
+  | "max_daily_loss"
   | "consecutive_losses";
 
 export interface MechanicalViolation {
@@ -77,6 +80,7 @@ const CATEGORY: Record<MechanicalViolationType, "strategy" | "execution"> = {
   low_rr: "strategy",
   sl_too_wide: "strategy",
   max_trades_day: "strategy",
+  max_daily_loss: "strategy",
   consecutive_losses: "strategy",
   missing_sl: "execution",
   missing_tp: "execution",
@@ -118,6 +122,12 @@ function utcDay(iso: string): string {
 export function computeMechanicalViolations(
   trades: SelectionTrade[],
   strategy: SelectionStrategy,
+  /**
+   * Capital nominal du compte, seule référence permettant de convertir la
+   * perte journalière maximale (exprimée en %) en montant. Absent, la règle
+   * n'est pas vérifiée : mieux vaut ne rien compter que compter faux.
+   */
+  accountSize?: number | null,
 ): MechanicalViolation[] {
   const hits: Record<string, number[]> = {};
   const add = (type: MechanicalViolationType, idx: number) => {
@@ -194,6 +204,52 @@ export function computeMechanicalViolations(
     }
     if (days > 0) {
       out.push({ category: "strategy", type: "max_trades_day", trade_ids: offendingDays.slice(0, 20), occurrences: days });
+    }
+  }
+
+  /**
+   * ⚠️⚠️ CETTE RÈGLE ÉTAIT COLLECTÉE, AFFICHÉE, NOTÉE — ET JAMAIS VÉRIFIÉE.
+   * `strategies.max_daily_loss` se saisit dans la fiche stratégie, s'affiche
+   * sur l'écran de séance (« Perte max journalière : 3 % ») et vaut QUINZE
+   * points de score de discipline, le deuxième plus lourd du barème. Mais la
+   * limite n'entrait ni dans le comptage du serveur ni dans le prompt, et
+   * celui-ci dit noir sur blanc « si un type n'apparaît pas ci-dessus, il n'y a
+   * pas de violation de ce type : ne l'invente pas ». Mesuré le 2026-09-17 sur
+   * les 32 analyses enregistrées : tous les types de violation y figurent au
+   * moins une fois SAUF celui-ci, jamais produit depuis la création du produit.
+   *
+   * Un trader qui se fixe 3 % et en perd 8 n'en était donc jamais averti.
+   *
+   * ⚠️ La référence est `account_size`, le capital NOMINAL, parce que c'est
+   * déjà celle qu'utilise la jauge de perte du jour de la page Comptes
+   * (`account_size * max_daily_loss_pct / 100`). Deux références donneraient
+   * deux seuils pour la même règle.
+   */
+  if (
+    strategy.max_daily_loss != null &&
+    strategy.max_daily_loss > 0 &&
+    accountSize != null &&
+    accountSize > 0
+  ) {
+    const limite = (accountSize * strategy.max_daily_loss) / 100;
+    const parJour = new Map<string, number[]>();
+    trades.forEach((t, idx) => {
+      const d = utcDay(t.open_time);
+      const bucket = parJour.get(d);
+      if (bucket) bucket.push(idx);
+      else parJour.set(d, [idx]);
+    });
+    const fautifs: number[] = [];
+    let jours = 0;
+    for (const idxs of Array.from(parJour.values())) {
+      const perte = -idxs.reduce((somme, i) => somme + netPnl(trades[i]), 0);
+      if (perte > limite) {
+        jours++;
+        fautifs.push(...idxs);
+      }
+    }
+    if (jours > 0) {
+      out.push({ category: "strategy", type: "max_daily_loss", trade_ids: fautifs.slice(0, 20), occurrences: jours });
     }
   }
 
@@ -314,6 +370,7 @@ export const LIBELLE_DE_VIOLATION: Record<MechanicalViolationType, string> = {
   missing_sl: "aucun SL",
   missing_tp: "aucun TP",
   max_trades_day: "dépassement du nb max de trades/jour",
+  max_daily_loss: "perte journalière maximale dépassée",
   consecutive_losses: "trading poursuivi après N pertes consécutives",
 };
 
@@ -350,6 +407,7 @@ export function renderMechanicalBlock(violations: MechanicalViolation[], total: 
   const label = LIBELLE_DE_VIOLATION;
   const unit: Partial<Record<MechanicalViolationType, string>> = {
     max_trades_day: "jour(s)",
+    max_daily_loss: "jour(s)",
     consecutive_losses: "trade(s) de continuation",
   };
   return [

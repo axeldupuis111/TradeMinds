@@ -66,7 +66,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
   "sessions": ["london", "new_york", "asian", "london_ny_overlap"] (uniquement les IDs correspondants),
   "risk_reward": number ou null,
   "max_sl_pips": number ou null,
-  "max_daily_loss": number ou null (en % du capital),
+  "max_daily_loss": number ou null — un POURCENTAGE du capital, JAMAIS un montant. Si le plan dit « je m'arrête à -200 € » ou « -200 $ » sans donner le capital, mets null : 200 serait lu comme 200 %, une limite qu'aucune journée ne peut atteindre.
   "max_trades_per_day": number ou null,
   "max_consecutive_losses": number ou null,
   "max_session_minutes": number ou null (durée max d'une session de trading en minutes),
@@ -182,7 +182,25 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
 
     // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :
     // une consigne de prompt ne le tient qu'une fois sur deux.
-    const parsed = nettoyerLesTextes(JSON.parse(jsonStr));
+    const parsed = nettoyerLesTextes(JSON.parse(jsonStr)) as Record<string, unknown>;
+
+    /**
+     * ⚠️⚠️ UNE PERTE JOURNALIÈRE DE 200 % N'EXISTE PAS, ET NE SE VOIT PAS.
+     * Ce champ est un POURCENTAGE, mais un plan écrit à la main dit presque
+     * toujours « je m'arrête à -200 € » : le modèle rendait alors 200. Mesuré
+     * le 2026-09-17 en production, sur 5 stratégies qui fixent cette limite,
+     * 4 portaient une valeur supérieure à 100, dont une d'un vrai compte. La
+     * conséquence est muette : la règle ne peut plus être franchie, donc elle
+     * n'est jamais signalée, alors qu'elle vaut quinze points de discipline.
+     *
+     * Une consigne de prompt ne suffit pas : on refuse la valeur ici aussi,
+     * plutôt que d'écrire un seuil que rien ne pourra atteindre.
+     */
+    const perte = parsed.max_daily_loss;
+    if (typeof perte !== "number" || !isFinite(perte) || perte <= 0 || perte > 100) {
+      parsed.max_daily_loss = null;
+    }
+
     return NextResponse.json(parsed);
   } catch (err: unknown) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();
