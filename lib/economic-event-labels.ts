@@ -88,6 +88,35 @@ const NORM_OVERRIDES: Record<string, Localized> = {
   "overnight rate": { fr: "Taux directeur BoC", en: "BoC overnight rate", de: "BoC-Leitzins", es: "Tipo oficial del BoC" },
   "monetary policy statement": { fr: "Communiqué de politique monétaire", en: "Monetary policy statement", de: "Geldpolitische Erklärung", es: "Comunicado de política monetaria" },
   "rate statement": { fr: "Communiqué sur les taux", en: "Rate statement", de: "Zinserklärung", es: "Comunicado sobre tipos" },
+
+  /**
+   * ⚠️⚠️ LA PAIRE CI-DESSUS N'AVAIT ÉTÉ POSÉE QUE POUR LA BCE. Le commentaire
+   * juste au-dessus nomme pourtant les trois banques centrales et leurs deux
+   * lignes : Fed (Federal Funds Rate + FOMC Statement), BCE (Main Refinancing
+   * Rate + Monetary Policy Statement), BoE (Official Bank Rate + Monetary
+   * Policy Summary). Seul le premier membre de chaque paire existait pour la
+   * Fed et pour la BoE : `federal funds rate` et `official bank rate` étaient
+   * traduits, `FOMC Statement` et `Monetary Policy Summary` restaient en
+   * anglais. La règle était écrite, appliquée à une partie de ce qu'elle vise.
+   *
+   * Mesuré le 2026-09-16 sur la page « Avant la session », un jour de FOMC :
+   * « 🔴 20:00 · USD · FOMC Statement » et « 🔴 20:00 · USD · FOMC Economic
+   * Projections » en anglais sur un écran français, à côté de « Taux des fonds
+   * fédéraux » traduit. Les trois lignes sont le MÊME rendez-vous.
+   */
+  "fomc statement": { fr: "Communiqué du FOMC", en: "FOMC statement", de: "FOMC-Erklärung", es: "Comunicado del FOMC" },
+  "fomc economic projections": { fr: "Projections économiques du FOMC (dot plot)", en: "FOMC economic projections (dot plot)", de: "FOMC-Wirtschaftsprojektionen (Dot Plot)", es: "Proyecciones económicas del FOMC (dot plot)" },
+  "monetary policy summary": { fr: "Compte rendu de politique monétaire BoE", en: "BoE monetary policy summary", de: "BoE-Bericht zur Geldpolitik", es: "Resumen de política monetaria del BoE" },
+  "mpc official bank rate votes": { fr: "Votes du MPC sur le taux directeur", en: "MPC official bank rate votes", de: "MPC-Abstimmung zum Leitzins", es: "Votos del MPC sobre el tipo oficial" },
+
+  /**
+   * ⚠️ TROIS AUTRES ANNONCES À FORT IMPACT QUE NI LA TABLE NI LA COMPOSITION NE
+   * SAVAIENT NOMMER. Elles n'ont pas de forme récurrente : il faut les écrire.
+   */
+  "claimant count change": { fr: "Inscriptions au chômage (Royaume-Uni)", en: "Claimant count change (UK)", de: "Arbeitslosenanträge (UK)", es: "Solicitudes de paro (Reino Unido)" },
+  "benchmark payrolls revision": { fr: "Révision annuelle des créations d'emplois", en: "Benchmark payrolls revision", de: "Benchmark-Revision der Beschäftigung", es: "Revisión anual del empleo" },
+  "average earnings index 3m/y": { fr: "Indice des salaires moyens (3 mois sur un an)", en: "Average earnings index (3m/y)", de: "Index der Durchschnittslöhne (3M/J)", es: "Índice de salarios medios (3m/a)" },
+  "ism manufacturing prices": { fr: "ISM prix payés, industrie (US)", en: "ISM Manufacturing Prices (US)", de: "ISM Industrie, Preiskomponente (USA)", es: "ISM precios pagados, manufactura (EE. UU.)" },
 };
 
 /** Qualificatifs détectés dans le titre brut, traduits et ré-affichés. */
@@ -225,6 +254,54 @@ const ADJUDICATION: Localized = {
 };
 
 /**
+ * ⚠️ TROIS FORMES DE PLUS, PARCE QUE CE QUI SE RÉPÈTE SE COMPOSE. Relevé dans
+ * le flux le 2026-09-16 : « Fed Chairman Warsh Testifies », « G20 Meetings »,
+ * « ECOFIN Meetings », « Eurogroup Meetings », « OPEC-JMMC Meetings »,
+ * « Jackson Hole Symposium ». Une audition de banquier central n'est pas un
+ * discours, et écrire le nom du président en dur le périmerait au changement
+ * de mandat.
+ */
+const TEMOIGNAGE: Localized = {
+  fr: "Audition de {qui}",
+  en: "{qui} testifies",
+  de: "Anhörung von {qui}",
+  es: "Comparecencia de {qui}",
+};
+
+const REUNIONS: Localized = {
+  fr: "Réunions {qui}",
+  en: "{qui} meetings",
+  de: "{qui}-Treffen",
+  es: "Reuniones {qui}",
+};
+
+const SYMPOSIUM: Localized = {
+  fr: "Symposium {qui}",
+  en: "{qui} symposium",
+  // ⚠️ PAS `{qui}-Symposium` EN ALLEMAND : le nom peut être en deux mots, et
+  // « Jackson Hole-Symposium » coupe au mauvais endroit. `{qui}-Treffen` s'en
+  // sort parce que les réunions du flux portent toutes un sigle (G20, ECOFIN).
+  de: "Symposium {qui}",
+  es: "Simposio {qui}",
+};
+
+/**
+ * Les rapports périodiques des banques centrales et des trésors.
+ *
+ * ⚠️ HUIT TITRES POUR CINQ FORMES : « BOC / BOE / Fed Monetary Policy Report »,
+ * « BOE / SNB Financial Stability Report », « BOJ Outlook Report », « German
+ * Buba Monthly Report », « Treasury Currency Report ». C'est le TYPE de rapport
+ * qui se traduit ; l'émetteur, lui, se recolle tel quel, comme pour un discours.
+ */
+const RAPPORTS: { test: RegExp; label: Localized }[] = [
+  { test: /\bmonetary policy report\b/i,     label: { fr: "Rapport de politique monétaire", en: "Monetary policy report",   de: "Bericht zur Geldpolitik",     es: "Informe de política monetaria" } },
+  { test: /\bfinancial stability report\b/i, label: { fr: "Rapport de stabilité financière", en: "Financial stability report", de: "Finanzstabilitätsbericht",  es: "Informe de estabilidad financiera" } },
+  { test: /\boutlook report\b/i,             label: { fr: "Rapport de perspectives",        en: "Outlook report",            de: "Ausblicksbericht",            es: "Informe de perspectivas" } },
+  { test: /\bmonthly report\b/i,             label: { fr: "Rapport mensuel",                en: "Monthly report",            de: "Monatsbericht",               es: "Informe mensual" } },
+  { test: /\bcurrency report\b/i,            label: { fr: "Rapport sur les devises",        en: "Currency report",           de: "Währungsbericht",             es: "Informe sobre divisas" } },
+];
+
+/**
  * Les deux formes qui reviennent sans être des indicateurs : le discours et
  * l'adjudication.
  *
@@ -239,6 +316,19 @@ function parPatron(title: string, lang: GlossaryLang): string | undefined {
   if (adjudication) return ADJUDICATION[lang].replace("{n}", adjudication[1]);
   const sommet = /^(.+?)\s+summit$/i.exec(title.trim());
   if (sommet) return SOMMET[lang].replace("{qui}", sommet[1].trim());
+  const temoignage = /^(.+?)\s+testifies$/i.exec(title.trim());
+  if (temoignage) return TEMOIGNAGE[lang].replace("{qui}", temoignage[1].trim());
+  const reunions = /^(.+?)\s+meetings$/i.exec(title.trim());
+  if (reunions) return REUNIONS[lang].replace("{qui}", reunions[1].trim());
+  const symposium = /^(.+?)\s+symposium$/i.exec(title.trim());
+  if (symposium) return SYMPOSIUM[lang].replace("{qui}", symposium[1].trim());
+  const rapport = RAPPORTS.find((r) => r.test.test(title));
+  if (rapport) {
+    // ⚠️ L'ÉMETTEUR EST CE QUI RESTE, et il n'est pas toujours là : « Monetary
+    // Policy Report » tout court existe aussi dans le flux.
+    const emetteur = title.replace(rapport.test, "").trim().replace(/\s{2,}/g, " ");
+    return emetteur ? `${rapport.label[lang]} · ${emetteur}` : rapport.label[lang];
+  }
   return undefined;
 }
 

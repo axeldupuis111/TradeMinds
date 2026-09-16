@@ -1,1794 +1,2242 @@
 [
  {
   "currency": "ALL",
-  "title": "BRICS Summit"
+  "title": "BRICS Summit",
+  "impact": "low"
  },
  {
   "currency": "ALL",
-  "title": "G20 Meetings"
+  "title": "G20 Meetings",
+  "impact": "low"
  },
  {
   "currency": "ALL",
-  "title": "Jackson Hole Symposium"
+  "title": "Jackson Hole Symposium",
+  "impact": "high"
  },
  {
   "currency": "ALL",
-  "title": "OPEC-JMMC Meetings"
+  "title": "OPEC-JMMC Meetings",
+  "impact": "medium"
  },
  {
   "currency": "AUD",
-  "title": "ANZ Job Advertisements m/m"
+  "title": "ANZ Job Advertisements m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Bank Holiday"
+  "title": "Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "AUD",
-  "title": "Building Approvals m/m"
+  "title": "Building Approvals m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "CB Leading Index m/m"
+  "title": "Cash Rate",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "CPI m/m"
+  "title": "CB Leading Index m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "CPI y/y"
+  "title": "Commodity Prices y/y",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Cash Rate"
+  "title": "Company Operating Profits q/q",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Commodity Prices y/y"
+  "title": "Construction Work Done q/q",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Company Operating Profits q/q"
+  "title": "CPI m/m",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Construction Work Done q/q"
+  "title": "CPI y/y",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Employment Change"
+  "title": "Employment Change",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Flash Manufacturing PMI"
+  "title": "Flash Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Flash Services PMI"
+  "title": "Flash Services PMI",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "GDP q/q"
+  "title": "GDP q/q",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Goods Trade Balance"
+  "title": "Goods Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Household Spending m/m"
+  "title": "Household Spending m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Import Prices q/q"
+  "title": "Import Prices q/q",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "MI Inflation Expectations"
+  "title": "MI Inflation Expectations",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "MI Inflation Gauge m/m"
+  "title": "MI Inflation Gauge m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "MI Leading Index m/m"
+  "title": "MI Leading Index m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Monetary Policy Meeting Minutes"
+  "title": "Monetary Policy Meeting Minutes",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "NAB Business Confidence"
+  "title": "NAB Business Confidence",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "NAB Quarterly Business Confidence"
+  "title": "NAB Quarterly Business Confidence",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "PPI q/q"
+  "title": "PPI q/q",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Private Capital Expenditure q/q"
+  "title": "Private Capital Expenditure q/q",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "Private Sector Credit m/m"
+  "title": "Private Sector Credit m/m",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "RBA Assist Gov Hunter Speaks"
+  "title": "RBA Assist Gov Hunter Speaks",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "RBA Assist Gov Jones Speaks"
+  "title": "RBA Assist Gov Jones Speaks",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "RBA Assist Gov Kent Speaks"
+  "title": "RBA Assist Gov Kent Speaks",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "RBA Bulletin"
+  "title": "RBA Bulletin",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "RBA Deputy Gov Hauser Speaks"
+  "title": "RBA Deputy Gov Hauser Speaks",
+  "impact": "low"
  },
  {
   "currency": "AUD",
-  "title": "RBA Gov Bullock Speaks"
+  "title": "RBA Gov Bullock Speaks",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "RBA Monetary Policy Statement"
+  "title": "RBA Monetary Policy Statement",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "RBA Press Conference"
+  "title": "RBA Press Conference",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "RBA Rate Statement"
+  "title": "RBA Rate Statement",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Trimmed Mean CPI m/m"
+  "title": "Trimmed Mean CPI m/m",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "high"
  },
  {
   "currency": "AUD",
-  "title": "Wage Price Index q/q"
+  "title": "Wage Price Index q/q",
+  "impact": "medium"
  },
  {
   "currency": "AUD",
-  "title": "Westpac Consumer Sentiment"
+  "title": "Westpac Consumer Sentiment",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "BOC Business Outlook Survey"
+  "title": "Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "CAD",
-  "title": "BOC Gov Macklem Speaks"
+  "title": "BOC Business Outlook Survey",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "BOC Monetary Policy Report"
+  "title": "BOC Gov Macklem Speaks",
+  "impact": "medium"
  },
  {
   "currency": "CAD",
-  "title": "BOC Press Conference"
+  "title": "BOC Monetary Policy Report",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "BOC Rate Statement"
+  "title": "BOC Press Conference",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "BOC Summary of Deliberations"
+  "title": "BOC Rate Statement",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "Bank Holiday"
+  "title": "BOC Summary of Deliberations",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Building Permits m/m"
+  "title": "Building Permits m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "CPI m/m"
+  "title": "Common CPI y/y",
+  "impact": "medium"
  },
  {
   "currency": "CAD",
-  "title": "Common CPI y/y"
+  "title": "Core CPI m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Core CPI m/m"
+  "title": "Core Retail Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Core Retail Sales m/m"
+  "title": "Corporate Profits q/q",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Corporate Profits q/q"
+  "title": "CPI m/m",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Employment Change"
+  "title": "Employment Change",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "Foreign Securities Purchases"
+  "title": "Foreign Securities Purchases",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "GDP m/m"
+  "title": "GDP m/m",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "Gov Council Member Rogers Speaks"
+  "title": "Gov Council Member Rogers Speaks",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Housing Starts"
+  "title": "Housing Starts",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "IPPI m/m"
+  "title": "IPPI m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Ivey PMI"
+  "title": "Ivey PMI",
+  "impact": "medium"
  },
  {
   "currency": "CAD",
-  "title": "Labor Productivity q/q"
+  "title": "Labor Productivity q/q",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Manufacturing PMI"
+  "title": "Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Manufacturing Sales m/m"
+  "title": "Manufacturing Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Median CPI y/y"
+  "title": "Median CPI y/y",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "NHPI m/m"
+  "title": "NHPI m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Overnight Rate"
+  "title": "Overnight Rate",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "RMPI m/m"
+  "title": "Retail Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Retail Sales m/m"
+  "title": "RMPI m/m",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Trade Balance"
+  "title": "Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "CAD",
-  "title": "Trimmed CPI y/y"
+  "title": "Trimmed CPI y/y",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "high"
  },
  {
   "currency": "CAD",
-  "title": "Wholesale Sales m/m"
+  "title": "Wholesale Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "CPI m/m"
+  "title": "CPI m/m",
+  "impact": "medium"
  },
  {
   "currency": "CHF",
-  "title": "Foreign Currency Reserves"
+  "title": "Foreign Currency Reserves",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "GDP q/q"
+  "title": "GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "Gov Board Member Martin Speaks"
+  "title": "Gov Board Member Martin Speaks",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "KOF Economic Barometer"
+  "title": "KOF Economic Barometer",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "Manufacturing PMI"
+  "title": "Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "PPI m/m"
+  "title": "PPI m/m",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "Retail Sales y/y"
+  "title": "Retail Sales y/y",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "SECO Consumer Climate"
+  "title": "SECO Consumer Climate",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "SECO Economic Forecasts"
+  "title": "SECO Economic Forecasts",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "SNB Chairman Schlegel Speaks"
+  "title": "SNB Chairman Schlegel Speaks",
+  "impact": "medium"
  },
  {
   "currency": "CHF",
-  "title": "SNB Financial Stability Report"
+  "title": "SNB Financial Stability Report",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "SNB Quarterly Bulletin"
+  "title": "SNB Quarterly Bulletin",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "Summary of Monetary Policy Discussions"
+  "title": "Summary of Monetary Policy Discussions",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "UBS Economic Expectations"
+  "title": "UBS Economic Expectations",
+  "impact": "low"
  },
  {
   "currency": "CHF",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "1-y Loan Prime Rate"
+  "title": "1-y Loan Prime Rate",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "5-y Loan Prime Rate"
+  "title": "5-y Loan Prime Rate",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "CB Leading Index m/m"
+  "title": "CB Leading Index m/m",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "CPI y/y"
+  "title": "CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Fixed Asset Investment ytd/y"
+  "title": "Fixed Asset Investment ytd/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Foreign Direct Investment ytd/y"
+  "title": "Foreign Direct Investment ytd/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "GDP q/y"
+  "title": "GDP q/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Industrial Production y/y"
+  "title": "Industrial Production y/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "M2 Money Supply y/y"
+  "title": "M2 Money Supply y/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Manufacturing PMI"
+  "title": "Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "NBS Press Conference"
+  "title": "NBS Press Conference",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "New Home Prices m/m"
+  "title": "New Home Prices m/m",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "New Loans"
+  "title": "New Loans",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Non-Manufacturing PMI"
+  "title": "Non-Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "PPI y/y"
+  "title": "PPI y/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "RatingDog Manufacturing PMI"
+  "title": "RatingDog Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "RatingDog Services PMI"
+  "title": "RatingDog Services PMI",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Retail Sales y/y"
+  "title": "Retail Sales y/y",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Trade Balance"
+  "title": "Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "USD-Denominated Trade Balance"
+  "title": "Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "CNY",
-  "title": "Unemployment Rate"
+  "title": "USD-Denominated Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Belgian NBB Business Climate"
+  "title": "Belgian NBB Business Climate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "CPI Flash Estimate y/y"
+  "title": "Consumer Confidence",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Consumer Confidence"
+  "title": "Core CPI Flash Estimate y/y",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "Core CPI Flash Estimate y/y"
+  "title": "CPI Flash Estimate y/y",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "ECB Economic Bulletin"
+  "title": "ECB Economic Bulletin",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "ECB Monetary Policy Meeting Accounts"
+  "title": "ECB Monetary Policy Meeting Accounts",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "ECB President Lagarde Speaks"
+  "title": "ECB President Lagarde Speaks",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "ECB Press Conference"
+  "title": "ECB Press Conference",
+  "impact": "high"
  },
  {
   "currency": "EUR",
-  "title": "ECOFIN Meetings"
+  "title": "ECOFIN Meetings",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Eurogroup Meetings"
+  "title": "Eurogroup Meetings",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Final CPI y/y"
+  "title": "Final Core CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Final Core CPI y/y"
+  "title": "Final CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Final Employment Change q/q"
+  "title": "Final Employment Change q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Final Manufacturing PMI"
+  "title": "Final Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Final Services PMI"
+  "title": "Final Services PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Flash Employment Change q/q"
+  "title": "Flash Employment Change q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Flash GDP q/q"
+  "title": "Flash GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Flash Manufacturing PMI"
+  "title": "Flash Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Flash Services PMI"
+  "title": "Flash Services PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French 10-y Bond Auction"
+  "title": "French 10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Bank Holiday"
+  "title": "French Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "EUR",
-  "title": "French Consumer Spending m/m"
+  "title": "French Consumer Spending m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Final CPI m/m"
+  "title": "French Final CPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Final Manufacturing PMI"
+  "title": "French Final Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Final Private Payrolls q/q"
+  "title": "French Final Private Payrolls q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Final Services PMI"
+  "title": "French Final Services PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Flash GDP q/q"
+  "title": "French Flash GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Flash Manufacturing PMI"
+  "title": "French Flash Manufacturing PMI",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "French Flash Services PMI"
+  "title": "French Flash Services PMI",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "French Gov Budget Balance"
+  "title": "French Gov Budget Balance",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Industrial Production m/m"
+  "title": "French Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Prelim CPI m/m"
+  "title": "French Prelim CPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Prelim GDP q/q"
+  "title": "French Prelim GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Prelim Private Payrolls q/q"
+  "title": "French Prelim Private Payrolls q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "French Trade Balance"
+  "title": "French Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German 10-y Bond Auction"
+  "title": "German 10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German 30-y Bond Auction"
+  "title": "German 30-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Buba Monthly Report"
+  "title": "German Buba Monthly Report",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Buba President Nagel Speaks"
+  "title": "German Buba President Nagel Speaks",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Factory Orders m/m"
+  "title": "German Factory Orders m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Final CPI m/m"
+  "title": "German Final CPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Final GDP q/q"
+  "title": "German Final GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Final Manufacturing PMI"
+  "title": "German Final Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Final Services PMI"
+  "title": "German Final Services PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Flash Manufacturing PMI"
+  "title": "German Flash Manufacturing PMI",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "German Flash Services PMI"
+  "title": "German Flash Services PMI",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "German GfK Consumer Climate"
+  "title": "German GfK Consumer Climate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Import Prices m/m"
+  "title": "German ifo Business Climate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Industrial Production m/m"
+  "title": "German Import Prices m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German PPI m/m"
+  "title": "German Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Prelim CPI m/m"
+  "title": "German PPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Prelim GDP q/q"
+  "title": "German Prelim CPI m/m",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "German Retail Sales m/m"
+  "title": "German Prelim GDP q/q",
+  "impact": "medium"
  },
  {
   "currency": "EUR",
-  "title": "German Trade Balance"
+  "title": "German Retail Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German Unemployment Change"
+  "title": "German Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German WPI m/m"
+  "title": "German Unemployment Change",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German ZEW Economic Sentiment"
+  "title": "German WPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "German ifo Business Climate"
+  "title": "German ZEW Economic Sentiment",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Industrial Production m/m"
+  "title": "Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian 10-y Bond Auction"
+  "title": "Italian 10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Bank Holiday"
+  "title": "Italian Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "EUR",
-  "title": "Italian Industrial Production m/m"
+  "title": "Italian Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Manufacturing PMI"
+  "title": "Italian Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Monthly Unemployment Rate"
+  "title": "Italian Monthly Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Prelim CPI m/m"
+  "title": "Italian Prelim CPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Prelim GDP q/q"
+  "title": "Italian Prelim GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Quarterly Unemployment Rate"
+  "title": "Italian Quarterly Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Retail Sales m/m"
+  "title": "Italian Retail Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Services PMI"
+  "title": "Italian Services PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Italian Trade Balance"
+  "title": "Italian Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "M3 Money Supply y/y"
+  "title": "M3 Money Supply y/y",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Main Refinancing Rate"
+  "title": "Main Refinancing Rate",
+  "impact": "high"
  },
  {
   "currency": "EUR",
-  "title": "Monetary Policy Statement"
+  "title": "Monetary Policy Statement",
+  "impact": "high"
  },
  {
   "currency": "EUR",
-  "title": "PPI m/m"
+  "title": "PPI m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Prelim Flash GDP q/q"
+  "title": "Prelim Flash GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Private Loans y/y"
+  "title": "Private Loans y/y",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Retail Sales m/m"
+  "title": "Retail Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Revised GDP q/q"
+  "title": "Revised GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Sentix Investor Confidence"
+  "title": "Sentix Investor Confidence",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish 10-y Bond Auction"
+  "title": "Spanish 10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish Flash CPI y/y"
+  "title": "Spanish Flash CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish Flash GDP q/q"
+  "title": "Spanish Flash GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish Manufacturing PMI"
+  "title": "Spanish Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish Services PMI"
+  "title": "Spanish Services PMI",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish Unemployment Change"
+  "title": "Spanish Unemployment Change",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Spanish Unemployment Rate"
+  "title": "Spanish Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Trade Balance"
+  "title": "Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "EUR",
-  "title": "ZEW Economic Sentiment"
+  "title": "ZEW Economic Sentiment",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "10-y Bond Auction"
+  "title": "10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Average Earnings Index 3m/y"
+  "title": "Average Earnings Index 3m/y",
+  "impact": "medium"
  },
  {
   "currency": "GBP",
-  "title": "BOE Credit Conditions Survey"
+  "title": "Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "GBP",
-  "title": "BOE Financial Stability Report"
+  "title": "BOE Credit Conditions Survey",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "BOE Gov Bailey Speaks"
+  "title": "BOE Financial Stability Report",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "BOE Monetary Policy Report"
+  "title": "BOE Gov Bailey Speaks",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "BRC Retail Sales Monitor y/y"
+  "title": "BOE Monetary Policy Report",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "BRC Shop Price Index y/y"
+  "title": "BRC Retail Sales Monitor y/y",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Bank Holiday"
+  "title": "BRC Shop Price Index y/y",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "CB Leading Index m/m"
+  "title": "CB Leading Index m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "CBI Industrial Order Expectations"
+  "title": "CBI Industrial Order Expectations",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "CBI Realized Sales"
+  "title": "CBI Realized Sales",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "CPI y/y"
+  "title": "Claimant Count Change",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "Claimant Count Change"
+  "title": "Construction Output m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Construction Output m/m"
+  "title": "Construction PMI",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Construction PMI"
+  "title": "Consumer Inflation Expectations",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Consumer Inflation Expectations"
+  "title": "Core CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Core CPI y/y"
+  "title": "CPI y/y",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "FPC Meeting Minutes"
+  "title": "Final GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "FPC Statement"
+  "title": "Final Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Final GDP q/q"
+  "title": "Final Services PMI",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Final Manufacturing PMI"
+  "title": "Flash Manufacturing PMI",
+  "impact": "medium"
  },
  {
   "currency": "GBP",
-  "title": "Final Services PMI"
+  "title": "Flash Services PMI",
+  "impact": "medium"
  },
  {
   "currency": "GBP",
-  "title": "Flash Manufacturing PMI"
+  "title": "FPC Meeting Minutes",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Flash Services PMI"
+  "title": "FPC Statement",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "GDP m/m"
+  "title": "GDP m/m",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "GfK Consumer Confidence"
+  "title": "GfK Consumer Confidence",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Goods Trade Balance"
+  "title": "Goods Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "HPI y/y"
+  "title": "Halifax HPI m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Halifax HPI m/m"
+  "title": "Housing Equity Withdrawal q/q",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Housing Equity Withdrawal q/q"
+  "title": "HPI y/y",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Index of Services 3m/3m"
+  "title": "Index of Services 3m/3m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Industrial Production m/m"
+  "title": "Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Lloyds HPI m/m"
+  "title": "Lloyds HPI m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "M4 Money Supply m/m"
+  "title": "M4 Money Supply m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "MPC Member Breeden Speaks"
+  "title": "Manufacturing Production m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "MPC Member Dhingra Speaks"
+  "title": "Monetary Policy Report Hearings",
+  "impact": "medium"
  },
  {
   "currency": "GBP",
-  "title": "MPC Member Mann Speaks"
+  "title": "Monetary Policy Summary",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "MPC Member Pill Speaks"
+  "title": "Mortgage Approvals",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "MPC Member Taylor Speaks"
+  "title": "MPC Member Breeden Speaks",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "MPC Official Bank Rate Votes"
+  "title": "MPC Member Dhingra Speaks",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Manufacturing Production m/m"
+  "title": "MPC Member Mann Speaks",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Monetary Policy Report Hearings"
+  "title": "MPC Member Pill Speaks",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Monetary Policy Summary"
+  "title": "MPC Member Taylor Speaks",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Mortgage Approvals"
+  "title": "MPC Official Bank Rate Votes",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "Nationwide HPI m/m"
+  "title": "Nationwide HPI m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Net Lending to Individuals m/m"
+  "title": "Net Lending to Individuals m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Official Bank Rate"
+  "title": "Official Bank Rate",
+  "impact": "high"
  },
  {
   "currency": "GBP",
-  "title": "PPI Input m/m"
+  "title": "PPI Input m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "PPI Output m/m"
+  "title": "PPI Output m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Prelim Business Investment q/q"
+  "title": "Prelim Business Investment q/q",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Prelim GDP q/q"
+  "title": "Prelim GDP q/q",
+  "impact": "medium"
  },
  {
   "currency": "GBP",
-  "title": "Public Sector Net Borrowing"
+  "title": "Public Sector Net Borrowing",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "RICS House Price Balance"
+  "title": "Retail Sales m/m",
+  "impact": "medium"
  },
  {
   "currency": "GBP",
-  "title": "RPI y/y"
+  "title": "Revised Business Investment q/q",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Retail Sales m/m"
+  "title": "RICS House Price Balance",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Revised Business Investment q/q"
+  "title": "Rightmove HPI m/m",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Rightmove HPI m/m"
+  "title": "RPI y/y",
+  "impact": "low"
  },
  {
   "currency": "GBP",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "10-y Bond Auction"
+  "title": "10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "30-y Bond Auction"
+  "title": "30-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Average Cash Earnings y/y"
+  "title": "Average Cash Earnings y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "BOJ Core CPI y/y"
+  "title": "Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "JPY",
-  "title": "BOJ Outlook Report"
+  "title": "Bank Lending y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "BOJ Policy Rate"
+  "title": "BOJ Core CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "BOJ Press Conference"
+  "title": "BOJ Outlook Report",
+  "impact": "high"
  },
  {
   "currency": "JPY",
-  "title": "BOJ Summary of Opinions"
+  "title": "BOJ Policy Rate",
+  "impact": "high"
  },
  {
   "currency": "JPY",
-  "title": "BSI Manufacturing Index"
+  "title": "BOJ Press Conference",
+  "impact": "high"
  },
  {
   "currency": "JPY",
-  "title": "Bank Holiday"
+  "title": "BOJ Summary of Opinions",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Bank Lending y/y"
+  "title": "BSI Manufacturing Index",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Capital Spending q/y"
+  "title": "Capital Spending q/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Consumer Confidence"
+  "title": "Consumer Confidence",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Core Machinery Orders m/m"
+  "title": "Core Machinery Orders m/m",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Economy Watchers Sentiment"
+  "title": "Economy Watchers Sentiment",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Final GDP Price Index y/y"
+  "title": "Final GDP Price Index y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Final GDP q/q"
+  "title": "Final GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Final Manufacturing PMI"
+  "title": "Final Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Flash Manufacturing PMI"
+  "title": "Flash Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Household Spending y/y"
+  "title": "Household Spending y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Housing Starts y/y"
+  "title": "Housing Starts y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Leading Indicators"
+  "title": "Leading Indicators",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "M2 Money Stock y/y"
+  "title": "M2 Money Stock y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Monetary Base y/y"
+  "title": "Monetary Base y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Monetary Policy Meeting Minutes"
+  "title": "Monetary Policy Meeting Minutes",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Monetary Policy Statement"
+  "title": "Monetary Policy Statement",
+  "impact": "high"
  },
  {
   "currency": "JPY",
-  "title": "National Core CPI y/y"
+  "title": "National Core CPI y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "PPI y/y"
+  "title": "PPI y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Prelim GDP Price Index y/y"
+  "title": "Prelim GDP Price Index y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Prelim GDP q/q"
+  "title": "Prelim GDP q/q",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Prelim Industrial Production m/m"
+  "title": "Prelim Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Prelim Machine Tool Orders y/y"
+  "title": "Prelim Machine Tool Orders y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Retail Sales y/y"
+  "title": "Retail Sales y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Revised Industrial Production m/m"
+  "title": "Revised Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "SPPI y/y"
+  "title": "SPPI y/y",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Tankan Manufacturing Index"
+  "title": "Tankan Manufacturing Index",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Tankan Non-Manufacturing Index"
+  "title": "Tankan Non-Manufacturing Index",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Tertiary Industry Activity m/m"
+  "title": "Tertiary Industry Activity m/m",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Tokyo Core CPI y/y"
+  "title": "Tokyo Core CPI y/y",
+  "impact": "medium"
  },
  {
   "currency": "JPY",
-  "title": "Trade Balance"
+  "title": "Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "JPY",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "ANZ Business Confidence"
+  "title": "ANZ Business Confidence",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "ANZ Commodity Prices m/m"
+  "title": "ANZ Commodity Prices m/m",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Bank Holiday"
+  "title": "Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "NZD",
-  "title": "Building Consents m/m"
+  "title": "Building Consents m/m",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "BusinessNZ Manufacturing Index"
+  "title": "BusinessNZ Manufacturing Index",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "BusinessNZ Services Index"
+  "title": "BusinessNZ Services Index",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "CPI q/q"
+  "title": "Core Retail Sales q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Core Retail Sales q/q"
+  "title": "CPI q/q",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "Credit Card Spending y/y"
+  "title": "Credit Card Spending y/y",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Employment Change q/q"
+  "title": "Employment Change q/q",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "FPI m/m"
+  "title": "FPI m/m",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "GDP q/q"
+  "title": "GDP q/q",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "GDT Price Index"
+  "title": "GDT Price Index",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Inflation Expectations q/q"
+  "title": "Inflation Expectations q/q",
+  "impact": "medium"
  },
  {
   "currency": "NZD",
-  "title": "Labor Cost Index q/q"
+  "title": "Labor Cost Index q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Manufacturing Sales q/q"
+  "title": "Manufacturing Sales q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "NZIER Business Confidence"
+  "title": "NZIER Business Confidence",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Official Cash Rate"
+  "title": "Official Cash Rate",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "Overseas Trade Index q/q"
+  "title": "Overseas Trade Index q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "PPI Input q/q"
+  "title": "PPI Input q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "PPI Output q/q"
+  "title": "PPI Output q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "RBNZ Gov Breman Speaks"
+  "title": "RBNZ Gov Breman Speaks",
+  "impact": "medium"
  },
  {
   "currency": "NZD",
-  "title": "RBNZ Monetary Policy Statement"
+  "title": "RBNZ Monetary Policy Statement",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "RBNZ Press Conference"
+  "title": "RBNZ Press Conference",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "RBNZ Rate Statement"
+  "title": "RBNZ Rate Statement",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "Retail Sales q/q"
+  "title": "Retail Sales q/q",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Trade Balance"
+  "title": "Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "high"
  },
  {
   "currency": "NZD",
-  "title": "Visitor Arrivals m/m"
+  "title": "Visitor Arrivals m/m",
+  "impact": "low"
  },
  {
   "currency": "NZD",
-  "title": "Westpac Consumer Sentiment"
+  "title": "Westpac Consumer Sentiment",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "10-y Bond Auction"
+  "title": "10-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "30-y Bond Auction"
+  "title": "30-y Bond Auction",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "ADP Non-Farm Employment Change"
+  "title": "ADP Non-Farm Employment Change",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "ADP Weekly Employment Change"
+  "title": "ADP Weekly Employment Change",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "API Weekly Statistical Bulletin"
+  "title": "Advance GDP Price Index q/q",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Advance GDP Price Index q/q"
+  "title": "Advance GDP q/q",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Advance GDP q/q"
+  "title": "API Weekly Statistical Bulletin",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Average Hourly Earnings m/m"
+  "title": "Average Hourly Earnings m/m",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Bank Holiday"
+  "title": "Bank Holiday",
+  "impact": "holiday"
  },
  {
   "currency": "USD",
-  "title": "Bank Stress Test Results"
+  "title": "Bank Stress Test Results",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Beige Book"
+  "title": "Beige Book",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Building Permits"
+  "title": "Building Permits",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Business Inventories m/m"
+  "title": "Business Inventories m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "CB Consumer Confidence"
+  "title": "Capacity Utilization Rate",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "CB Leading Index m/m"
+  "title": "CB Consumer Confidence",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "CPI m/m"
+  "title": "CB Leading Index m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "CPI y/y"
+  "title": "Challenger Job Cuts y/y",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Capacity Utilization Rate"
+  "title": "Chicago PMI",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Challenger Job Cuts y/y"
+  "title": "Cleveland Fed Inflation Expectations",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Chicago PMI"
+  "title": "Construction Spending m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Cleveland Fed Inflation Expectations"
+  "title": "Consumer Credit m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Construction Spending m/m"
+  "title": "Core CPI m/m",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Consumer Credit m/m"
+  "title": "Core CPI y/y",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Core CPI m/m"
+  "title": "Core Durable Goods Orders m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Core CPI y/y"
+  "title": "Core PCE Price Index m/m",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Core Durable Goods Orders m/m"
+  "title": "Core PPI m/m",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Core PCE Price Index m/m"
+  "title": "Core Retail Sales m/m",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Core PPI m/m"
+  "title": "CPI m/m",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Core Retail Sales m/m"
+  "title": "CPI y/y",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Crude Oil Inventories"
+  "title": "Crude Oil Inventories",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Current Account"
+  "title": "Current Account",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Durable Goods Orders m/m"
+  "title": "Durable Goods Orders m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Empire State Manufacturing Index"
+  "title": "Empire State Manufacturing Index",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Employment Cost Index q/q"
+  "title": "Employment Cost Index q/q",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Existing Home Sales"
+  "title": "Existing Home Sales",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Economic Projections"
+  "title": "Factory Orders m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Meeting Minutes"
+  "title": "Fed Chairman Warsh Speaks",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Barkin Speaks"
+  "title": "Fed Chairman Warsh Testifies",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Barr Speaks"
+  "title": "Fed Monetary Policy Report",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Bowman Speaks"
+  "title": "Federal Budget Balance",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Cook Speaks"
+  "title": "Federal Funds Rate",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Daly Speaks"
+  "title": "Final GDP Price Index q/q",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Goolsbee Speaks"
+  "title": "Final GDP q/q",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Hammack Speaks"
+  "title": "Final Manufacturing PMI",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Jefferson Speaks"
+  "title": "Final Services PMI",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Kashkari Speaks"
+  "title": "Final Wholesale Inventories m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Logan Speaks"
+  "title": "Flash Manufacturing PMI",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Musalem Speaks"
+  "title": "Flash Services PMI",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Schmid Speaks"
+  "title": "FOMC Economic Projections",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Waller Speaks"
+  "title": "FOMC Meeting Minutes",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "FOMC Member Williams Speaks"
+  "title": "FOMC Member Barkin Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Press Conference"
+  "title": "FOMC Member Barr Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "FOMC Statement"
+  "title": "FOMC Member Bowman Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Factory Orders m/m"
+  "title": "FOMC Member Cook Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Fed Chairman Warsh Speaks"
+  "title": "FOMC Member Daly Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Fed Chairman Warsh Testifies"
+  "title": "FOMC Member Goolsbee Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Fed Monetary Policy Report"
+  "title": "FOMC Member Hammack Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Federal Budget Balance"
+  "title": "FOMC Member Jefferson Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Federal Funds Rate"
+  "title": "FOMC Member Kashkari Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Final GDP Price Index q/q"
+  "title": "FOMC Member Logan Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Final GDP q/q"
+  "title": "FOMC Member Musalem Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Final Manufacturing PMI"
+  "title": "FOMC Member Schmid Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Final Services PMI"
+  "title": "FOMC Member Waller Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Final Wholesale Inventories m/m"
+  "title": "FOMC Member Williams Speaks",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Flash Manufacturing PMI"
+  "title": "FOMC Press Conference",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Flash Services PMI"
+  "title": "FOMC Statement",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Goods Trade Balance"
+  "title": "Goods Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "HPI m/m"
+  "title": "Housing Starts",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Housing Starts"
+  "title": "HPI m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "ISM Manufacturing PMI"
+  "title": "Import Prices m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "ISM Manufacturing Prices"
+  "title": "Industrial Production m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "ISM Services PMI"
+  "title": "ISM Manufacturing PMI",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Import Prices m/m"
+  "title": "ISM Manufacturing Prices",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Industrial Production m/m"
+  "title": "ISM Services PMI",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "JOLTS Job Openings"
+  "title": "JOLTS Job Openings",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Loan Officer Survey"
+  "title": "Loan Officer Survey",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Mortgage Delinquencies"
+  "title": "Mortgage Delinquencies",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "NAHB Housing Market Index"
+  "title": "NAHB Housing Market Index",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "NFIB Small Business Index"
+  "title": "Natural Gas Storage",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Natural Gas Storage"
+  "title": "New Home Sales",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "New Home Sales"
+  "title": "NFIB Small Business Index",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Non-Farm Employment Change"
+  "title": "Non-Farm Employment Change",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Omdia Total Vehicle Sales"
+  "title": "Omdia Total Vehicle Sales",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "PPI m/m"
+  "title": "Pending Home Sales m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Pending Home Sales m/m"
+  "title": "Personal Income m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Personal Income m/m"
+  "title": "Personal Spending m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Personal Spending m/m"
+  "title": "Philly Fed Manufacturing Index",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Philly Fed Manufacturing Index"
+  "title": "PPI m/m",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Prelim Benchmark Payrolls Revision"
+  "title": "Prelim Benchmark Payrolls Revision",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Prelim GDP Price Index q/q"
+  "title": "Prelim GDP Price Index q/q",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Prelim GDP q/q"
+  "title": "Prelim GDP q/q",
+  "impact": "high"
  },
  {
   "currency": "USD",
-  "title": "Prelim Nonfarm Productivity q/q"
+  "title": "Prelim Nonfarm Productivity q/q",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Prelim Unit Labor Costs q/q"
+  "title": "Prelim Unit Labor Costs q/q",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Prelim UoM Consumer Sentiment"
+  "title": "Prelim UoM Consumer Sentiment",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Prelim UoM Inflation Expectations"
+  "title": "Prelim UoM Inflation Expectations",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Prelim Wholesale Inventories m/m"
+  "title": "Prelim Wholesale Inventories m/m",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "President Trump Speaks"
+  "title": "President Trump Speaks",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "RCM/TIPP Economic Optimism"
+  "title": "RCM/TIPP Economic Optimism",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Retail Sales m/m"
+  "title": "Retail Sales m/m",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Revised Nonfarm Productivity q/q"
+  "title": "Revised Nonfarm Productivity q/q",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Revised Unit Labor Costs q/q"
+  "title": "Revised Unit Labor Costs q/q",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Revised UoM Consumer Sentiment"
+  "title": "Revised UoM Consumer Sentiment",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Revised UoM Inflation Expectations"
+  "title": "Revised UoM Inflation Expectations",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Richmond Manufacturing Index"
+  "title": "Richmond Manufacturing Index",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "S&P/CS Composite-20 HPI y/y"
+  "title": "S&P/CS Composite-20 HPI y/y",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "TIC Long-Term Purchases"
+  "title": "TIC Long-Term Purchases",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Trade Balance"
+  "title": "Trade Balance",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Treasury Currency Report"
+  "title": "Treasury Currency Report",
+  "impact": "low"
  },
  {
   "currency": "USD",
-  "title": "Treasury Sec Bessent Speaks"
+  "title": "Treasury Sec Bessent Speaks",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Unemployment Claims"
+  "title": "Unemployment Claims",
+  "impact": "medium"
  },
  {
   "currency": "USD",
-  "title": "Unemployment Rate"
+  "title": "Unemployment Rate",
+  "impact": "high"
  }
 ]
