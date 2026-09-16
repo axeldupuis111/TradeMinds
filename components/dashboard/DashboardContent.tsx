@@ -288,6 +288,8 @@ export default function DashboardContent({
   const curveOffset =
     displayAccount ? soldeAffiche - (displayAccount.account_size + totalPnl) : 0;
   const initialBalance = (displayAccount?.account_size ?? 0) + curveOffset;
+  // ⚠️ Le trait de référence ne s'appelle « capital initial » que s'il l'est.
+  const curveRecale = Math.abs(curveOffset) > 0.01;
 
   const equityCurveData = useMemo(() => {
     if (filteredAll.length === 0) return [];
@@ -558,7 +560,7 @@ export default function DashboardContent({
       {/* ── Évolution du capital — le grand graphique, pleine largeur ─── */}
       {equityCurveData.length > 0 && (
         <StaggerItem className="mt-6">
-          <EquityCurve data={equityCurveData} initialBalance={initialBalance} currency={deviseUnique ?? displayCurrency} devisesMelangees={deviseUnique === null} />
+          <EquityCurve data={equityCurveData} initialBalance={initialBalance} currency={deviseUnique ?? displayCurrency} devisesMelangees={deviseUnique === null} recale={curveRecale} />
         </StaggerItem>
       )}
 

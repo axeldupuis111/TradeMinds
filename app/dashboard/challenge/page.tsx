@@ -77,6 +77,7 @@ interface AccountStats {
    * dessus et sa ligne de référence doit suivre le même décalage.
    */
   curveBaseline: number;
+  curveRecale: boolean;
 }
 
 const PROP_FIRMS = [
@@ -833,7 +834,7 @@ function AccountCard({
             carte. Le composant accepte `currency` depuis le début, et
             `cur` était déjà à portée : la règle était écrite, l'appel ne la
             passait pas. */}
-        <EquityCurve data={stats.equityCurveData} initialBalance={stats.curveBaseline} currency={cur} />
+        <EquityCurve data={stats.equityCurveData} initialBalance={stats.curveBaseline} currency={cur} recale={stats.curveRecale} />
       </div>
     </div>
   );
@@ -1057,7 +1058,24 @@ export default function ChallengePage() {
       const wins = tradePnls.filter((p) => p > 0).length;
       statsMap[ac.id] = {
         balance: newBalance,
-        currentPnl: totalPnl,
+        /**
+         * ⚠️⚠️ LE MÊME FAIT, DEUX CHIFFRES, SUR LA MÊME CARTE. Cette valeur
+         * était la somme des trades ENREGISTRÉS chez nous, pendant que les
+         * barres de progression juste au-dessus mesuraient la règle sur le
+         * SOLDE, comme le fait la prop firm. Sur un compte synchronisé les deux
+         * ne coïncident pas : relevé le 2026-09-17 sur un compte réel, la
+         * balance annonçait 50 120,64 $ pour un capital de 50 000 $ et la carte
+         * « P&L total » affichait -449,36 $ juste en dessous. L'addition du
+         * lecteur ne tombait pas, sur l'écran qui sert à vérifier qu'on ne
+         * franchit pas une limite.
+         *
+         * ⚠️ C'EST LA RÈGLE DÉJÀ ÉCRITE pour cette page (voir
+         * `lib/montants-du-suivi.test.ts`, « la barre de progression et la
+         * carte P&L s'écrivent pareil ») : elle n'avait été appliquée qu'aux
+         * comptes sans synchro, les seuls où les deux formules donnent le même
+         * nombre.
+         */
+        currentPnl: newBalance - ac.account_size,
         todayPnl: todayTotal,
         equityCurveData: eqData,
         tradePnls,
@@ -1068,6 +1086,7 @@ export default function ChallengePage() {
         equity: resolved.equity,
         openPositions: resolved.openPositions,
         curveBaseline: ac.account_size + resolved.curveOffset,
+        curveRecale: Math.abs(resolved.curveOffset) > 0.01,
       };
     }
 
@@ -1358,7 +1377,7 @@ export default function ChallengePage() {
       {activeAccounts.length > 0 && (
         <div className="mt-8 space-y-6">
           {activeAccounts.map((ac) => {
-            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradePnls: [], tradeCount: 0, winrate: 0, fromBroker: false, live: false, equity: null, openPositions: 0, curveBaseline: ac.account_size };
+            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradePnls: [], tradeCount: 0, winrate: 0, fromBroker: false, live: false, equity: null, openPositions: 0, curveBaseline: ac.account_size, curveRecale: false };
             return (
               <AccountCard
                 key={ac.id}

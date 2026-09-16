@@ -33,9 +33,18 @@ interface Props {
    * sur aucun compte. Mieux vaut ne rien tracer que tracer un mensonge.
    */
   devisesMelangees?: boolean;
+  /**
+   * ⚠️⚠️ LE TRAIT NE DIT PAS « CAPITAL INITIAL » QUAND IL N'EST PAS LE CAPITAL
+   * INITIAL. Dès qu'un courtier pousse son solde, la courbe est décalée d'un
+   * bloc pour finir exactement dessus : les écarts (donc le drawdown) restent
+   * intacts, mais le NIVEAU de départ n'est plus le capital saisi. Mesuré sur
+   * un compte réel : capital initial 50 000 $, trait à 50 570 $. Le lecteur
+   * lisait 570 $ de capital de départ qui n'ont jamais existé.
+   */
+  recale?: boolean;
 }
 
-export default function EquityCurve({ data, initialBalance, currency = DEFAULT_CURRENCY, devisesMelangees = false }: Props) {
+export default function EquityCurve({ data, initialBalance, currency = DEFAULT_CURRENCY, devisesMelangees = false, recale = false }: Props) {
   const { t } = useLanguage();
   const c = useChartColors();
   const { theme } = useTheme();
@@ -163,7 +172,7 @@ export default function EquityCurve({ data, initialBalance, currency = DEFAULT_C
               stroke={c.referenceLine}
               strokeDasharray="4 4"
               strokeWidth={1}
-              label={{ value: t("challenge_initial_capital"), position: "right", fill: c.axis, fontSize: 10 }}
+              label={{ value: t(recale ? "equity_depart_recale" : "challenge_initial_capital"), position: "right", fill: c.axis, fontSize: 10 }}
             />
             <Area
               type="monotone"

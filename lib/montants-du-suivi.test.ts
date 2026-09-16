@@ -86,4 +86,52 @@ describe("les montants du suivi de compte s'écrivent au centime", () => {
     expect(src).toContain("{money(value, currency, { digits: 2 })} / {money(max, currency, { digits: 2 })}");
     expect(src).toContain("{money(currentPnl, cur, { digits: 2, signed: true })}");
   });
+
+  /**
+   * ⚠️⚠️ ET ELLES NE MESURENT PLUS DEUX CHOSES DIFFÉRENTES. La règle ci-dessus
+   * n'avait été appliquée qu'à l'ÉCRITURE du nombre, pas à son CALCUL : la
+   * carte sommait les trades enregistrés chez nous pendant que les barres
+   * mesuraient la règle sur le SOLDE, comme le fait la prop firm. Les deux
+   * formules ne donnent le même nombre que sur un compte sans synchro, c'est
+   * à dire sur tous ceux où la divergence était invisible. Relevé le
+   * 2026-09-17 : balance 50 120,64 $ pour un capital de 50 000 $, et
+   * « P&L total -449,36 $ » juste en dessous.
+   */
+  it("la carte P&L se mesure sur le solde, comme les barres", () => {
+    const src = source();
+    expect(src, "la carte P&L est repassée à la somme des trades").toContain(
+      "currentPnl: newBalance - ac.account_size",
+    );
+    expect(src).not.toContain("currentPnl: totalPnl,");
+    // Et la règle des barres vient bien du fichier unique qui la porte.
+    expect(src).toContain("computeChallengeRules(");
+  });
+
+  /**
+   * ⚠️ LE TRAIT DE RÉFÉRENCE NE S'APPELLE « CAPITAL INITIAL » QUE S'IL L'EST.
+   * Quand un courtier pousse son solde, la courbe est décalée d'un bloc pour
+   * finir dessus : le drawdown reste juste, le niveau de départ non. Sur le
+   * compte mesuré, le trait était à 50 570 $ pour un capital de 50 000 $.
+   */
+  it("le trait de départ dit lequel il est", () => {
+    const chart = sansCommentaires(
+      readFileSync(join(process.cwd(), "components/charts/EquityCurve.tsx"), "utf8"),
+    );
+    expect(chart, "le trait annonce « capital initial » en toute circonstance").toContain(
+      't(recale ? "equity_depart_recale" : "challenge_initial_capital")',
+    );
+    const page = source();
+    expect(page, "la page ne dit pas au graphique si elle a recalé la courbe").toContain(
+      "recale={stats.curveRecale}",
+    );
+    // Et les quatre langues le disent, chacune dans la sienne.
+    const dits = new Set<string>();
+    for (const langue of ["fr", "en", "de", "es"]) {
+      const src = readFileSync(join(process.cwd(), `lib/i18n/${langue}.ts`), "utf8");
+      const m = /"equity_depart_recale":\s*"([^"]+)"/.exec(src);
+      expect(m, `equity_depart_recale manquante en ${langue}`).not.toBeNull();
+      dits.add(m![1]);
+    }
+    expect(dits.size, "les quatre langues disent la même chose").toBe(4);
+  });
 });

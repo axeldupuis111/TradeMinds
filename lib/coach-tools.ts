@@ -30,6 +30,7 @@ import { verifierCoherence } from "./strategy-coherence";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
+import { computeChallengeRules } from "@/lib/challenge-rules";
 import { getFuturesContract } from "@/lib/futures-contracts";
 import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
 import { calculatePips } from "@/lib/pips";
@@ -1861,7 +1862,7 @@ export async function executeCoachTool(
       case "get_challenge_status": {
         let q = supabase
           .from("prop_challenges")
-          .select("id, type, firm, account_size, currency, synced_balance, synced_equity, synced_open_positions, synced_at, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, start_date, status")
+          .select("id, type, firm, account_size, currency, synced_currency, synced_balance, synced_equity, synced_open_positions, synced_at, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, start_date, status")
           .eq("user_id", userId)
           .order("created_at", { ascending: false });
         if (isUuid(input.account_id)) q = q.eq("id", input.account_id);
@@ -1889,15 +1890,58 @@ export async function executeCoachTool(
         const resolved = resolveAccountBalance(acc as unknown as SyncedAccountState, tradesPnl);
         const size = Number(acc.account_size) || 0;
         const targetPct = Number(acc.profit_target_pct) || 0;
-        const dailyDdPct = Number(acc.max_daily_dd_pct) || 0;
-        const totalDdPct = Number(acc.max_total_dd_pct) || 0;
 
+        /**
+         * ⚠️⚠️ LE COACH RÉPONDAIT AUTRE CHOSE QUE L'ÉCRAN, SUR LA SEULE QUESTION
+         * QUI ARRÊTE UN TRADER : « combien me reste-t-il de drawdown ? »
+         *
+         * La page (`computeChallengeRules`) et le veilleur qui déclenche
+         * l'alerte d'arrêt (`ChallengeGuardian`) mesurent la règle sur le SOLDE,
+         * parce que c'est ce que mesure la prop firm. Cet outil-ci la mesurait
+         * sur la somme des trades ENREGISTRÉS chez nous. Les deux ne coïncident
+         * que tant qu'aucun courtier ne pousse son solde : dès qu'il en pousse
+         * un, l'écart vaut tout ce que notre journal ignore (dépôts, retraits,
+         * trades passés hors synchro). Mesuré le 2026-09-17 sur un compte réel :
+         * 570 $ d'écart, soit +120,64 $ pour l'écran et -449,36 $ pour le coach,
+         * sur le même compte, le même jour.
+         *
+         * ⚠️ ET LE DRAWDOWN GLISSANT ÉTAIT PUREMENT ABSENT. `trailing_drawdown`
+         * n'était même pas lu : sur un compte à drawdown glissant (un vrai, chez
+         * myfundedfutures), le coach annonçait la marge pleine alors qu'elle se
+         * mesure depuis le PLUS HAUT atteint. L'erreur va dans le sens qui
+         * grille le compte.
+         *
+         * La règle vit dans un seul fichier ; il fallait l'appeler, pas la
+         * réécrire.
+         */
         // Perte du jour : uniquement les trades ouverts aujourd'hui (jour local).
+        // ⚠️ Elle vient forcément du journal : aucun courtier ne pousse un
+        // chiffre à la journée, il ne pousse qu'un solde.
         const todayStart = startOfDateKeyUtc(localDateKeyFor(timezone), timezone);
         const todayPnl = todayStart
           ? rows.filter((t) => new Date(String(t.open_time)).getTime() >= todayStart.getTime())
                 .reduce((s, t) => s + netPnl(t), 0)
           : 0;
+
+        /**
+         * La courbe des soldes successifs, calée comme sur la page : elle part
+         * du solde affiché moins la performance connue, pour finir exactement
+         * sur le solde affiché. Seul le drawdown GLISSANT la lit.
+         */
+        let courant = resolved.balance - tradesPnl;
+        const courbe = rows.map((t) => (courant += netPnl(t)));
+        const regles = computeChallengeRules(
+          {
+            account_size: size,
+            profit_target_pct: targetPct,
+            max_daily_dd_pct: Number(acc.max_daily_dd_pct) || 0,
+            max_total_dd_pct: Number(acc.max_total_dd_pct) || 0,
+            trailing_drawdown: acc.trailing_drawdown === true,
+          },
+          resolved.balance,
+          todayPnl,
+          courbe,
+        );
 
         const round = (n: number) => Math.round(n * 100) / 100;
         return {
@@ -1910,16 +1954,26 @@ export async function executeCoachTool(
             balance_from_broker: resolved.fromBroker,
             live: resolved.live,
             open_positions: resolved.openPositions,
-            performance: round(resolved.tradesPnl),
-            profit_target: targetPct > 0 ? round((size * targetPct) / 100) : null,
-            profit_remaining: targetPct > 0 ? round((size * targetPct) / 100 - resolved.tradesPnl) : null,
+            /** Le compte, mesuré comme la prop firm le mesure : sur son solde. */
+            performance: round(regles.currentPnl),
+            /** Ce que notre journal connaît, qui peut en ignorer une partie. */
+            performance_journal: round(resolved.tradesPnl),
+            profit_target: targetPct > 0 ? round(regles.profitMax) : null,
+            /**
+             * ⚠️ PAS `profitRemainingEur` : la barre de la page s'arrête à zéro,
+             * ce qui est juste pour une jauge et faux pour une réponse. Un
+             * compte en perte doit remonter sa perte AVANT d'aller chercher
+             * l'objectif, et c'est ce total-là que le trader demande.
+             */
+            profit_remaining: targetPct > 0 ? round(regles.profitMax - regles.currentPnl) : null,
             daily_loss_today: round(todayPnl),
-            daily_dd_remaining: dailyDdPct > 0 ? round((size * dailyDdPct) / 100 + Math.min(0, todayPnl)) : null,
-            total_dd_remaining: totalDdPct > 0 ? round((size * totalDdPct) / 100 + Math.min(0, resolved.tradesPnl)) : null,
+            daily_dd_remaining: regles.dailyDdMax > 0 ? round(regles.dailyDdRemainingEur) : null,
+            total_dd_remaining: regles.totalDdMax > 0 ? round(regles.totalDdRemainingEur) : null,
+            trailing_drawdown: acc.trailing_drawdown === true,
             trades_count: rows.length,
             start_date: acc.start_date,
             note: resolved.fromBroker
-              ? "Solde annoncé par le courtier, il fait autorité."
+              ? "Solde annoncé par le courtier, il fait autorité : les règles de la prop firm se mesurent dessus, pas sur les trades enregistrés ici."
               : "Solde reconstitué depuis les trades enregistrés.",
           },
         };

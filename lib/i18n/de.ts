@@ -722,6 +722,7 @@ const dict: Record<string, string> = {
   "equity_empty": "Importiere deine Trades, um deine Equity-Kurve zu sehen.",
   "equity_balance": "Balance",
   "equity_date": "Datum",
+  "equity_depart_recale": "Start auf den Broker-Kontostand ausgerichtet",
   "challenge_closed": "Geschlossen",
   "challenge_confirm_closed": "Dieses Tracking schließen?",
   "challenge_marked_closed": "Tracking geschlossen.",
