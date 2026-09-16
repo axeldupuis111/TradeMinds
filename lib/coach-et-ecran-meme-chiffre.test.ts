@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { executeCoachTool } from "./coach-tools";
@@ -218,5 +220,62 @@ describe("la liste des comptes vue par le coach", () => {
     const [a] = await lister([{ ...BASE, balance: 50_000 }], []);
     expect(Object.keys(a)).toContain("balance");
     expect(typeof a.balance).toBe("number");
+  });
+});
+
+/**
+ * ⚠️⚠️ LE COACH POUVAIT CRÉER UN COMPTE DE PROP FIRM, MAIS PAS DIRE QU'IL EST
+ * À DRAWDOWN GLISSANT. Le drapeau était figé à `false` dans l'insertion et
+ * absent des deux schémas d'outil. Apex, MyFundedFutures et Topstep sont tous
+ * les trois à drawdown glissant : le compte créé mesurait donc sa marge depuis
+ * le capital au lieu du plus haut atteint, c'est-à-dire qu'il en annonçait
+ * toujours plus qu'il n'en restait. Le formulaire de la page, lui, pose la
+ * question depuis toujours.
+ */
+describe("la création d'un compte par le coach", () => {
+  function clientEcrivain(): { client: SupabaseClient; ecrit: Record<string, unknown>[] } {
+    const ecrit: Record<string, unknown>[] = [];
+    const builder: Record<string, unknown> = {};
+    for (const m of ["select", "eq", "order", "limit", "range"]) builder[m] = () => builder;
+    builder.insert = (row: Record<string, unknown>) => { ecrit.push(row); return builder; };
+    builder.update = (row: Record<string, unknown>) => { ecrit.push(row); return builder; };
+    builder.single = () => Promise.resolve({ data: { id: ACC }, error: null });
+    builder.maybeSingle = () => Promise.resolve({ data: { id: ACC }, error: null });
+    builder.then = (r: (v: unknown) => unknown) => r({ data: [{ id: ACC }], error: null });
+    return { client: { from: vi.fn(() => builder) } as unknown as SupabaseClient, ecrit };
+  }
+
+  it("pose le drawdown glissant quand on le lui demande", async () => {
+    const { client, ecrit } = clientEcrivain();
+    await executeCoachTool(client, USER, "create_account", {
+      type: "prop", account_size: 50_000, firm: "MyFundedFutures",
+      max_total_dd_pct: 4, trailing_drawdown: true,
+    }, "Europe/Paris");
+    expect(ecrit[0]?.trailing_drawdown, "le compte est créé en drawdown statique").toBe(true);
+  });
+
+  it("reste statique par défaut, et sur un compte personnel", async () => {
+    const { client, ecrit } = clientEcrivain();
+    await executeCoachTool(client, USER, "create_account", { type: "prop", account_size: 50_000 }, "Europe/Paris");
+    expect(ecrit[0]?.trailing_drawdown).toBe(false);
+    const b = clientEcrivain();
+    await executeCoachTool(b.client, USER, "create_account", {
+      type: "personal", account_size: 5_000, trailing_drawdown: true,
+    }, "Europe/Paris");
+    expect(b.ecrit[0]?.trailing_drawdown, "un compte personnel n'a pas de drawdown de prop firm").toBe(false);
+  });
+
+  it("sait le changer ensuite", async () => {
+    const { client, ecrit } = clientEcrivain();
+    await executeCoachTool(client, USER, "update_account", {
+      account_id: ACC, trailing_drawdown: true,
+    }, "Europe/Paris");
+    expect(ecrit.some((r) => r.trailing_drawdown === true), "le champ n'est pas modifiable").toBe(true);
+  });
+
+  it("le schéma des deux outils l'expose", () => {
+    const src = readFileSync(join(process.cwd(), "lib/coach-tools.ts"), "utf8");
+    const schemas = Array.from(src.matchAll(/trailing_drawdown: \{ type: "boolean"/g));
+    expect(schemas.length, "le modèle ne peut pas renseigner ce qu'il ne voit pas").toBe(2);
   });
 });

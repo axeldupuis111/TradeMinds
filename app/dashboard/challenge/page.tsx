@@ -1407,6 +1407,7 @@ export default function ChallengePage() {
                       profitTargetPct: ac.profit_target_pct,
                       maxDailyDdPct: ac.max_daily_dd_pct,
                       maxTotalDdPct: ac.max_total_dd_pct,
+                      trailingDrawdown: ac.trailing_drawdown ?? false,
                       currency: accountCurrency(ac),
                       lang,
                     });

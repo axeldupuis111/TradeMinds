@@ -839,6 +839,7 @@ export const COACH_TOOLS = [
         profit_target_pct: { type: "number" },
         max_daily_dd_pct: { type: "number", description: "Drawdown journalier max, en %." },
         max_total_dd_pct: { type: "number", description: "Drawdown total max, en %." },
+        trailing_drawdown: { type: "boolean", description: "Drawdown mesuré depuis le plus haut atteint (Apex, MyFundedFutures, Topstep) plutôt que depuis le capital." },
         market_type: { type: "string", enum: ["cfd", "futures"] },
       },
       required: ["type", "account_size"],
@@ -859,6 +860,7 @@ export const COACH_TOOLS = [
         profit_target_pct: { type: "number" },
         max_daily_dd_pct: { type: "number" },
         max_total_dd_pct: { type: "number" },
+        trailing_drawdown: { type: "boolean", description: "Drawdown mesuré depuis le plus haut atteint (Apex, MyFundedFutures, Topstep) plutôt que depuis le capital." },
         status: { type: "string", enum: ["active", "passed", "failed", "archived"] },
       },
       required: ["account_id"],
@@ -2720,7 +2722,15 @@ export async function executeCoachTool(
           profit_target_pct: type === "prop" ? (asNumber(input.profit_target_pct, 0, 100) ?? 8) : 0,
           max_daily_dd_pct: type === "prop" ? (asNumber(input.max_daily_dd_pct, 0, 100) ?? 5) : 0,
           max_total_dd_pct: type === "prop" ? (asNumber(input.max_total_dd_pct, 0, 100) ?? 10) : 0,
-          trailing_drawdown: false,
+          /**
+           * ⚠️⚠️ CE DRAPEAU ÉTAIT FIGÉ À FAUX, ET ABSENT DU SCHÉMA. Le coach
+           * peut créer un compte de prop firm, mais pas dire qu'il est à
+           * drawdown GLISSANT : Apex, MyFundedFutures et Topstep le sont tous
+           * les trois. Le compte créé mesurait donc sa marge depuis le capital
+           * au lieu du plus haut atteint, ce qui en annonce toujours plus qu'il
+           * n'en reste. Le formulaire de la page, lui, pose la question.
+           */
+          trailing_drawdown: type === "prop" && input.trailing_drawdown === true,
         };
         const { data, error } = await supabase.from("prop_challenges").insert(row).select("id").single();
         if (error || !data) return fail("Création du compte impossible.");
@@ -2736,6 +2746,7 @@ export async function executeCoachTool(
         const patch: Record<string, unknown> = {};
         const size = asNumber(input.account_size, 1, 100_000_000);
         if (size != null) patch.account_size = size;
+        if (typeof input.trailing_drawdown === "boolean") patch.trailing_drawdown = input.trailing_drawdown;
         for (const key of ["profit_target_pct", "max_daily_dd_pct", "max_total_dd_pct"] as const) {
           const v = asNumber(input[key], 0, 100);
           if (v != null) patch[key] = v;

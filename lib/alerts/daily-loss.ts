@@ -9,6 +9,7 @@ import { startOfLocalDayUtc } from "@/lib/timezone";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { alertGardeFouMuet } from "@/lib/cron-alert";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
+import { computeChallengeRules } from "@/lib/challenge-rules";
 
 type AlertLang = "fr" | "en" | "de" | "es";
 
@@ -342,39 +343,39 @@ export async function checkDrawdownAlert(
     });
 
     let cumulative = 0;
-    let peakCumulative = 0; // pic du cumul (pour le trailing)
     for (const t of trades) {
       cumulative += t.pnl + (t.commission || 0) + (t.swap || 0);
-      if (cumulative > peakCumulative) peakCumulative = cumulative;
     }
-
-    const trailing = !!challenge.trailing_drawdown;
 
     /**
      * ⚠️⚠️ CETTE ALERTE MESURAIT LE DRAWDOWN SUR NOTRE JOURNAL, L'ÉCRAN LE
      * MESURE SUR LE SOLDE. Dès qu'un courtier pousse son solde, les deux
-     * divergent de tout ce que le journal ignore (dépôts, retraits, trades
-     * passés hors synchro) : mesuré le 2026-09-17 sur un compte réel, 570 $.
-     * Une notification « tu as percé ton drawdown » qui contredit la page est
-     * pire qu'une absence de notification.
+     * divergent de tout ce que le journal ignore : dépôts, retraits, trades
+     * passés hors synchro. Mesuré le 2026-09-17 sur un compte réel, 570 $. Une
+     * notification « tu as percé ton drawdown » qui contredit la page vers
+     * laquelle elle renvoie est pire qu'une absence de notification.
      *
-     * ⚠️ Le décalage ne change RIEN au drawdown glissant (il s'annule entre le
-     * pic et le solde) : seul le drawdown statique, mesuré depuis le capital,
-     * bougeait. C'est exactement la moitié qui manquait.
+     * ⚠️ Et la règle ne se réécrit plus ici : `computeChallengeRules` la porte
+     * pour la page, le veilleur, le coach et le rapport PDF.
      */
-    const resolu = resolveAccountBalance(
-      challenge as unknown as SyncedAccountState,
-      cumulative,
-    );
-    const decalage = resolu.balance - (accountSize + cumulative);
-    const soldeApres = resolu.balance;
-    // État avant ce lot : on retire le P&L du lot (le pic n'est pas relevé par une perte).
-    const soldeAvant = soldeApres - batchNetPnl;
-    const pic = Math.max(accountSize, accountSize + decalage + peakCumulative);
+    const resolu = resolveAccountBalance(challenge as unknown as SyncedAccountState, cumulative);
 
-    // DD trailing = recul depuis le pic ; DD statique = perte depuis le capital.
-    const afterDD = trailing ? Math.max(0, pic - soldeApres) : Math.max(0, accountSize - soldeApres);
-    const beforeDD = trailing ? Math.max(0, pic - soldeAvant) : Math.max(0, accountSize - soldeAvant);
+    // La courbe des SOLDES successifs, calée comme sur la page : elle part du
+    // solde affiché moins la performance connue, pour finir exactement dessus.
+    let courant = resolu.balance - cumulative;
+    const courbe = trades.map((t) => (courant += t.pnl + (t.commission || 0) + (t.swap || 0)));
+
+    const config = {
+      account_size: accountSize,
+      profit_target_pct: 0,
+      max_daily_dd_pct: 0,
+      max_total_dd_pct: ddPct,
+      trailing_drawdown: !!challenge.trailing_drawdown,
+    };
+    // État avant ce lot : on retire son P&L du solde. Le PIC, lui, ne bouge pas
+    // (une perte ne relève pas un plus haut), donc la même courbe sert aux deux.
+    const afterDD = computeChallengeRules(config, resolu.balance, 0, courbe).totalDdUsed;
+    const beforeDD = computeChallengeRules(config, resolu.balance - batchNetPnl, 0, courbe).totalDdUsed;
 
     const warn = limit * 0.8;
     const copy = DRAWDOWN_COPY[asLang(language)];

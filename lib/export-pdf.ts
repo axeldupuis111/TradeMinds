@@ -1,3 +1,4 @@
+import { computeChallengeRules } from "@/lib/challenge-rules";
 import jsPDF from "jspdf";
 import { currencySymbol } from "@/lib/account-currency";
 import { Pdf, C, money, signedMoney, pct, groupNum, setMoneySymbol, type RGB, setPdfLocale } from "@/lib/pdf/kit";
@@ -30,6 +31,8 @@ interface PdfAccountData {
   profitTargetPct: number;
   maxDailyDdPct: number;
   maxTotalDdPct: number;
+  /** Drawdown mesure depuis le plus haut atteint, et non depuis le capital. */
+  trailingDrawdown?: boolean;
   /** Devise du compte (code ISO). Absente = euro. */
   currency?: string | null;
   lang?: "fr" | "en" | "de" | "es";
@@ -285,16 +288,34 @@ export async function buildAccountPdf(data: PdfAccountData): Promise<jsPDF> {
   if (data.type === "prop") {
     pdf.section(L.objectives);
 
-    const targetAmount = (data.accountSize * data.profitTargetPct) / 100;
-    const dailyMax = (data.accountSize * data.maxDailyDdPct) / 100;
-    const totalMax = (data.accountSize * data.maxTotalDdPct) / 100;
-    const ddTotalUsed = Math.max(0, data.accountSize - data.balance);
-    const ddDailyUsed = Math.max(0, -data.todayPnl);
+    /**
+     * ⚠️⚠️ CE RAPPORT REFAISAIT LA REGLE A LA MAIN, ET SANS LE DRAWDOWN
+     * GLISSANT. `max(0, capital - solde)` mesure la marge depuis le capital de
+     * depart ; un compte a drawdown glissant la mesure depuis le PLUS HAUT
+     * atteint. Un compte monte a +2 000 puis redescendu a +1 000 sortait un PDF
+     * annoncant « 0 % consomme » avec la moitie de sa marge partie. Le PDF est
+     * ce que le trader envoie a sa prop firm.
+     *
+     * La regle vit dans lib/challenge-rules.ts : la page, le veilleur, le coach
+     * et l'alerte passent par lui. Ce rapport aussi, maintenant.
+     */
+    const regles = computeChallengeRules(
+      {
+        account_size: data.accountSize,
+        profit_target_pct: data.profitTargetPct,
+        max_daily_dd_pct: data.maxDailyDdPct,
+        max_total_dd_pct: data.maxTotalDdPct,
+        trailing_drawdown: data.trailingDrawdown === true,
+      },
+      data.balance,
+      data.todayPnl,
+      data.equityCurve.map((p) => p.balance),
+    );
 
     const defs = [
-      { label: L.profitTarget, used: Math.max(0, data.totalPnl), max: targetAmount, positive: true },
-      { label: L.dailyDd, used: ddDailyUsed, max: dailyMax, positive: false },
-      { label: L.totalDd, used: ddTotalUsed, max: totalMax, positive: false },
+      { label: L.profitTarget, used: regles.profitUsed, max: regles.profitMax, positive: true },
+      { label: L.dailyDd, used: regles.dailyDdUsed, max: regles.dailyDdMax, positive: false },
+      { label: L.totalDd, used: regles.totalDdUsed, max: regles.totalDdMax, positive: false },
     ].filter((b) => b.max > 0);
 
     pdf.bars(
