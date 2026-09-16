@@ -121,4 +121,48 @@ describe("les prix de l'abonnement", () => {
       "prix écrits à la main, donc figés dans une langue : " + fautes.join(", "),
     ).toEqual([]);
   });
+
+  /**
+   * ⚠️⚠️ LE PIÈGE DU REPLI, ENCORE VIVANT UN ÉCRAN PLUS LOIN. L'en-tête de
+   * `lib/prix.ts` raconte qu'une première version entourait `Intl` d'un `try`
+   * dont le `catch` écrivait « 14,99 € » à la main, virgule comprise. La leçon
+   * a été appliquée à `prixLisible`… et pas à `formatMoney`, sur la page
+   * d'abonnement, qui gardait exactement le même repli :
+   * `${nombre(cents / 100, 2)} €`.
+   *
+   * Ce montant-là vient de STRIPE, donc dans la monnaie de l'abonnement, et le
+   * repli ignorait purement son argument `currency` : une facture qui n'est pas
+   * en euros se serait affichée en euros, sur l'écran où l'on paie.
+   *
+   * Une devise inconnue s'écrit par son CODE, jamais par un symbole faux :
+   * c'est déjà ce que fait `currencySymbol`.
+   */
+  it("le montant venu de Stripe ne retombe jamais sur l'euro", () => {
+    const src = sansCommentaires(
+      readFileSync(join(process.cwd(), "app/dashboard/upgrade/page.tsx"), "utf8"),
+    );
+    const i = src.indexOf("function formatMoney(");
+    expect(i, "formatMoney a changé de nom").toBeGreaterThan(0);
+    // Frontière : les accolades de la fonction, comptées.
+    let prof = 0;
+    let fin = i;
+    for (let j = src.indexOf("{", i); j < src.length; j++) {
+      if (src[j] === "{") prof++;
+      else if (src[j] === "}") {
+        prof--;
+        if (prof === 0) {
+          fin = j;
+          break;
+        }
+      }
+    }
+    const corps = src.slice(i, fin + 1);
+
+    expect(corps, "le repli écrit encore un euro en dur").not.toMatch(/€/);
+    expect(corps, "le repli perd la devise de la facture").toContain("${code}");
+    // ⚠️ Et la langue vient du contexte, pas d'une relecture du document :
+    // deux sources de langue sur un écran finissent par diverger.
+    expect(corps, "la langue est relue au lieu d'être reçue").not.toContain("langueCourante()");
+    expect(corps).toContain("new Intl.NumberFormat(lang,");
+  });
 });

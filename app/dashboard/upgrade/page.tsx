@@ -13,7 +13,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
 import { enDateLongue } from "@/lib/dates";
-import { langueCourante, nombre } from "@/lib/nombres";
+import { nombre } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const faqKeys = [
@@ -338,12 +338,32 @@ export default function UpgradePage() {
   const prix = (centimes: number) => prixLisible(centimes, lang);
 
   function formatMoney(cents: number, currency: string): string {
+    const code = (currency || "EUR").toUpperCase();
     try {
-      // ⚠️ La langue du LECTEUR, pas « fr-FR » en dur : un abonné anglophone
-      // voyait « 14,99 € » là où sa langue écrit « €14.99 ».
-      return new Intl.NumberFormat(langueCourante(), { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+      /**
+       * ⚠️ La langue du LECTEUR, pas « fr-FR » en dur : un abonné anglophone
+       * voyait « 14,99 € » là où sa langue écrit « €14.99 ».
+       *
+       * ⚠️⚠️ ET C'EST `lang`, PAS `langueCourante()`. Cette page avait DEUX
+       * sources de langue : `prix()` reçoit `lang`, parce que le paramètre est
+       * devenu obligatoire dans `lib/prix.ts` exactement pour ça, pendant
+       * qu'ici on relisait le document. Deux réponses possibles à « dans
+       * quelle langue écrit-on ce montant » sur le même écran.
+       */
+      return new Intl.NumberFormat(lang, { style: "currency", currency: code }).format(cents / 100);
     } catch {
-      return `${nombre(cents / 100, 2)} €`;
+      /**
+       * ⚠️⚠️ CE REPLI ÉCRIVAIT UN EURO, QUEL QUE SOIT `currency`. Le montant
+       * vient de Stripe, donc dans la monnaie de l'abonnement : un code que
+       * `Intl` refuse (c'en est la seule cause ici, la langue étant bornée aux
+       * quatre du produit) faisait afficher « € » sur une facture qui n'est
+       * pas en euros. C'est le piège déjà décrit dans `lib/prix.ts` et fermé
+       * là-bas ; il vivait encore ici, sur la page où l'on paie.
+       *
+       * Une devise inconnue s'écrit par son CODE, jamais par un symbole faux :
+       * c'est déjà la règle de `currencySymbol`.
+       */
+      return `${nombre(cents / 100, 2)} ${code}`;
     }
   }
 
