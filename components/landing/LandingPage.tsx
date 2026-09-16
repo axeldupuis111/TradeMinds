@@ -1981,8 +1981,17 @@ function Pricing() {
     {
       name: t("plan_free"),
       sub: t("plan_sub_free"),
-      monthlyPrice: "0€",
-      annualPrice: "0€",
+      /**
+       * ⚠️⚠️ LE PRIX DU PLAN GRATUIT ÉTAIT LE SEUL ÉCRIT À LA MAIN, dans la
+       * seule table de tarifs qui restait. Sur la page anglaise, la grille
+       * affichait « 0€ /month » juste à côté de « €14.99 /month » : euro
+       * suffixé d'un côté, préfixé de l'autre, sur la même ligne de trois
+       * cartes. C'est exactement le défaut que `lib/prix.ts` a été écrit pour
+       * fermer (« 14.99€ » et « 29,99€ » l'une sous l'autre), et il restait
+       * cette carte-ci, celle que personne ne regarde parce qu'elle vaut zéro.
+       */
+      monthlyPrice: prixLisible(0, lang),
+      annualPrice: prixLisible(0, lang),
       annualMonthly: "",
       feats: FREE_BENEFITS.map((k) => t(k)),
       featsLabel: "",

@@ -96,6 +96,55 @@ describe("les prix de l'offre fondateur", () => {
    * pas, et plusieurs fichiers de ce dépôt citent « 14,99 € » pour expliquer
    * pourquoi il ne faut pas l'écrire.
    */
+  /**
+   * ⚠️⚠️ ET LE BALAYAGE CI-DESSOUS NE CHERCHE QUE 14,99 ET 29,99 : il ne pouvait
+   * pas voir le prix du plan GRATUIT, qui était la chaîne « 0€ » écrite à la
+   * main. Sur la page anglaise, la grille affichait donc « 0€ /month » juste à
+   * côté de « €14.99 /month » : euro suffixé d'un côté, préfixé de l'autre, sur
+   * la même ligne de trois cartes. Un garde qui ne connaît que deux montants
+   * protège deux cartes sur trois.
+   *
+   * On vérifie donc la FORME de la table, pas une liste de nombres : chaque
+   * prix de la grille sort de `prixLisible`.
+   */
+  it("les trois cartes de la grille tirent leur prix du même endroit", () => {
+    const src = readFileSync(join(RACINE, "components/landing/LandingPage.tsx"), "utf8");
+    const i = src.indexOf("function Pricing()");
+    expect(i, "la grille de tarifs a changé de nom").toBeGreaterThan(0);
+
+    // Frontière : les crochets de `const plans = [ ... ]`, comptés, jamais une
+    // distance en caractères.
+    const debut = src.indexOf("const plans = [", i);
+    expect(debut, "la table des plans a changé de nom").toBeGreaterThan(0);
+    let prof = 0;
+    let fin = debut;
+    for (let j = src.indexOf("[", debut); j < src.length; j++) {
+      if (src[j] === "[") prof++;
+      else if (src[j] === "]") {
+        prof--;
+        if (prof === 0) {
+          fin = j;
+          break;
+        }
+      }
+    }
+    const table = src.slice(debut, fin);
+
+    const champs = Array.from(
+      table.matchAll(/(monthlyPrice|annualPrice|annualMonthly):([^,\n]*)/g),
+    );
+    expect(champs.length, "les prix ont disparu de la grille : le garde est cassé").toBeGreaterThanOrEqual(9);
+
+    const fautifs = champs
+      .filter((m) => !m[2].includes("prixLisible(") && m[2].trim() !== '""')
+      .map((m) => `${m[1]}:${m[2].trim().slice(0, 40)}`);
+    expect(
+      fautifs,
+      "prix écrits à la main dans la grille : ils ne suivent ni la langue du " +
+        "lecteur ni le tarif :\n  " + fautifs.join("\n  "),
+    ).toEqual([]);
+  });
+
   it("aucun prix d'abonnement n'est écrit en dur dans le code servi", () => {
     function fichiers(d: string, out: string[] = []): string[] {
       for (const f of readdirSync(d)) {
