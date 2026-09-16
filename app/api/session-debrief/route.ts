@@ -8,7 +8,7 @@ import { appendCommitment, parseCoachMemory, renderCoachMemory } from "@/lib/coa
 import { createClient } from "@supabase/supabase-js";
 import { codeDeLangue } from "@/lib/langue-du-modele";
 import { remplir } from "@/lib/remplir";
-import { DEFAULT_CURRENCY, buildCurrencyMap, money, sumByCurrency } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, buildCurrencyMap, money, sumByCurrency, deviseSansCompte } from "@/lib/account-currency";
 
 /**
  * Débrief IA de fin de session — le moment rétrospective du journaling.
@@ -121,6 +121,7 @@ function montantDeLaSeance(
   const parDevise = sumByCurrency(
     trades.map((t) => ({ pnl: netPnl(t), challengeId: t.challenge_id })),
     devises,
+    deviseSansCompte(devises),
   );
   if (parDevise.length === 0) return money(0, DEFAULT_CURRENCY, { digits: 2, signed: true, locale });
   return parDevise

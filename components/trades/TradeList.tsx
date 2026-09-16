@@ -1,6 +1,6 @@
 "use client";
 
-import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { buildCurrencyMap, money, tradeCurrency, deviseSansCompte } from "@/lib/account-currency";
 import { enHeure, enJourEtMois } from "@/lib/dates";
 import { enDate } from "@/lib/dates";
 import { getEmotionDisplay } from "@/lib/emotions";
@@ -412,6 +412,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   // du filtre les challenges clos et rendrait leurs trades en euros par défaut.
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+  /** Repli des trades sans compte : voir `deviseSansCompte`. */
+  const deviseOrpheline = useMemo(() => deviseSansCompte(currencyMap), [currencyMap]);
 
   useEffect(() => {
     async function loadAccounts() {
@@ -1423,7 +1425,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       {/* P&L avec glow top 3 */}
                       <td className={`px-3 py-2 ${isTopGain ? "bg-gradient-to-r from-profit/10 to-transparent" : isTopLoss ? "bg-gradient-to-r from-loss/10 to-transparent" : ""}`}>
                         <span className={`font-mono font-semibold text-sm ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                          {money(net, tradeCurrency(tr.challenge_id, currencyMap), { digits: 2, signed: true })}
+                          {money(net, tradeCurrency(tr.challenge_id, currencyMap, deviseOrpheline), { digits: 2, signed: true })}
                         </span>
                       </td>
 

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { resolveAccountCurrencies, resolveUserCurrency } from "@/lib/account-currency-server";
-import { sumByCurrency } from "@/lib/account-currency";
+import { sumByCurrency, deviseSansCompte } from "@/lib/account-currency";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
@@ -267,6 +267,7 @@ async function handle(req: Request) {
           challengeId: tr.challenge_id,
         })),
         carteDesDevises,
+        deviseSansCompte(carteDesDevises),
       ),
     };
 

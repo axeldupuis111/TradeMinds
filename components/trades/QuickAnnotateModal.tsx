@@ -10,7 +10,7 @@
  * Rendu via portal (cohérent avec les autres modales du projet).
  */
 
-import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { buildCurrencyMap, money, tradeCurrency, deviseSansCompte } from "@/lib/account-currency";
 import { langueCourante } from "@/lib/nombres";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -68,6 +68,8 @@ export default function QuickAnnotateModal({
   // La file peut mélanger les comptes : chaque trade s'affiche dans la sienne.
   const { accounts } = useActiveAccount();
   const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+  /** Repli des trades sans compte : voir `deviseSansCompte`. */
+  const deviseOrpheline = useMemo(() => deviseSansCompte(currencyMap), [currencyMap]);
 
   useEffect(() => {
     let cancelled = false;
@@ -213,7 +215,7 @@ export default function QuickAnnotateModal({
                         netPnl(current) >= 0 ? "text-profit" : "text-loss"
                       )}
                     >
-                      {money(netPnl(current), tradeCurrency(current.challenge_id, currencyMap), { digits: 2, signed: true })}
+                      {money(netPnl(current), tradeCurrency(current.challenge_id, currencyMap, deviseOrpheline), { digits: 2, signed: true })}
                     </span>
                   </div>
                 </div>

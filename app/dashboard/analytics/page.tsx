@@ -26,8 +26,7 @@ import {
   currencySymbol,
   money,
   sumByCurrency,
-  tradeCurrency,
-} from "@/lib/account-currency";
+  tradeCurrency, deviseSansCompte, } from "@/lib/account-currency";
 import { extremesParDevise } from "@/lib/extremes-par-devise";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -400,6 +399,8 @@ export default function AnalyticsPage() {
   // les comptes. À défaut l'euro — un total mélangeant EUR et USD n'a pas de
   // devise, et lui en coller une afficherait un chiffre faux.
   const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+  /** Repli des trades sans compte : voir `deviseSansCompte`. */
+  const deviseOrpheline = useMemo(() => deviseSansCompte(currencyMap), [currencyMap]);
 
   const pageCurrency = useMemo(() => {
     if (accountFilter !== "all") {
@@ -423,8 +424,9 @@ export default function AnalyticsPage() {
       sumByCurrency(
         filtered.map((tr) => ({ pnl: netPnl(tr), challengeId: tr.challenge_id })),
         currencyMap,
+        deviseOrpheline,
       ),
-    [filtered, currencyMap],
+    [filtered, currencyMap, deviseOrpheline],
   );
   const devisesMelangees = pnlParDevise.length > 1;
 
@@ -504,8 +506,8 @@ export default function AnalyticsPage() {
    * se fait entre deux unités.
    */
   const extremesDevises = useMemo(
-    () => extremesParDevise(filtered, (id) => tradeCurrency(id, currencyMap)),
-    [filtered, currencyMap],
+    () => extremesParDevise(filtered, (id) => tradeCurrency(id, currencyMap, deviseOrpheline)),
+    [filtered, currencyMap, deviseOrpheline],
   );
 
 
@@ -1127,10 +1129,10 @@ export default function AnalyticsPage() {
               currency={pageCurrency}
               pnlParDevise={pnlParDevise}
               deviseMeilleur={
-                bestTradeRow ? tradeCurrency(bestTradeRow.challenge_id, currencyMap) : undefined
+                bestTradeRow ? tradeCurrency(bestTradeRow.challenge_id, currencyMap, deviseOrpheline) : undefined
               }
               devisePire={
-                worstTradeRow ? tradeCurrency(worstTradeRow.challenge_id, currencyMap) : undefined
+                worstTradeRow ? tradeCurrency(worstTradeRow.challenge_id, currencyMap, deviseOrpheline) : undefined
               }
               extremesParDevise={extremesDevises}
             />

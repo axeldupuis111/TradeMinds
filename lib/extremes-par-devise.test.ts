@@ -106,8 +106,13 @@ describe("meilleur et pire trade, une réponse par devise", () => {
    */
   it("les cartes Analytics affichent la ventilation quand les devises se mêlent", () => {
     const page = readFileSync(join(process.cwd(), "app/dashboard/analytics/page.tsx"), "utf8");
+    // ⚠️ On épingle l'APPEL, pas ses arguments au caractère près : un repli de
+    // devise s'y est ajouté depuis (voir `deviseSansCompte`), et un garde qui
+    // exige une signature exacte force à le réécrire à chaque correctif au lieu
+    // de vérifier ce qui compte, à savoir que la page passe bien par le calcul
+    // partagé et par la devise de chaque ligne.
     expect(page, "la page ne passe plus par le calcul partagé").toContain(
-      "extremesParDevise(filtered, (id) => tradeCurrency(id, currencyMap))",
+      "extremesParDevise(filtered, (id) => tradeCurrency(id, currencyMap",
     );
     expect(page, "la ventilation n'est plus transmise aux cartes").toContain(
       "extremesParDevise={extremesDevises}",

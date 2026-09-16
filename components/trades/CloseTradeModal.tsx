@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { accountCurrency, currencySymbol, DEFAULT_CURRENCY, tradeCurrency } from "@/lib/account-currency";
+import { accountCurrency, currencySymbol, tradeCurrency, deviseSansCompte } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { estimatePnl } from "@/lib/pnl-calculator";
 import { lots } from "@/lib/nombres";
@@ -68,7 +68,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
     tradeCurrency(
       trade?.challenge_id,
       new Map(accounts.map((a) => [a.id, accountCurrency(a)])),
-      DEFAULT_CURRENCY,
+      deviseSansCompte(new Map(accounts.map((a) => [a.id, accountCurrency(a)]))),
     ),
   ).trim();
   const [loading, setLoading] = useState(true);

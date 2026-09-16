@@ -7,7 +7,7 @@ import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import QuickAnnotateModal from "@/components/trades/QuickAnnotateModal";
 import TaxExportButton from "@/components/trades/TaxExportButton";
 import TradeList from "@/components/trades/TradeList";
-import { buildCurrencyMap, money, sumByCurrency } from "@/lib/account-currency";
+import { buildCurrencyMap, money, sumByCurrency, deviseSansCompte } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -106,7 +106,7 @@ export default function TradesPage() {
   }, [t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pnlByCurrency = useMemo(
-    () => (recap ? sumByCurrency(recap.trades, currencyMap) : []),
+    () => (recap ? sumByCurrency(recap.trades, currencyMap, deviseSansCompte(currencyMap)) : []),
     [recap, currencyMap],
   );
 

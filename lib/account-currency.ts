@@ -160,6 +160,28 @@ export function commonCurrency(
   return found.size === 1 ? Array.from(found)[0] : null;
 }
 
+/**
+ * LA DEVISE D'UN TRADE QUI N'EST RATTACHÉ À AUCUN COMPTE.
+ *
+ * ⚠️⚠️ C'ÉTAIT L'EURO POUR TOUT LE MONDE, ET ILS SONT NOMBREUX. Mesuré en
+ * production le 2026-09-17 : 187 trades sur 447, soit 42 %, n'ont aucun compte.
+ * Ils arrivent ainsi légitimement (le rail de synchro REFUSE de deviner quand
+ * un trader a plusieurs comptes actifs sans numéro déclaré), mais ils
+ * s'affichaient tous en euros, y compris chez un trader dont AUCUN compte n'est
+ * en euros.
+ *
+ * ⚠️ LA RÈGLE EXISTAIT DÉJÀ, appliquée à 3 des 8 appels de `tradeCurrency` :
+ * le rapport hebdomadaire, le calendrier et le tableau de bord passaient un
+ * repli, les autres laissaient l'euro par défaut.
+ *
+ * Ce repli-ci n'invente rien : si TOUS les comptes du trader partagent une
+ * devise, un trade sans compte est forcément dans celle-là. S'ils en mélangent
+ * plusieurs, on ne sait pas, et on retombe sur le défaut comme avant.
+ */
+export function deviseSansCompte(map: Map<string, string>): string {
+  return commonCurrency(Array.from(map.keys()), map) ?? DEFAULT_CURRENCY;
+}
+
 export interface MoneyOptions {
   /** Nombre de décimales. Par défaut 0, forcé à 0 pour les devises sans décimale. */
   digits?: number;

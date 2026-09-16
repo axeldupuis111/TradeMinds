@@ -20,7 +20,7 @@ import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/comm
 import { lireTousLesTradesDuCompte } from "./trades-du-compte";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { pnlNet, recapitulatif, type LigneDuRecapitulatif } from "@/lib/trades/recapitulatif";
-import { buildCurrencyMap, commonCurrency, sumByCurrency } from "@/lib/account-currency";
+import { buildCurrencyMap, commonCurrency, sumByCurrency, deviseSansCompte } from "@/lib/account-currency";
 import { projeter } from "./projection";
 import { palierSousLeSeuil, paliersDeTaille } from "./projection-levers";
 import { analyserSegments } from "./projection-segments";
@@ -2288,6 +2288,7 @@ export async function executeCoachTool(
         const parDevise = sumByCurrency(
           lignes.map((t) => ({ pnl: pnlNet(t), challengeId: t.challenge_id })),
           devises,
+          deviseSansCompte(devises),
         );
         const commune = commonCurrency(lignes.map((t) => t.challenge_id), devises);
 
