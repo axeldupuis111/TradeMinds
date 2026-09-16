@@ -21,11 +21,19 @@
 
 import type { PlanType } from "@/lib/PlanContext";
 import { PLAN_MONTHLY_CEILING, FEATURE_MONTHLY_CEILING } from "@/lib/ai-ceilings";
+import { PRIX_EN_CENTIMES } from "@/lib/prix";
 
 /** Prix mensuel TTC encaissé, en euros. Franchise de TVA (art. 293 B). */
+/**
+ * ⚠️ DÉDUIT DU TARIF, PLUS RECOPIÉ. Le produit tenait TROIS écritures du même
+ * prix : `PRIX_EN_CENTIMES` (ce que Stripe débite), cette table, et un ternaire
+ * `plan === "premium" ? 29.99 : …` au milieu du panneau d'administration. Le
+ * jour où le tarif bouge, deux d'entre elles cessent d'être vraies en silence,
+ * et la troisième sert justement à juger la marge.
+ */
 export const PLAN_PRICE_EUR: Record<Exclude<PlanType, "free">, number> = {
-  plus: 14.99,
-  premium: 29.99,
+  plus: PRIX_EN_CENTIMES.plus.mensuel / 100,
+  premium: PRIX_EN_CENTIMES.premium.mensuel / 100,
 };
 
 /**

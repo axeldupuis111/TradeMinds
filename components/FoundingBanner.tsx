@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
+import { prixLisible } from "@/lib/prix";
 import { readAttributionRef } from "@/components/AttributionCapture";
 
 /**
@@ -25,8 +26,14 @@ interface Offer {
   active: boolean;
   variant: "public" | "partner";
   code: string;
-  regular: string;
-  firstMonth: string;
+  /**
+   * ⚠️ DES CENTIMES, PAS DES PRIX ÉCRITS. La route ne connaît pas la langue du
+   * lecteur : elle rendait « 14,99 € » à une page servie en anglais, pendant
+   * que la grille des tarifs de la même page écrivait « €14.99 ». Le formatage
+   * se fait ici, où la langue est connue.
+   */
+  regularCents: number;
+  firstMonthCents: number;
   total?: number;
   remaining?: number;
 }
@@ -40,7 +47,7 @@ export function FoundingBanner({
   onDismiss?: () => void;
   href?: string;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const [offer, setOffer] = useState<Offer | null>(null);
   const [copied, setCopied] = useState(false);
@@ -67,8 +74,8 @@ export function FoundingBanner({
   const isPartner = offer.variant === "partner";
   const fill = (s: string) =>
     s
-      .replaceAll("{price}", offer.firstMonth)
-      .replaceAll("{regular}", offer.regular)
+      .replaceAll("{price}", prixLisible(offer.firstMonthCents, lang))
+      .replaceAll("{regular}", prixLisible(offer.regularCents, lang))
       .replaceAll("{code}", offer.code)
       .replaceAll("{n}", String(offer.remaining ?? ""))
       .replaceAll("{total}", String(offer.total ?? ""));

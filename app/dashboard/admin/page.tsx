@@ -7,6 +7,7 @@ import { pourcent } from "@/lib/nombres";
 import { enDate, enDateEtHeure } from "@/lib/dates";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { langueCourante } from "@/lib/nombres";
+import { PLAN_PRICE_EUR } from "@/lib/product-margin";
 
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
@@ -977,12 +978,15 @@ export default function AdminPage() {
                       {Object.entries(funnel.aiCost.byPlan)
                         .sort(([, a], [, b]) => b.eur - a.eur)
                         .map(([plan, v]) => {
-                          const prix = plan === "premium" ? 29.99 : plan === "plus" ? 14.99 : 0;
+                          // ⚠️ Le tarif vient de la table, pas d'un ternaire : ce
+                          // pourcentage sert a juger la marge, et un prix recopie
+                          // cesse d'etre vrai des la premiere hausse.
+                          const prix = plan === "premium" || plan === "plus" ? PLAN_PRICE_EUR[plan] : 0;
                           const part = prix > 0 ? (v.eurPerUser / prix) * 100 : null;
                           return (
                             <div key={plan} className="flex items-center gap-3">
                               <span className="text-xs text-muted flex-1 capitalize">{plan}</span>
-                              <span className="text-xs text-muted tabular-nums">{v.users} abonné(s)</span>
+                              <span className="text-xs text-muted tabular-nums">{v.users} {v.users > 1 ? "abonnés" : "abonné"}</span>
                               <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">
                                 {v.eurPerUser.toFixed(2)} €/ab.
                               </span>
