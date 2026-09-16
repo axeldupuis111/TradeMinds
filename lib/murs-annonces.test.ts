@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLAN_FEATURES } from "./plan-features";
@@ -27,6 +27,16 @@ import { PLAN_FEATURES } from "./plan-features";
  * et c'est son intérêt : chaque entrée dit OÙ la règle est appliquée, ce qu'un
  * lecteur ne peut pas deviner autrement.
  */
+function tousLesFichiers(d: string, out: string[] = []): string[] {
+  for (const f of readdirSync(d)) {
+    if (f === "node_modules" || f === ".next") continue;
+    const chemin = join(d, f);
+    if (statSync(chemin).isDirectory()) tousLesFichiers(chemin, out);
+    else if (/\.tsx?$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
+  }
+  return out;
+}
+
 describe("les murs annoncés par le tableau de tarifs", () => {
   const lire = (c: string) => readFileSync(join(process.cwd(), c), "utf8");
   const ligne = (cle: string) => PLAN_FEATURES.find((f) => f.key === cle);
@@ -58,7 +68,72 @@ describe("les murs annoncés par le tableau de tarifs", () => {
       fichier: "app/dashboard/goals/page.tsx",
       marqueur: 'plan === "free"',
     },
+    /**
+     * ⚠️⚠️ TROIS PORTES POUR LA MÊME FONCTIONNALITÉ, UNE SEULE GARDÉE. « Export
+     * PDF » est annoncé verrouillé pour le gratuit, et seul le bouton
+     * d'Analytics le refusait. Le rapport de compte et le rapport d'analyse
+     * partaient pour n'importe qui, alors qu'ils portent solde, P&L, drawdown
+     * et courbe, et qu'ils SORTENT de l'application.
+     *
+     * ⚠️ TRANCHÉ DANS LE SENS DE LA FERMETURE, contrairement au profil public,
+     * et pour des raisons opposées aux siennes : ces documents n'ont aucune
+     * vertu d'acquisition (pas de lien, pas d'image de partage) et ils
+     * affichent des montants. Mesuré avant de trancher : quatre exports depuis
+     * la création du produit, tous par un compte premium. Le verrou ne retire
+     * rien à personne.
+     */
+    {
+      cle: "plan_feat_pdf_export",
+      fichier: "components/analytics/ExportPdfButton.tsx",
+      marqueur: 'plan === "plus" || plan === "premium" || demoMode',
+    },
+    {
+      cle: "plan_feat_pdf_export",
+      fichier: "app/dashboard/challenge/page.tsx",
+      // ⚠️ LE MARQUEUR EST L'USAGE, PAS LA DÉCLARATION : une première version
+      // épinglait `const peutExporterPdf = ...`, qui survit intacte quand on
+      // retire le `if` du bouton. Le garde restait vert sur du code rouvert.
+      marqueur: "if (!peutExporterPdf) {",
+    },
+    {
+      cle: "plan_feat_pdf_export",
+      fichier: "app/dashboard/challenge/page.tsx",
+      marqueur: 'const peutExporterPdf = !planLoading && (plan === "plus" || plan === "premium" || demoMode)',
+    },
+    {
+      cle: "plan_feat_pdf_export",
+      fichier: "app/dashboard/analysis/page.tsx",
+      marqueur: 'plan !== "plus" && plan !== "premium" && !demoMode',
+    },
   ];
+
+  /**
+   * ⚠️ ET AUCUN EXPORT PDF NE S'AJOUTE SANS VERROU. La liste ci-dessus dit ce
+   * qui est gardé ; celle-ci dit qu'il n'y a rien d'autre. C'est la moitié qui
+   * manquait : deux boutons existaient sans que personne ne les compte.
+   */
+  it("les trois seuls exports PDF du produit sont ceux qui sont gardés", () => {
+    const portes = [
+      "components/analytics/ExportPdfButton.tsx",
+      "app/dashboard/challenge/page.tsx",
+      "app/dashboard/analysis/page.tsx",
+    ];
+    const trouvees: string[] = [];
+    for (const dossier of ["app", "components"]) {
+      for (const f of tousLesFichiers(join(process.cwd(), dossier))) {
+        const src = readFileSync(f, "utf8");
+        if (/buildAnalyticsPdf|exportAccountPdf|exportAnalysisPdf/.test(src)) {
+          trouvees.push(f.slice(process.cwd().length + 1).split("\\").join("/"));
+        }
+      }
+    }
+    expect(
+      trouvees.filter((f) => !portes.includes(f)),
+      "un export PDF est apparu ailleurs, sans que ce test sache s'il est gardé : " +
+        trouvees.join(", "),
+    ).toEqual([]);
+    expect(trouvees.length, "les exports PDF ont disparu : le balayage est cassé").toBe(3);
+  });
 
   for (const { cle, fichier, marqueur } of MURS) {
     it(`${cle} est annoncé verrouillé, et l'est dans ${fichier.split("/").pop()}`, () => {

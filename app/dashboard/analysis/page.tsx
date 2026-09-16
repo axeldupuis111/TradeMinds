@@ -925,6 +925,17 @@ export default function AnalysisPage() {
   async function exportPdf() {
     const a = displayedAnalysis;
     if (!a || exportingPdf) return;
+    /**
+     * ⚠️⚠️ CET EXPORT ÉTAIT VENDU PAYANT ET OUVERT À TOUS. `plan_feat_pdf_export`
+     * est annoncé verrouillé pour le plan gratuit, et le bouton d'Analytics le
+     * fait respecter depuis toujours ; celui-ci et celui du suivi de compte,
+     * non. Même règle, appliquée à un écran sur trois. Le mode démo l'ouvre,
+     * comme ailleurs : le PDF produit est filigrané.
+     */
+    if (!planLoading && plan !== "plus" && plan !== "premium" && !demoMode) {
+      showToast("error", t("pdf_locked"));
+      return;
+    }
     setExportingPdf(true);
     try {
       const ins = a.insights;

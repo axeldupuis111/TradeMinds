@@ -15,6 +15,7 @@ import { projectChallenge } from "@/lib/challenge-projection";
 import { ChallengeProjectionBlock } from "@/components/dashboard/ChallengeProjectionBlock";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import UpgradeBanner from "@/components/UpgradeBanner";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
@@ -908,7 +909,26 @@ export default function ChallengePage() {
    * avant de se prononcer sur sa propre limite). Une règle écrite, appliquée
    * à un écran sur deux.
    */
-  const { maxAccounts, demoMode, loading: planLoading } = usePlan();
+  const { plan, maxAccounts, demoMode, loading: planLoading } = usePlan();
+  /**
+   * ⚠️⚠️ CET EXPORT ÉTAIT VENDU PAYANT ET OUVERT À TOUS. `plan_feat_pdf_export`
+   * est annoncé verrouillé pour le plan gratuit dans le tableau de tarifs, et
+   * le bouton d'Analytics le fait respecter depuis toujours. Celui-ci, non :
+   * n'importe quel compte gratuit pouvait produire le rapport de compte, qui
+   * porte solde, P&L, drawdown et courbe. C'est le défaut du profil public,
+   * ailleurs, et cette fois il se ferme au lieu de s'ouvrir : le document sort
+   * de l'application, il montre des montants, et il n'a aucune vertu
+   * d'acquisition.
+   *
+   * ⚠️ MESURE AVANT DE TRANCHER : quatre exports PDF depuis la création du
+   * produit, tous par le même compte, qui est premium. Poser le verrou ne
+   * retire donc rien à personne.
+   *
+   * Le mode démo l'ouvre, comme pour Analytics : le PDF produit est filigrané
+   * et ne contient que des données fictives.
+   */
+  const peutExporterPdf = !planLoading && (plan === "plus" || plan === "premium" || demoMode);
+  const [pdfVerrouille, setPdfVerrouille] = useState(false);
   const supabase = createClient();
   const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
 
@@ -1367,6 +1387,20 @@ export default function ChallengePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Export PDF réservé aux plans payants : même refus que sur Analytics. */}
+      {pdfVerrouille && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div role="dialog" aria-modal="true" aria-label={t("pdf_locked")} className="bg-card border border-border rounded-xl p-5 max-w-sm w-full">
+            <UpgradeBanner message={t("pdf_locked")} />
+            <button
+              onClick={() => setPdfVerrouille(false)}
+              className="mt-3 w-full px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm"
+            >
+              {t("analysis_close")}
+            </button>
+          </div>
+        </div>
+      )}
       <h1 className="text-2xl font-bold text-foreground">{t("challenge_title")}</h1>
       <p className="text-muted mt-1">{t("challenge_subtitle")}</p>
 
@@ -1389,6 +1423,10 @@ export default function ChallengePage() {
                 onEdit={handleEdit}
                 onDelete={handleDeleteAccount}
                 onExportPdf={() => {
+                  if (!peutExporterPdf) {
+                    setPdfVerrouille(true);
+                    return;
+                  }
                   setDemoWatermark(demoMode ? t("demo_pdf_watermark") : null);
                   import("@/lib/export-pdf").then(({ exportAccountPdf }) => {
                     exportAccountPdf({
