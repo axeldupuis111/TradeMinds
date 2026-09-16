@@ -596,9 +596,25 @@ export default function MonthlyReviewPage() {
                       </div>
                       <div className="ml-auto text-right">
                         <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">{t("review_grade_pnl")}</p>
-                        <p className={`text-3xl font-black tabular-nums leading-tight ${stats.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
-                          <CountUp end={stats.totalPnl} prefix={stats.totalPnl >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1.2} />
-                        </p>
+                        {/**
+                          * ⚠️⚠️ CE CHIFFRE ADDITIONNAIT DES EUROS ET DES DOLLARS, SOUS UN
+                          * SIGNE EURO. Mesuré le 2026-09-16 sur août : la page annonçait
+                          * « -6 703 € » là où le mois vaut -6 253,28 € ET -449,36 $. Le
+                          * nombre affiché était la somme brute des deux.
+                          *
+                          * ⚠️ LE GARDE EXISTAIT, CETTE CARTE PASSAIT À CÔTÉ. Tout le reste
+                          * de la page formate par `fmtMoney`, qui rend un tiret quand la
+                          * devise est vide ; ici `CountUp` recollait le symbole lui-même,
+                          * et `currencySymbol("")` retombe sur l'euro. Une sentinelle que
+                          * le formateur avale n'est pas une sentinelle.
+                          */}
+                        {devisesMelangees ? (
+                          <p className="text-3xl font-black tabular-nums leading-tight text-muted">—</p>
+                        ) : (
+                          <p className={`text-3xl font-black tabular-nums leading-tight ${stats.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
+                            <CountUp end={stats.totalPnl} prefix={stats.totalPnl >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1.2} />
+                          </p>
+                        )}
                         {pnlDelta != null && pnlDelta !== 0 && (
                           <p className={`text-xs font-semibold inline-flex items-center gap-1 ${pnlDelta > 0 ? "text-profit" : "text-loss"}`}>
                             {pnlDelta > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
@@ -610,6 +626,21 @@ export default function MonthlyReviewPage() {
                   </KpiCardPremium>
                 );
               })()}
+
+              {/**
+                * ⚠️ UNE PAGE DE TIRETS SANS EXPLICATION EST PIRE QU'UN CHIFFRE FAUX :
+                * le trader croit que le produit n'a pas su lire. On dit une fois
+                * pourquoi, et où aller pour obtenir des montants, exactement comme
+                * Analytics le fait.
+                */}
+              {devisesMelangees && (
+                <p
+                  role="status"
+                  className="mt-4 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground-muted"
+                >
+                  {t("review_devises_melangees")}
+                </p>
+              )}
 
               {/* Onglets : vue d'ensemble / performance / discipline & mental */}
               <div className="mt-5 inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1 max-w-full overflow-x-auto">
@@ -910,14 +941,18 @@ export default function MonthlyReviewPage() {
                           <div className="rounded-xl border border-profit/30 bg-profit/[0.04] p-4">
                             <p className="text-xs text-muted">{t("review_payoff_disciplined")}</p>
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.hiAvg >= 0 ? "text-profit" : "text-loss"}`}>
+                              {devisesMelangees ? "—" : (
                               <CountUp end={Math.round(payoffInsight.hiAvg)} prefix={payoffInsight.hiAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
+                            )}
                             </p>
                             <p className="text-[11px] text-muted mt-1">{t("review_payoff_days", { n: payoffInsight.hiN })}</p>
                           </div>
                           <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
                             <p className="text-xs text-muted">{t("review_payoff_other")}</p>
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.loAvg >= 0 ? "text-profit" : "text-loss"}`}>
+                              {devisesMelangees ? "—" : (
                               <CountUp end={Math.round(payoffInsight.loAvg)} prefix={payoffInsight.loAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
+                            )}
                             </p>
                             <p className="text-[11px] text-muted mt-1">{t("review_payoff_days", { n: payoffInsight.loN })}</p>
                           </div>

@@ -2663,6 +2663,7 @@ const dict: Record<string, string> = {
   "review_grade_title": "Monatsnote",
   "review_grade_sub": "Disziplin, Vorbereitung und Ausführung in einer Gesamtnote.",
   "review_grade_pnl": "Netto-P&L des Monats",
+  "review_devises_melangees": "Dieser Monat mischt mehrere Währungen. Beträge werden nicht angezeigt: sie zu addieren würde keine echte Geldsumme ergeben. Die Zähler bleiben korrekt. Wähle ein Konto in Analytics für vergleichbare Beträge.",
   "review_grade_vs_prev": "ggü. Vormonat",
   "review_risk_title": "Trading-Statistiken",
   "review_risk_sub": "Die Qualität deiner Ausführung in diesem Monat, über das reine P&L hinaus.",
