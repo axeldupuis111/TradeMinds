@@ -41,6 +41,18 @@ const BADGES: Record<string, { cle: string; emoji: string }> = {
   discipline_10: { cle: "pubprofile_badge_discipline_10", emoji: "\u{1F3C6}" },
   discipline_30: { cle: "pubprofile_badge_discipline_30", emoji: "\u{1F48E}" },
   winrate_60: { cle: "pubprofile_badge_winrate_60", emoji: "\u{1F3AF}" },
+  /**
+   * ⚠️⚠️ LA CLÉ ÉCRITE EN BASE EST `score_80_month`, ET CETTE TABLE ATTENDAIT
+   * `score_80`. Une distinction sur cinq était donc silencieusement jetée ici
+   * (`if (!def) return null`) : le trader la voit dans son tableau de bord, et
+   * la page qu'il partage ne la montre pas. Mesuré le 2026-09-17 : une ligne
+   * `score_80_month` existe en production, invisible depuis qu'elle a été
+   * gagnée.
+   *
+   * L'ancienne clé reste acceptée : si une ligne l'a jamais portée, elle
+   * s'affiche, et retirer un alias ne répare rien.
+   */
+  score_80_month: { cle: "pubprofile_badge_score_80", emoji: "\u{2B50}" },
   score_80: { cle: "pubprofile_badge_score_80", emoji: "\u{2B50}" },
 };
 

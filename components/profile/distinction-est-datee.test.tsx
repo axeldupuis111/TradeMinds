@@ -54,6 +54,26 @@ describe("le profil public", () => {
   });
 
   /**
+   * ⚠️⚠️ ET CHAQUE DISTINCTION OCTROYÉE DOIT POUVOIR S'AFFICHER ICI. Le
+   * tableau de bord écrit la clé `score_80_month` ; cette page n'en connaissait
+   * que `score_80` et jetait donc la ligne en silence (`if (!def) return null`).
+   * Une distinction sur cinq était invisible sur la page que le trader partage,
+   * et une ligne existe bel et bien en production.
+   */
+  it("sait afficher toutes les distinctions que le produit octroie", () => {
+    const octroi = readFileSync(join(RACINE, "components/dashboard/GoalsStreaks.tsx"), "utf8");
+    const octroyees = Array.from(octroi.matchAll(/\{\s*key:\s*"([a-z0-9_]+)"/g)).map((m) => m[1]);
+    expect(octroyees.length, "plus aucune distinction n'est octroyée : le balayage est cassé").toBeGreaterThanOrEqual(5);
+
+    const connues = Array.from(src.matchAll(/^\s{2}([a-z0-9_]+):\s*\{\s*cle:/gm)).map((m) => m[1]);
+    const orphelines = octroyees.filter((k) => !connues.includes(k));
+    expect(
+      orphelines,
+      "distinctions gagnées que le profil public jette en silence : " + orphelines.join(", "),
+    ).toEqual([]);
+  });
+
+  /**
    * ⚠️⚠️ CETTE PAGE EST RENDUE SUR LE SERVEUR, et `langueCourante()` n'y a
    * aucun document à lire. Le fichier porte déjà la cicatrice : le taux de
    * réussite sortait « 45,9 % », à la française, sous un document déclaré
