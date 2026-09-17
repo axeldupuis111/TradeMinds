@@ -237,7 +237,20 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         direction: form.direction,
         lot_size: parseFloat(form.lot_size),
         entry_price: parseFloat(form.entry_price),
-        exit_price: parseFloat(form.exit_price) || 0,
+        /**
+         * ⚠️⚠️ ZÉRO N'EST PAS UN PRIX, ET C'EST CE FORMULAIRE QUI LES FABRIQUE.
+         * Relevé en base le 2026-09-18 : 122 trades portent `exit_price = 0`,
+         * TOUS clos et avec un P&L non nul, tous venus d'ici. Le produit s'en
+         * défend maintenant à la lecture (`lib/prix-connu.ts`, corrigé la
+         * veille : « Pips réalisés: 45000 (gain) | Résultat: LOSS » partait au
+         * modèle), mais la source continuait d'écrire le zéro.
+         *
+         * La colonne est NULLABLE (vérifié sur le schéma réel) : un prix
+         * inconnu s'écrit donc `null`, ce qui se lit comme inconnu partout.
+         */
+        exit_price: form.exit_price.trim() && !isNaN(parseFloat(form.exit_price))
+          ? parseFloat(form.exit_price)
+          : null,
         sl: parseFloat(form.sl) || null,
         tp: parseFloat(form.tp) || null,
         sl_initial: form.sl_initial.trim() ? parseFloat(form.sl_initial) : null,

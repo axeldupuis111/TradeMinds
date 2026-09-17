@@ -95,7 +95,9 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
       direction: form.direction,
       lot_size: parseFloat(form.lot_size),
       entry_price: parseFloat(form.entry_price),
-      exit_price: 0,
+      // ⚠️ Un trade OUVERT n'a pas de prix de sortie : zéro en serait un faux.
+      // Voir lib/prix-connu.ts et la note du formulaire de saisie manuelle.
+      exit_price: null,
       sl: parseFloat(form.sl),
       tp: parseFloat(form.tp),
       pnl: 0,
