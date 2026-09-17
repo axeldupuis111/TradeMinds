@@ -20,6 +20,7 @@ import {
 import { logAiCost } from "@/lib/ai-cost-log";
 import { CATEGORIE_DE_VIOLATION, computeDisciplineScore, type Violation } from "@/lib/discipline-score";
 import { calculatePips, getTradeResult } from "@/lib/pips";
+import { prixDeSortieConnu } from "@/lib/prix-de-sortie";
 import { localDateKey } from "@/lib/timezone";
 import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -290,14 +291,26 @@ export async function POST(request: Request) {
         const effectiveTP = t.tp_initial ?? t.tp;
         const riskPips = effectiveSL != null ? calculatePips(t.pair, t.entry_price, effectiveSL) : null;
         const rewardPips = effectiveTP != null ? calculatePips(t.pair, t.entry_price, effectiveTP) : null;
-        const realizedPips = calculatePips(t.pair, t.entry_price, t.exit_price);
+        /**
+         * ⚠️⚠️ UN PRIX DE SORTIE À ZÉRO N'EST PAS UN PRIX (voir
+         * `lib/prix-de-sortie.ts`) : 27 % des trades du produit sont clôturés
+         * avec `exit_price = 0`, parce que le fichier importé ne portait pas la
+         * colonne. `calculatePips(pair, 4500, 0)` rendait alors 45 000 pips, et
+         * `exit > entry` faisait passer un SELL pour un gain. La ligne envoyée
+         * au modèle disait « 45000 pips (gain) | Résultat: LOSS | P&L: -50 »,
+         * avec pour consigne de la reprendre telle quelle.
+         */
+        const sortieConnue = prixDeSortieConnu(t.exit_price);
+        const realizedPips = sortieConnue != null ? calculatePips(t.pair, t.entry_price, sortieConnue) : null;
         const rrPlanned = riskPips && rewardPips ? Math.round((rewardPips / riskPips) * 100) / 100 : null;
         const result = getTradeResult(pnlNet);
         const slWasModified = t.sl_initial != null && t.sl_initial !== t.sl;
         const tpWasModified = t.tp_initial != null && t.tp_initial !== t.tp;
-        const pipsDirection = t.exit_price > t.entry_price
-          ? (t.direction.toLowerCase() === "buy" ? "gain" : "perte")
-          : (t.direction.toLowerCase() === "buy" ? "perte" : "gain");
+        const pipsDirection = sortieConnue == null
+          ? null
+          : sortieConnue > t.entry_price
+            ? (t.direction.toLowerCase() === "buy" ? "gain" : "perte")
+            : (t.direction.toLowerCase() === "buy" ? "perte" : "gain");
 
         const ictParts = [];
         if (t.ict_setup) ictParts.push(`Setup:${sanitizeUserInput(t.ict_setup)}`);
@@ -322,9 +335,9 @@ export async function POST(request: Request) {
         const tpNote = tpWasModified ? ` [TP initial: ${t.tp_initial}, TP final CSV: ${t.tp}]` : "";
 
         return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | Lot:${t.lot_size}
-  Entry:${t.entry_price} | SL:${effectiveSL ?? "non renseigné"}${slNote} | TP:${effectiveTP ?? "non renseigné"}${tpNote} | Close:${t.exit_price}
+  Entry:${t.entry_price} | SL:${effectiveSL ?? "non renseigné"}${slNote} | TP:${effectiveTP ?? "non renseigné"}${tpNote} | Close:${sortieConnue ?? "non renseigné"}
   Risque: ${riskPips != null ? `${riskPips} pips` : "non renseigné"} | Reward planifié: ${rewardPips != null ? `${rewardPips} pips` : "non renseigné"} | RR planifié: ${rrPlanned != null ? `1:${rrPlanned}` : "non renseigné"}
-  Pips réalisés: ${realizedPips} (${pipsDirection}) | Résultat: ${result.toUpperCase()} | P&L net: ${pnlNet.toFixed(2)}${ictStr}${visionStr}`;
+  Pips réalisés: ${realizedPips != null ? `${realizedPips} (${pipsDirection})` : "non renseigné (prix de sortie absent du fichier importé)"} | Résultat: ${result.toUpperCase()} | P&L net: ${pnlNet.toFixed(2)}${ictStr}${visionStr}`;
       })
       .join("\n\n");
 

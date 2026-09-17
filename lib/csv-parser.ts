@@ -5,7 +5,14 @@ export interface ParsedTrade {
   direction: "long" | "short";
   lot_size: number;
   entry_price: number;
-  exit_price: number;
+  /**
+   * ⚠️⚠️ NULLABLE, ET CE N'ÉTAIT PAS LE CAS. Cinq `parseNumber(...) ?? 0` de ce
+   * fichier transformaient une colonne de sortie absente en un prix de ZÉRO.
+   * Mesuré en base : 122 trades sur 447 sont clôturés avec `exit_price = 0`,
+   * aucun avec `null`. Voir `lib/prix-de-sortie.ts` pour ce que ça produisait
+   * à l'écran et dans le prompt d'analyse.
+   */
+  exit_price: number | null;
   sl: number | null;
   tp: number | null;
   commission: number | null;
@@ -291,7 +298,7 @@ function tryParsecTrader(headers: string[], rows: Record<string, string>[]): Par
       direction: mapDirection(dir),
       lot_size: lot ?? 0,
       entry_price: entry ?? 0,
-      exit_price: exit ?? 0,
+      exit_price: exit,
       sl: cm.sl !== -1 ? parseNumber(row[headers[cm.sl]]) : null,
       tp: cm.tp !== -1 ? parseNumber(row[headers[cm.tp]]) : null,
       commission: cm.commission !== -1 ? parseNumber(row[headers[cm.commission]]) : null,
@@ -348,7 +355,7 @@ function tryParseTradingView(headers: string[], rows: Record<string, string>[]):
       direction: dir,
       lot_size: parseNumber(entryRow[contractsCol]) ?? 0,
       entry_price: parseNumber(entryRow[priceCol]) ?? 0,
-      exit_price: parseNumber(exitRow[priceCol]) ?? 0,
+      exit_price: parseNumber(exitRow[priceCol]),
       sl: null,
       tp: null,
       commission: null,
@@ -387,7 +394,7 @@ function parseWithColumnMap(
       direction: mapDirection(dirRaw),
       lot_size: cm.lot_size !== -1 ? (parseNumber(row[headers[cm.lot_size]]) ?? 0) : 0,
       entry_price: cm.entry_price !== -1 ? (parseNumber(row[headers[cm.entry_price]]) ?? 0) : 0,
-      exit_price: cm.exit_price !== -1 ? (parseNumber(row[headers[cm.exit_price]]) ?? 0) : 0,
+      exit_price: cm.exit_price !== -1 ? parseNumber(row[headers[cm.exit_price]]) : null,
       sl: cm.sl !== -1 ? parseNumber(row[headers[cm.sl]]) : null,
       tp: cm.tp !== -1 ? parseNumber(row[headers[cm.tp]]) : null,
       commission: cm.commission !== -1 ? parseNumber(row[headers[cm.commission]]) : null,
@@ -413,7 +420,7 @@ function parseMTRow(row: Record<string, string>): ParsedTrade | null {
     direction: mapDirection(typeVal),
     lot_size: parseNumber(row["size"] || row["volume"]) ?? 0,
     entry_price: parseNumber(row["price"] || row["open_price"]) ?? 0,
-    exit_price: parseNumber(row["close_price"]) ?? 0,
+    exit_price: parseNumber(row["close_price"]),
     sl: parseNumber(row["s_l"] || row["sl"]),
     tp: parseNumber(row["t_p"] || row["tp"]),
     commission: parseNumber(row["commission"]),
@@ -432,7 +439,7 @@ function parseSimpleRow(row: Record<string, string>): ParsedTrade | null {
     direction: mapDirection(row["direction"] || "long"),
     lot_size: parseNumber(row["lot"] || row["size"]) ?? 0,
     entry_price: parseNumber(row["entry"]) ?? 0,
-    exit_price: parseNumber(row["exit"]) ?? 0,
+    exit_price: parseNumber(row["exit"]),
     sl: parseNumber(row["sl"]),
     tp: parseNumber(row["tp"]),
     commission: null,

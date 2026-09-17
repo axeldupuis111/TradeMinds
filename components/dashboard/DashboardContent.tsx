@@ -22,6 +22,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
+import { prixDeSortieConnu } from "@/lib/prix-de-sortie";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -695,12 +696,20 @@ export default function DashboardContent({
                             ? ` · ${lots(tr.lot_size)}`
                             : ""}
                         </p>
-                        {/* Ligne 2 — prix entrée → sortie (si disponibles) */}
-                        {tr.entry_price != null && tr.exit_price != null && (
+                        {/*
+                          Ligne 2 — prix entrée → sortie, si les deux sont connus.
+
+                          ⚠️⚠️ CE GARDE TESTAIT `!= null` ET LA DONNÉE VAUT ZÉRO :
+                          27 % des trades sont clôturés avec `exit_price = 0`, parce
+                          que le fichier importé ne portait pas la colonne. L'écran
+                          affichait donc « 4500.00 → 0.00000 », c'est-à-dire un prix
+                          de sortie inventé. Voir lib/prix-de-sortie.ts.
+                        */}
+                        {tr.entry_price != null && prixDeSortieConnu(tr.exit_price) != null && (
                           <p className="text-[10px] text-foreground tabular-nums leading-none">
                             {fmtPrice(tr.entry_price)}
                             <span className="text-foreground-subtle mx-px">→</span>
-                            {fmtPrice(tr.exit_price)}
+                            {fmtPrice(prixDeSortieConnu(tr.exit_price)!)}
                           </p>
                         )}
                         {/* Ligne 3 — frais (si non nuls) */}

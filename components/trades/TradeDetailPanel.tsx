@@ -18,6 +18,7 @@ import { accountCurrency, money } from "@/lib/account-currency";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { prixDeSortieConnu } from "@/lib/prix-de-sortie";
 import { demoTradeVerdict } from "@/lib/demo-fixtures";
 import { downscaleImageFile } from "@/lib/image-downscale";
 import { createClient } from "@/lib/supabase/client";
@@ -582,7 +583,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? enDate(trade.open_time) : "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_lot")}:</span> <span className="text-foreground">{lots(trade.lot_size)}</span></div>
               <div><span className="text-muted">{t("trades_col_entry")}:</span> <span className="text-foreground">{fmtPrice(trade.entry_price)}</span></div>
-              <div><span className="text-muted">{t("trades_col_exit")}:</span> <span className="text-foreground">{fmtPrice(trade.exit_price)}</span></div>
+              {/* ⚠️ Zéro n'est pas un prix : voir lib/prix-de-sortie.ts. */}
+              <div><span className="text-muted">{t("trades_col_exit")}:</span> <span className="text-foreground">{prixDeSortieConnu(trade.exit_price) != null ? fmtPrice(prixDeSortieConnu(trade.exit_price)!) : "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_sl")}:</span> <span className="text-foreground">{trade.sl != null ? fmtPrice(trade.sl) : "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_tp")}:</span> <span className="text-foreground">{trade.tp ?? "—"}</span></div>
             </div>
