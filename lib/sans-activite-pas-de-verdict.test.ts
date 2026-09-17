@@ -109,4 +109,69 @@ describe("un objectif sans activité", () => {
       "le contrôle d'absence passe APRÈS le verdict d'atteinte : il ne sert plus à rien",
     ).toBeLessThan(atteinte);
   });
+
+  /**
+   * ⚠️⚠️ ET LE CHIFFRE AFFICHÉ, PAS SEULEMENT LE STATUT. La règle était tenue
+   * par `goalStatus` (« En cours » plutôt qu'« Atteint ») et par la frise
+   * d'historique (« pas de données »), mais la colonne PROGRESSION écrivait
+   * quand même « 0 % » et « 0/100 ». Vu à l'écran le 2026-09-17 : cinq
+   * objectifs, cinq zéros, sur un compte dont le dernier trade datait du
+   * 26 août. Un taux de réussite qui n'existe pas n'est pas un taux de zéro,
+   * et le profil public écrit « — » depuis longtemps pour cette raison-là.
+   *
+   * ⚠️ ET LA BARRE MENTAIT DANS L'AUTRE SENS : un objectif PLAFOND (« trades
+   * par jour ≤ 3 ») a une progression de 100 % tant que la valeur vaut zéro,
+   * donc elle s'affichait PLEINE pour quelqu'un qui n'avait rien fait.
+   */
+  it("la valeur et la barre ne concluent pas non plus", () => {
+    expect(page, "la valeur brute est de nouveau affichée telle quelle").not.toContain(
+      "{g.value}{unit(g.metric)}",
+    );
+    expect(page, "la valeur ne passe plus par le rendu qui sait se taire").toContain(
+      "{valeurLisible(g)}",
+    );
+
+    const i = page.indexOf("function valeurLisible");
+    expect(i, "valeurLisible a disparu").toBeGreaterThan(-1);
+    const corps = page.slice(i, page.indexOf("}", page.indexOf("return", i)));
+    expect(corps, "valeurLisible ne regarde pas s'il s'est passé quelque chose").toContain(
+      "hadData === false",
+    );
+
+    /**
+     * Les deux rendus de la barre d'un objectif, desktop et mobile : une règle
+     * appliquée à un seul des deux laisse la moitié des lecteurs devant une
+     * barre pleine.
+     *
+     * ⚠️ ON NE VISE QUE LES BARRES D'OBJECTIF (`g.progress`). `GrowBar` sert
+     * aussi au palier de série et aux deux taux de l'edge, qui ne dépendent pas
+     * de `hadData` : les inclure ferait un garde qui accuse du code correct,
+     * donc un garde qu'on finit par désactiver.
+     */
+    const barres = Array.from(page.matchAll(/<GrowBar pct=\{([^}]*)\}/g))
+      .map((m) => m[1])
+      .filter((b) => b.includes("g.progress"));
+    expect(barres.length, "les barres d'objectif ont disparu").toBeGreaterThanOrEqual(2);
+    const sansGarde = barres.filter((b) => !b.includes("hadData === false"));
+    expect(
+      sansGarde,
+      "barres qui se remplissent sans qu'il se soit rien passé : " + sansGarde.join(" | "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ « PROCHAINE VICTOIRE » NE PEUT PAS DÉSIGNER UN OBJECTIF SANS ACTIVITÉ, et
+   * c'est son FILTRE qui l'en empêche, pas un hasard : un objectif plafond sans
+   * donnée a une progression de 100 % (exclue) et un objectif plancher en a une
+   * de 0 % (sous le seuil de 25 %). Élargir ce filtre remettrait une carte
+   * « tu y es presque » sur un mois où rien ne s'est passé.
+   */
+  it("la carte « prochaine victoire » garde le filtre qui la protège", () => {
+    const i = page.indexOf("const focusGoal = metricGoals");
+    expect(i, "focusGoal a disparu").toBeGreaterThan(-1);
+    const filtre = page.slice(i, page.indexOf("[0]", i));
+    expect(filtre, "un objectif déjà atteint peut redevenir « prochaine victoire »").toContain("!g.met");
+    expect(filtre, "le plancher de progression a sauté").toContain("g.progress >= 25");
+    expect(filtre, "le plafond de progression a sauté").toContain("g.progress < 100");
+  });
 });

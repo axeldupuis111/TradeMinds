@@ -123,6 +123,26 @@ const DEFAULT_TARGET: Record<Metric, number> = {
 
 function unit(m: Metric) { return m === "win_rate" ? "%" : m === "discipline_score" ? "/100" : ""; }
 
+/**
+ * LA VALEUR D'UN OBJECTIF QUAND IL NE S'EST RIEN PASSÉ.
+ *
+ * ⚠️⚠️ LA COLONNE PROGRESSION AFFICHAIT « 0 % » ET « 0/100 » à un trader qui
+ * n'avait passé aucun trade du mois. Vu à l'écran le 2026-09-17 : cinq
+ * objectifs, cinq zéros, sur un compte dont le dernier trade date du 26 août.
+ * Un taux de réussite qui n'existe pas n'est pas un taux de réussite de zéro,
+ * et un score de discipline moyen sans séance n'est pas zéro sur cent.
+ *
+ * ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÉCRITE ET DÉJÀ APPLIQUÉE À CÔTÉ : `hadData` rend le
+ * STATUT neutre (« En cours » plutôt qu'« Atteint ») et la pastille
+ * d'historique dit « pas de données ». Seule la valeur affichée l'ignorait.
+ * Le profil public, lui, écrit « — » depuis longtemps plutôt qu'un 0 %
+ * calculé.
+ */
+function valeurLisible(g: MetricGoal): string {
+  if (g.hadData === false) return "—";
+  return `${g.value}${unit(g.metric)}`;
+}
+
 // Pastille de statut + remplissage de barre (couleur selon l'état de l'objectif).
 function statusVisual(status: "met" | "failed" | "progress") {
   if (status === "met") return { dot: "bg-profit shadow-[0_0_8px_rgb(var(--profit)/0.45)]", bar: "bg-profit", badge: "bg-profit/10 text-profit", text: "text-profit" };
@@ -1158,9 +1178,9 @@ export default function GoalsPage() {
                               {g.kind === "metric" ? (
                                 <>
                                   <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-                                    <GrowBar pct={Math.max(3, g.progress)} className={`rounded-full ${sv.bar}`} />
+                                    <GrowBar pct={g.hadData === false ? 0 : Math.max(3, g.progress)} className={`rounded-full ${sv.bar}`} />
                                   </div>
-                                  <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
+                                  <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{valeurLisible(g)}</span>
                                 </>
                               ) : (
                                 <span className="text-xs text-muted">—</span>
@@ -1205,9 +1225,9 @@ export default function GoalsPage() {
                               {g.kind === "metric" ? (
                                 <>
                                   <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
-                                    <GrowBar pct={Math.max(3, g.progress)} className={`rounded-full ${sv.bar}`} />
+                                    <GrowBar pct={g.hadData === false ? 0 : Math.max(3, g.progress)} className={`rounded-full ${sv.bar}`} />
                                   </div>
-                                  <span className={`text-[11px] font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
+                                  <span className={`text-[11px] font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{valeurLisible(g)}</span>
                                 </>
                               ) : (
                                 <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${sv.badge}`}>{statusLabel}</span>
