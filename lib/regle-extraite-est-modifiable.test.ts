@@ -88,8 +88,16 @@ describe("les règles extraites de la stratégie", () => {
     const debut = src.indexOf("const payload = {");
     expect(debut, "le payload d'enregistrement a changé de forme").toBeGreaterThan(-1);
     const payload = src.slice(debut, src.indexOf("};", debut));
+    /**
+     * ⚠️ ON ÉPINGLE L'INTENTION, PAS L'ÉCRITURE EXACTE. La première version
+     * exigeait la chaîne `champ: parsed.champ` et cassait donc le jour où une
+     * valeur a été BORNÉE avant d'être écrite
+     * (`max_daily_loss: pourcentageDeRegle(parsed.max_daily_loss)`), c'est-à-dire
+     * le jour où le code s'améliorait. Ce qui compte : la clé est dans la charge,
+     * et sa valeur vient bien de l'extraction.
+     */
     const manquants = champsDemandesAuModele().filter(
-      (champ) => !payload.includes(`${champ}: parsed.${champ}`),
+      (champ) => !new RegExp(`\\b${champ}:`).test(payload) || !payload.includes(`parsed.${champ}`),
     );
     expect(
       manquants,

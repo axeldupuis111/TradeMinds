@@ -107,6 +107,39 @@ describe("les deux portes vers la colonne", () => {
     expect(clampees.length, "le clamp a disparu du formulaire").toBeGreaterThanOrEqual(8);
   });
 
+  /**
+   * ⚠️ LA FICHE STRATÉGIE A LE MÊME CHAMP ET LE MÊME PIÈGE : trois fiches de
+   * production portent 200, 150 et 150 dans `max_daily_loss`, un POURCENTAGE.
+   * La route d'extraction IA refusait déjà la valeur (prompt + contrôle serveur
+   * « > 100 → null ») ; la saisie à la main passait.
+   */
+  it("la fiche stratégie clampe sa perte journalière", () => {
+    const src = readFileSync(join(RACINE, "app/dashboard/strategy/page.tsx"), "utf8");
+    /**
+     * ⚠️ L'ANCRE EST LA CHARGE ENREGISTRÉE, PAS LE NOM DU CHAMP : `max_daily_loss:`
+     * tout court trouve d'abord sa DÉCLARATION DE TYPE, quatre cents lignes plus
+     * haut, et la fenêtre n'atteint jamais l'écriture. Ce dépôt a déjà payé ce
+     * piège trois fois.
+     */
+    const i = src.indexOf("risk_per_trade_pct: parsed.risk_per_trade_pct,");
+    expect(i, "la charge d'enregistrement de la fiche a changé de forme").toBeGreaterThan(-1);
+    const bloc = src.slice(i, src.indexOf("setup_rules:", i));
+    expect(bloc, "le champ a disparu de l'enregistrement").toContain("max_daily_loss:");
+    expect(
+      bloc,
+      "la perte journalière de la fiche est enregistrée sans borne",
+    ).toContain("pourcentageDeRegle");
+    expect(
+      src,
+      "rien ne signale au trader une règle déjà enregistrée hors bornes",
+    ).toContain("strategy_max_daily_loss_impossible");
+  });
+
+  it("et la route d'extraction IA la refuse toujours", () => {
+    const src = readFileSync(join(RACINE, "app/api/parse-strategy/route.ts"), "utf8");
+    expect(src, "le contrôle serveur de la valeur extraite a disparu").toMatch(/perte\s*>\s*100/);
+  });
+
   it("l'outil du coach clampe aussi", () => {
     const src = readFileSync(join(RACINE, "lib/coach-tools.ts"), "utf8");
     for (const champ of ["profit_target_pct", "max_daily_dd_pct", "max_total_dd_pct"]) {

@@ -13,6 +13,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { verifierCoherence } from "@/lib/strategy-coherence";
 import { cn } from "@/lib/cn";
 import { nombre, pourcent } from "@/lib/nombres";
+import { pourcentageAberrant, pourcentageDeRegle } from "@/lib/pourcentage-de-regle";
 /**
  * Les nombres d'un constat de cohérence, mis en forme pour un lecteur.
  *
@@ -473,7 +474,20 @@ export default function StrategyPage() {
       max_consecutive_losses: parsed.max_consecutive_losses,
       max_session_minutes: parsed.max_session_minutes,
       risk_per_trade_pct: parsed.risk_per_trade_pct,
-      max_daily_loss: parsed.max_daily_loss,
+      /**
+       * ⚠️⚠️ CE CHAMP EST UN POURCENTAGE, ET TROIS FICHES DE PRODUCTION Y
+       * PORTENT UN MONTANT : 200 et 150, relevés le 2026-09-17. Lus comme des
+       * pourcentages, ce sont des limites qu'aucune journée ne peut atteindre,
+       * donc la règle ne se déclenche jamais et le trader croit l'avoir posée.
+       *
+       * ⚠️ LA ROUTE D'EXTRACTION IA REFUSAIT DÉJÀ LA VALEUR (prompt + contrôle
+       * serveur « > 100 → null »). La saisie à la main, elle, passait : les
+       * attributs `min`/`max` d'un champ nombre n'empêchent pas de taper, et
+       * aucun formulaire ne les valide ici. Une règle écrite, appliquée à une
+       * porte sur deux.
+       */
+      max_daily_loss:
+        parsed.max_daily_loss == null ? null : pourcentageDeRegle(parsed.max_daily_loss),
       setup_rules: parsed.setup_rules,
       checklist_setup_mapping: validatedMapping,
     };
@@ -930,6 +944,18 @@ export default function StrategyPage() {
                   placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
+                {/**
+                 * ⚠️ `min` ET `max` N'EMPÊCHENT PAS DE TAPER : ils colorent un
+                 * champ invalide dans un formulaire validé, et il n'y en a pas
+                 * ici. Trois fiches de production portent 200, 150 et 150 dans
+                 * ce champ de pourcentage. On le DIT au trader, parce que la
+                 * valeur qu'il voulait n'est pas devinable.
+                 */}
+                {pourcentageAberrant(parsed.max_daily_loss) && (
+                  <p role="alert" className="mt-1 text-xs text-loss">
+                    {t("strategy_max_daily_loss_impossible").replace("{value}", String(parsed.max_daily_loss))}
+                  </p>
+                )}
               </div>
             </div>
 

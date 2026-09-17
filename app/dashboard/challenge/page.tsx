@@ -631,6 +631,9 @@ function AccountCard({
       { cle: "challenge_profit_target", valeur: ac.profit_target_pct },
       { cle: "challenge_daily_dd", valeur: ac.max_daily_dd_pct },
       { cle: "challenge_total_dd", valeur: ac.max_total_dd_pct },
+      // ⚠️ LA LIMITE DE DISCIPLINE AUSSI : un compte de production la porte à
+      // 1 000 % (1 000 $ sur 50 000, encore un montant dans un champ de %).
+      { cle: "challenge_max_daily_loss_pct", valeur: ac.max_daily_loss_pct },
     ] as const
   ).filter((r) => pourcentageAberrant(r.valeur));
 

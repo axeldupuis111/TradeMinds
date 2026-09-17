@@ -371,6 +371,7 @@ const dict: Record<string, string> = {
   "strategy_risk_pct_tooltip": "% of account balance risked per trade (e.g. 1 = 1%)",
   "strategy_max_daily_loss": "Max daily loss (%)",
   "strategy_max_daily_loss_tooltip": "% of account balance you allow yourself to lose in a day before stopping",
+  "strategy_max_daily_loss_impossible": "{value}% of capital: above 100%, this rule can never fire. This field expects a percentage, not an amount.",
   "strategy_setup_rules": "Setup rules",
   "strategy_add_rule": "+ Add a rule",
   "strategy_save": "Save strategy",
