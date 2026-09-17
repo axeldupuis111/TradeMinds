@@ -1062,7 +1062,7 @@ const dict: Record<string, string> = {
   "sizer_page_subtitle": "Calcule ta taille de position selon ton risque, ton stop et ton compte.",
   "sizer_help_title": "Comment ça marche",
   "sizer_help_1": "Renseigne ton solde et le risque que tu acceptes par trade (en % ou en {devise}).",
-  "sizer_help_2": "Indique l'instrument et ton stop loss en pips : la valeur du pip est calculée pour toi.",
+  "sizer_help_2": "Indique l'instrument et ton stop loss en pips : la valeur du pip est pré-remplie quand on la connaît, à saisir sinon.",
   "sizer_help_3": "On te donne le lot recommandé pour ne jamais dépasser ton risque.",
   "sizer_help_note": "Astuce : garde un risque ≤ 1-2 % par trade pour protéger ton capital sur la durée.",
   "analytics_title": "Analytics",
