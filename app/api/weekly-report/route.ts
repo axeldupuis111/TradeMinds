@@ -7,6 +7,7 @@ import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { destinataires } from "@/lib/audience-des-notifications";
 import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, statCell, statRow, EMAIL_GREEN, EMAIL_RED, EMAIL_INK } from "@/lib/email-template";
 
@@ -275,41 +276,78 @@ async function handle(req: Request) {
    * lignes, statut 200, sans erreur : au millier et unième inscrit, l'envoi
    * aurait simplement cessé pour les suivants, sans que rien ne dise lesquels.
    */
-  const users = await fetchAllRows<{ id: string; email: string | null; language: string | null; timezone: string | null }>(
+  const optIns = await fetchAllRows<{ id: string }>(
     (from, to) =>
       supabase
         .from("profiles")
-        .select("id, email, language, timezone")
+        .select("id")
         .eq("email_notif_session", true)
         .not("email", "is", null)
         .order("id")
         .range(from, to),
   );
 
-  if (!users) {
+  if (!optIns) {
     await alertCronFailure("weekly-report", "Failed to fetch users: lecture paginée incomplète");
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 
-  // Préférence push « rapport hebdo » (défensif : colonne absente → opt-in).
-  const weeklyPushOptOut = new Set<string>();
+  /**
+   * ⚠️⚠️ LA NOTIFICATION PUSH ÉTAIT COMMANDÉE PAR LA PRÉFERENCE D'E-MAIL.
+   * Cette route partait de `email_notif_session = true` et glissait le push
+   * dans la même boucle : un trader qui refuse les e-mails hebdomadaires
+   * perdait aussi le push hebdomadaire, qu'il n'a jamais refusé, et personne
+   * ne pouvait choisir le push SEUL. Mesuré en production le 2026-09-17 :
+   * CINQUANTE traders sur cinquante-deux ont `email_notif_session = false` et
+   * `push_notif_weekly = true`. Le réglage que l'écran leur montre activé ne
+   * pouvait rien déclencher.
+   *
+   * ⚠️ LE CRON VOISIN LE FAISAIT DÉJÀ BIEN, et l'écrit noir sur blanc :
+   * « Indépendant des emails : on notifie tous les utilisateurs ayant un
+   * abonnement push actif » (app/api/send-reminders). Une règle appliquée à
+   * un cron sur deux.
+   */
+  const pushSubs = await fetchAllRows<{ user_id: string }>((from, to) =>
+    supabase.from("push_subscriptions").select("user_id").order("user_id").range(from, to),
+  );
+  if (!pushSubs) {
+    // ⚠️ « Aucun abonné » et « je n'ai pas pu lire » ne sont pas la même chose.
+    await alertCronFailure("weekly-report", "push_subscriptions : lecture paginée incomplète");
+  }
+  const idsPush = new Set((pushSubs ?? []).map((s) => s.user_id));
+
+  const tousLesIds = Array.from(new Set([...optIns.map((u) => u.id), ...Array.from(idsPush)]));
+  if (tousLesIds.length === 0) {
+    return NextResponse.json(dryRun ? { dryRun: true, wouldSend: 0, skipped: 0, preview: [] } : { sent: 0, echecs: 0, skipped: 0, total: 0 });
+  }
+
   // ⚠️ Deux plafonds : la liste d'identifiants dans l'URL et les mille lignes
   // de réponse. `fetchAllByIds` découpe l'une et pagine l'autre.
-  const weeklyPrefs = await fetchAllByIds<{ id: string; push_notif_weekly?: boolean }>(
-    users.map((u) => u.id),
+  const profils = await fetchAllByIds<{
+    id: string; email: string | null; language: string | null; timezone: string | null;
+    push_notif_weekly?: boolean;
+  }>(
+    tousLesIds,
     (lot, from, to) =>
       supabase
         .from("profiles")
-        .select("id, push_notif_weekly")
+        .select("id, email, language, timezone, push_notif_weekly")
         .in("id", lot)
         .order("id")
         .range(from, to),
   );
-  {
-    for (const r of weeklyPrefs ?? []) {
-      if ((r as { push_notif_weekly?: boolean }).push_notif_weekly === false) weeklyPushOptOut.add(r.id);
-    }
+  if (!profils) {
+    await alertCronFailure("weekly-report", "profils : lecture paginée incomplète");
+    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
+
+  // ⚠️ Le partage des deux publics vit dans lib/audience-des-notifications.ts,
+  // où il est testable : ici, il n'y avait aucun moyen de le prouver.
+  const users = destinataires(
+    profils.map((p) => ({ ...p, preferencePush: p.push_notif_weekly })),
+    optIns.map((u) => u.id),
+    idsPush,
+  ).map((d) => ({ ...d.profil, veutEmail: d.veutEmail, veutPush: d.veutPush }));
 
   const since = new Date();
   since.setDate(since.getDate() - 7);
@@ -323,7 +361,8 @@ async function handle(req: Request) {
   const preview: Record<string, unknown>[] = [];
 
   for (const user of users) {
-    if (!user.email) continue;
+    // Ni e-mail ni push : rien à faire pour ce trader.
+    if (!user.veutEmail && !user.veutPush) continue;
     // Only the trader's local Sunday-evening hour (dryRun bypasses the gate).
     if (!dryRun && !isWeeklyDue((user.timezone as string) || "UTC")) continue;
 
@@ -427,31 +466,35 @@ async function handle(req: Request) {
     const weekLabel = `${since.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${now.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
 
     if (dryRun) {
-      preview.push({ email: user.email, language: lang, ...stats });
+      preview.push({ email: user.email, language: lang, email_envoye: user.veutEmail, push_envoye: user.veutPush, ...stats });
       continue;
     }
 
-    tentatives++;
-    try {
-      resend ??= new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: "TradeDiscipline <noreply@tradediscipline.app>",
-        to: user.email,
-        subject: copy.subject(totalLisible, stats.count),
-        html: buildEmailHtml(stats, weekLabel, copy, fmt, lang, totalLisible, fmtMeilleur, fmtPire, user.id as string),
-        headers: entetesDeDesinscription(user.id as string),
-      });
-      sent++;
-    // ⚠️ Voir lib/cron-alert.ts : un échec d'envoi qui ne sort pas des logs
-    // rend une panne Resend indiscernable d'un cron qui n'avait personne à
-    // prévenir (les deux répondent « sent: 0 »).
-    } catch (emailErr) {
-      echecs++;
-      console.error(`Failed to send weekly report to ${user.email}:`, emailErr);
+    // `veutEmail` garantit deja l'adresse ; la relire ici satisfait le type
+    // sans reposer sur une deduction a distance.
+    if (user.veutEmail && user.email) {
+      tentatives++;
+      try {
+        resend ??= new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: "TradeDiscipline <noreply@tradediscipline.app>",
+          to: user.email,
+          subject: copy.subject(totalLisible, stats.count),
+          html: buildEmailHtml(stats, weekLabel, copy, fmt, lang, totalLisible, fmtMeilleur, fmtPire, user.id as string),
+          headers: entetesDeDesinscription(user.id as string),
+        });
+        sent++;
+      // ⚠️ Voir lib/cron-alert.ts : un échec d'envoi qui ne sort pas des logs
+      // rend une panne Resend indiscernable d'un cron qui n'avait personne à
+      // prévenir (les deux répondent « sent: 0 »).
+      } catch (emailErr) {
+        echecs++;
+        console.error(`Failed to send weekly report to ${user.email}:`, emailErr);
+      }
     }
 
     // Push (best-effort, no-op si pas d'abonnement) : résumé compact de la semaine.
-    if (!weeklyPushOptOut.has(user.id)) {
+    if (user.veutPush) {
       await sendPushToUser(user.id, {
         title: copy.heading,
         body: `${totalLisible} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
