@@ -89,11 +89,38 @@ export const ICT_CHECKLIST_ITEMS: { key: string; label: LabelMap }[] = [
   { key: "risk_managed", label: { fr: "Risque max respecté (1-2% du capital)", en: "Max risk respected (1-2% of capital)", de: "Max Risiko eingehalten (1-2% des Kapitals)", es: "Riesgo máximo respetado (1-2% del capital)" } },
 ];
 
+/**
+ * LA KILLZONE D'UN TRADE, D'APRÈS SON HEURE.
+ *
+ * ⚠️⚠️ LE DÉCALAGE ÉTAIT FIGÉ À « UTC+2 », c'est-à-dire l'heure d'été de Paris,
+ * toute l'année. De fin octobre à fin mars, chaque frontière tombait donc une
+ * heure trop tôt. Mesuré sur les 447 trades de production le 2026-09-17 :
+ * SOIXANTE-SIX trades ont été pris en heure d'hiver, et VINGT-DEUX portent une
+ * killzone qui n'est pas la leur. Un trade du 26 mars à 10 h 53 UTC était
+ * étiqueté « hors session » alors que c'est l'ouverture de Londres ; un autre
+ * « NY après-midi » alors qu'il est du matin.
+ *
+ * ⚠️ L'ANCRE RESTE PARIS, faute de mieux et parce que c'est ce que le code
+ * voulait dire. ⚠️ MAIS ELLE EST DISCUTABLE, et la question est ouverte : les
+ * fenêtres de session du produit (`lib/sessions-de-marche.ts`) sont en UTC, et
+ * « Londres » y vaut 08:00-12:00 UTC quand la killzone « london_open » vaut
+ * 08:00-12:00 à PARIS, soit deux heures plus tôt. Le même trade peut donc être
+ * « dans la session de Londres » pour la règle de discipline et « hors
+ * session » pour son étiquette. Trancher l'ancre (Paris, UTC, ou New York comme
+ * le veut la convention ICT) change l'étiquette de tous les trades passés :
+ * c'est une décision de produit, pas une correction.
+ */
 export function detectKillzone(openTime: string): string {
   if (!openTime) return "";
   const date = new Date(openTime);
-  const hour = date.getUTCHours() + 2; // UTC+2
-  const h = ((hour % 24) + 24) % 24;
+  if (Number.isNaN(date.getTime())) return "";
+  const h = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Paris",
+      hour: "2-digit",
+      hour12: false,
+    }).format(date),
+  ) % 24;
   if (h >= 0 && h < 8) return "asia";
   if (h >= 8 && h < 12) return "london_open";
   if (h >= 13 && h < 16) return "ny_am";
