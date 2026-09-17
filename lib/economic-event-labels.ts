@@ -132,6 +132,12 @@ const QUALIFIERS: { test: RegExp; label: Localized }[] = [
   // le flux britannique écrit ainsi. Sans ce qualificatif, le titre n'était
   // reconnu par rien et restait en anglais.
   { test: /\b3m\/3m\b/i,                        label: { fr: "sur 3 mois",   en: "3m/3m",       de: "über 3 Monate", es: "en 3 meses" } },
+  /**
+   * ⚠️ « ytd/y » : cumul depuis le début d'année, employé par le flux chinois
+   * (« Fixed Asset Investment ytd/y »). Sans lui, le titre ne se réduisait à
+   * rien de connu et repartait en anglais.
+   */
+  { test: /\bytd\b/i,                           label: { fr: "cumul annuel", en: "ytd",         de: "seit Jahresbeginn", es: "acumulado anual" } },
 ];
 
 
@@ -227,6 +233,123 @@ const TERMES: Record<string, Localized> = {
   // ⚠️ Le PMI seul, pour les enquêtes régionales (« Ivey PMI ») que le
   // glossaire ne distingue pas entre industrie et services.
   "pmi":                        { fr: "Indice PMI",                         en: "PMI",                         de: "PMI-Index",                            es: "Índice PMI" },
+
+  /**
+   * ⚠️⚠️ TRENTE-SIX TITRES PARTAIENT EN ANGLAIS SUR UN ÉCRAN FRANÇAIS. Mesuré
+   * le 2026-09-17 sur les 216 annonces réellement servies par le flux : les
+   * impacts FORT, MOYEN et JOUR FÉRIÉ sont à 100 % de couverture, mais 36 des
+   * 131 titres d'impact FAIBLE se rendaient tels quels. Vu sur l'écran de
+   * séance, entre « Permis de construire » et « Mises en chantier » :
+   * « Pending Home Sales m/m ».
+   *
+   * ⚠️ Ce sont des TERMES DE BASE, pas des titres : la composition existante
+   * leur recolle seule le pays et les qualificatifs (m/m, y/y, révisé, final),
+   * donc une entrée ici couvre toutes les variantes du même indicateur.
+   */
+  "labor productivity":         { fr: "Productivité du travail", en: "Labor productivity", de: "Arbeitsproduktivität", es: "Productividad laboral" },
+  "nonfarm productivity":       { fr: "Productivité hors agriculture", en: "Nonfarm productivity", de: "Produktivität ohne Landwirtschaft", es: "Productividad no agrícola" },
+  "unit labor costs":           { fr: "Coût unitaire du travail", en: "Unit labor costs", de: "Lohnstückkosten", es: "Costes laborales unitarios" },
+  "job cuts":                   { fr: "Suppressions de postes", en: "Job cuts", de: "Stellenstreichungen", es: "Recortes de empleo" },
+  "employment change":          { fr: "Variation de l'emploi", en: "Employment change", de: "Beschäftigungsveränderung", es: "Variación del empleo" },
+  "money supply":               { fr: "Masse monétaire", en: "Money supply", de: "Geldmenge", es: "Masa monetaria" },
+  "new loans":                  { fr: "Nouveaux crédits", en: "New loans", de: "Neue Kredite", es: "Nuevos préstamos" },
+  "leading index":              { fr: "Indicateur avancé", en: "Leading index", de: "Frühindikator", es: "Índice adelantado" },
+  "economic sentiment":         { fr: "Sentiment économique", en: "Economic sentiment", de: "Konjunkturerwartungen", es: "Sentimiento económico" },
+  "services index":             { fr: "Indice des services", en: "Services index", de: "Dienstleistungsindex", es: "Índice de servicios" },
+  "machinery orders":           { fr: "Commandes de machines", en: "Machinery orders", de: "Maschinenbauaufträge", es: "Pedidos de maquinaria" },
+  "wholesale inventories":      { fr: "Stocks des grossistes", en: "Wholesale inventories", de: "Großhandelsbestände", es: "Inventarios mayoristas" },
+  "fixed asset investment":     { fr: "Investissement en capital fixe", en: "Fixed asset investment", de: "Anlageinvestitionen", es: "Inversión en activos fijos" },
+  "foreign direct investment":  { fr: "Investissements directs étrangers", en: "Foreign direct investment", de: "Ausländische Direktinvestitionen", es: "Inversión extranjera directa" },
+  "house price balance":        { fr: "Solde des prix de l'immobilier", en: "House price balance", de: "Saldo der Hauspreise", es: "Saldo de precios de la vivienda" },
+  "new home prices":            { fr: "Prix des logements neufs", en: "New home prices", de: "Preise für Neubauten", es: "Precios de vivienda nueva" },
+  "pending home sales":         { fr: "Promesses de vente de logements", en: "Pending home sales", de: "Schwebende Hausverkäufe", es: "Ventas pendientes de viviendas" },
+  "housing market index":       { fr: "Indice du marché immobilier", en: "Housing market index", de: "Immobilienmarktindex", es: "Índice del mercado inmobiliario" },
+  "tertiary industry activity": { fr: "Activité du secteur tertiaire", en: "Tertiary industry activity", de: "Aktivität im Dienstleistungssektor", es: "Actividad del sector terciario" },
+  "visitor arrivals":           { fr: "Arrivées de visiteurs", en: "Visitor arrivals", de: "Besucherankünfte", es: "Llegadas de visitantes" },
+  "import prices":              { fr: "Prix à l'importation", en: "Import prices", de: "Importpreise", es: "Precios de importación" },
+  "foreign securities purchases":{ fr: "Achats de titres étrangers", en: "Foreign securities purchases", de: "Käufe ausländischer Wertpapiere", es: "Compras de valores extranjeros" },
+  // ⚠️ SANS TIRET : `normalizeIndicator` remplace les tirets par des espaces,
+  // donc « TIC Long-Term Purchases » se réduit à « tic long term purchases ».
+  // Une clé avec tiret ne peut jamais correspondre.
+  "long term purchases":        { fr: "Achats de titres à long terme", en: "Long-term purchases", de: "Käufe langfristiger Wertpapiere", es: "Compras de valores a largo plazo" },
+  "price index":                { fr: "Indice des prix", en: "Price index", de: "Preisindex", es: "Índice de precios" },
+
+  /**
+   * ⚠️ LES ACRONYMES NATIONAUX, que le flux n'explicite jamais. Chacun est un
+   * indice de prix d'un pays précis, et un trader qui lit « RMPI m/m » sans le
+   * connaître ne peut pas décider s'il doit s'en méfier.
+   */
+  "rpi":                        { fr: "Indice des prix de détail (RPI)", en: "Retail price index (RPI)", de: "Einzelhandelspreisindex (RPI)", es: "Índice de precios minoristas (RPI)" },
+  "wpi":                        { fr: "Indice des prix de gros", en: "Wholesale price index", de: "Großhandelspreisindex", es: "Índice de precios mayoristas" },
+  "ippi":                       { fr: "Prix des produits industriels", en: "Industrial product prices", de: "Preise für Industrieprodukte", es: "Precios de productos industriales" },
+  "rmpi":                       { fr: "Prix des matières premières", en: "Raw materials prices", de: "Rohstoffpreise", es: "Precios de materias primas" },
+  "fpi":                        { fr: "Indice des prix alimentaires", en: "Food price index", de: "Lebensmittelpreisindex", es: "Índice de precios de alimentos" },
+  "ppi input":                  { fr: "Prix à la production, intrants", en: "Producer prices, input", de: "Erzeugerpreise, Vorleistungen", es: "Precios de producción, insumos" },
+  "ppi output":                 { fr: "Prix à la production, extrants", en: "Producer prices, output", de: "Erzeugerpreise, Ausstoß", es: "Precios de producción, salida" },
+
+  /** Rapports d'institution : un nom propre, pas un indicateur. */
+  "weekly statistical bulletin":{ fr: "Stocks de pétrole (API)", en: "Crude oil stocks (API)", de: "Rohölbestände (API)", es: "Inventarios de crudo (API)" },
+  "summary of deliberations":   { fr: "Compte rendu des délibérations", en: "Summary of deliberations", de: "Zusammenfassung der Beratungen", es: "Resumen de las deliberaciones" },
+  "economic forecasts":         { fr: "Prévisions économiques", en: "Economic forecasts", de: "Konjunkturprognosen", es: "Previsiones económicas" },
+
+  /**
+   * ⚠️ LE RESTE DE LA PHOTO DU FLUX. Mesuré le 2026-09-17 sur les 448 titres
+   * de `lib/titres-du-flux.json` : impacts FORT, MOYEN et JOUR FÉRIÉ à 100 %,
+   * mais 54 des 282 titres d'impact FAIBLE se rendaient encore en anglais brut
+   * sur les écrans français, allemands et espagnols. Ce sont des indicateurs
+   * standards ou des publications d'institution, pas des raretés : le repli en
+   * anglais n'était pas un choix, c'était un trou.
+   */
+  "building approvals":         { fr: "Permis de construire", en: "Building approvals", de: "Baugenehmigungen", es: "Permisos de construcción" },
+  "building consents":          { fr: "Permis de construire", en: "Building consents", de: "Baugenehmigungen", es: "Permisos de construcción" },
+  "construction work done":     { fr: "Travaux de construction réalisés", en: "Construction work done", de: "Ausgeführte Bauarbeiten", es: "Obra de construcción ejecutada" },
+  "private capital expenditure":{ fr: "Investissement privé", en: "Private capital expenditure", de: "Private Investitionen", es: "Inversión privada" },
+  "business investment":        { fr: "Investissement des entreprises", en: "Business investment", de: "Unternehmensinvestitionen", es: "Inversión empresarial" },
+  "capital spending":           { fr: "Dépenses d'investissement", en: "Capital spending", de: "Investitionsausgaben", es: "Gasto de capital" },
+  "company operating profits":  { fr: "Résultat d'exploitation des sociétés", en: "Company operating profits", de: "Betriebsgewinne der Unternehmen", es: "Beneficios operativos de las empresas" },
+  "corporate profits":          { fr: "Bénéfices des sociétés", en: "Corporate profits", de: "Unternehmensgewinne", es: "Beneficios empresariales" },
+  "commodity prices":           { fr: "Prix des matières premières", en: "Commodity prices", de: "Rohstoffpreise", es: "Precios de materias primas" },
+  "inflation gauge":            { fr: "Baromètre d'inflation", en: "Inflation gauge", de: "Inflationsbarometer", es: "Indicador de inflación" },
+  "nhpi":                       { fr: "Prix des logements neufs (NHPI)", en: "New housing price index (NHPI)", de: "Neubaupreisindex (NHPI)", es: "Índice de precios de vivienda nueva (NHPI)" },
+  "sppi":                       { fr: "Prix des services aux entreprises", en: "Services producer prices", de: "Erzeugerpreise für Dienstleistungen", es: "Precios de servicios a empresas" },
+  "overseas trade index":       { fr: "Indice des termes de l'échange", en: "Overseas trade index", de: "Außenhandelsindex", es: "Índice de comercio exterior" },
+  "private sector credit":      { fr: "Crédit au secteur privé", en: "Private sector credit", de: "Kredite an den Privatsektor", es: "Crédito al sector privado" },
+  "private loans":              { fr: "Crédits au secteur privé", en: "Private loans", de: "Kredite an Private", es: "Préstamos privados" },
+  "monetary base":              { fr: "Base monétaire", en: "Monetary base", de: "Geldbasis", es: "Base monetaria" },
+  "loan prime rate":            { fr: "Taux de référence des prêts", en: "Loan prime rate", de: "Leitzins für Kredite", es: "Tipo preferencial de préstamo" },
+  "mortgage approvals":         { fr: "Crédits immobiliers accordés", en: "Mortgage approvals", de: "Bewilligte Hypotheken", es: "Hipotecas aprobadas" },
+  "net lending to individuals": { fr: "Crédit net aux particuliers", en: "Net lending to individuals", de: "Nettokreditvergabe an Private", es: "Préstamo neto a particulares" },
+  "housing equity withdrawal":  { fr: "Retraits sur valeur immobilière", en: "Housing equity withdrawal", de: "Entnahmen aus Immobilienvermögen", es: "Retirada de capital inmobiliario" },
+  "credit card spending":       { fr: "Dépenses par carte bancaire", en: "Credit card spending", de: "Kreditkartenausgaben", es: "Gasto con tarjeta de crédito" },
+  "consumer spending":          { fr: "Consommation des ménages", en: "Consumer spending", de: "Verbraucherausgaben", es: "Gasto de los consumidores" },
+  "unemployment change":        { fr: "Variation du chômage", en: "Unemployment change", de: "Veränderung der Arbeitslosigkeit", es: "Variación del desempleo" },
+  "private payrolls":           { fr: "Emploi salarié privé", en: "Private payrolls", de: "Private Beschäftigung", es: "Empleo asalariado privado" },
+  "business climate":           { fr: "Climat des affaires", en: "Business climate", de: "Geschäftsklima", es: "Clima empresarial" },
+  "business outlook survey":    { fr: "Enquête sur les perspectives", en: "Business outlook survey", de: "Umfrage zu den Geschäftsaussichten", es: "Encuesta de perspectivas empresariales" },
+  "economic barometer":         { fr: "Baromètre conjoncturel", en: "Economic barometer", de: "Konjunkturbarometer", es: "Barómetro económico" },
+  "economic expectations":      { fr: "Attentes économiques", en: "Economic expectations", de: "Konjunkturerwartungen", es: "Expectativas económicas" },
+  "industrial order expectations":{ fr: "Perspectives de commandes", en: "Industrial order expectations", de: "Auftragserwartungen der Industrie", es: "Expectativas de pedidos industriales" },
+  "realized sales":             { fr: "Ventes réalisées", en: "Realized sales", de: "Realisierte Umsätze", es: "Ventas realizadas" },
+  "credit conditions survey":   { fr: "Enquête sur les conditions de crédit", en: "Credit conditions survey", de: "Umfrage zu den Kreditbedingungen", es: "Encuesta sobre condiciones crediticias" },
+  "stress test results":        { fr: "Résultats des tests de résistance", en: "Stress test results", de: "Ergebnisse der Stresstests", es: "Resultados de las pruebas de resistencia" },
+  "bulletin":                   { fr: "Bulletin", en: "Bulletin", de: "Bulletin", es: "Boletín" },
+  "economic bulletin":          { fr: "Bulletin économique", en: "Economic bulletin", de: "Wirtschaftsbericht", es: "Boletín económico" },
+  "quarterly bulletin":         { fr: "Bulletin trimestriel", en: "Quarterly bulletin", de: "Quartalsbericht", es: "Boletín trimestral" },
+  "monetary policy meeting accounts":{ fr: "Compte rendu de politique monétaire", en: "Monetary policy meeting accounts", de: "Protokoll der geldpolitischen Sitzung", es: "Acta de la reunión de política monetaria" },
+  "summary of monetary policy discussions":{ fr: "Compte rendu des débats de politique monétaire", en: "Summary of monetary policy discussions", de: "Zusammenfassung der geldpolitischen Debatte", es: "Resumen de los debates de política monetaria" },
+  "summary of opinions":        { fr: "Résumé des opinions", en: "Summary of opinions", de: "Zusammenfassung der Meinungen", es: "Resumen de opiniones" },
+  "meeting minutes":            { fr: "Compte rendu de réunion", en: "Meeting minutes", de: "Sitzungsprotokoll", es: "Acta de la reunión" },
+  "statement":                  { fr: "Déclaration", en: "Statement", de: "Erklärung", es: "Declaración" },
+
+  /** Les huit derniers, et la photo du flux est couverte de bout en bout. */
+  "beige book":                 { fr: "Livre beige de la Fed", en: "Fed Beige Book", de: "Fed Beige Book", es: "Libro Beige de la Fed" },
+  "construction spending":      { fr: "Dépenses de construction", en: "Construction spending", de: "Bauausgaben", es: "Gasto en construcción" },
+  "loan officer survey":        { fr: "Enquête auprès des banques", en: "Senior loan officer survey", de: "Umfrage unter Kreditverantwortlichen", es: "Encuesta a responsables de crédito" },
+  "mortgage delinquencies":     { fr: "Impayés de crédit immobilier", en: "Mortgage delinquencies", de: "Hypothekenausfälle", es: "Impagos hipotecarios" },
+  "total vehicle sales":        { fr: "Ventes de véhicules", en: "Total vehicle sales", de: "Fahrzeugverkäufe", es: "Ventas de vehículos" },
+  "personal income":            { fr: "Revenu des ménages", en: "Personal income", de: "Persönliche Einkommen", es: "Renta personal" },
+  "personal spending":          { fr: "Dépenses des ménages", en: "Personal spending", de: "Persönliche Ausgaben", es: "Gasto personal" },
+  "economic optimism":          { fr: "Optimisme économique", en: "Economic optimism", de: "Wirtschaftsoptimismus", es: "Optimismo económico" },
 };
 
 /** « BOE Gov Bailey Speaks » : une forme, pas un indicateur. */

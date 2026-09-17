@@ -34,14 +34,32 @@ describe("displayEventTitle", () => {
   });
 
   /**
-   * ⚠️ LE REPLI EXISTE TOUJOURS, il est simplement devenu RARE : ce qui n'est
-   * ni curaté, ni une forme connue, ni composable reste en anglais, et c'est
-   * mieux qu'un nom inventé. « Ifo Business Climate » est dans ce cas : le nom
-   * de l'institut allemand fait partie du nom de l'indice.
+   * ⚠️ LE REPLI EXISTE TOUJOURS : ce qui n'est ni curaté, ni une forme connue,
+   * ni composable reste en anglais, et c'est mieux qu'un nom inventé. Il ne
+   * sert simplement plus sur le flux réel, dont les 448 titres sont désormais
+   * tous nommés (voir `annonces-fortes-nommees.test.ts`).
+   *
+   * ⚠️⚠️ L'EXEMPLE EST INVENTÉ, ET C'EST LA CORRECTION D'UN PIÈGE. Cette ligne
+   * citait « German Ifo Business Climate », un vrai titre du flux alors non
+   * curaté : le jour où il l'a été, ce test a échoué alors que le produit
+   * venait de s'améliorer. Un exemple négatif doit être hors du monde réel,
+   * sinon il périme et transforme un progrès en panne. Le même piège a été
+   * corrigé le même jour dans `annonces-fortes-nommees.test.ts`, sur
+   * « Omdia Total Vehicle Sales ».
    */
   it("rend le titre du flux inchangé quand rien ne le reconnaît", () => {
-    expect(displayEventTitle("German Ifo Business Climate", "fr")).toBe("German Ifo Business Climate");
-    expect(hasCuratedTitle("German Ifo Business Climate", "fr")).toBe(false);
+    expect(displayEventTitle("Zzz Fictitious Indicator", "fr")).toBe("Zzz Fictitious Indicator");
+    expect(hasCuratedTitle("Zzz Fictitious Indicator", "fr")).toBe(false);
+  });
+
+  /**
+   * ⚠️ ET « German Ifo Business Climate », qui servait d'exemple de repli, est
+   * maintenant nommé : le nom de l'institut reste en tête, comme pour toutes
+   * les enquêtes qui portent celui de leur publieur.
+   */
+  it("nomme l'enquête ifo sans perdre l'institut", () => {
+    expect(displayEventTitle("German Ifo Business Climate", "fr")).toContain("Climat des affaires");
+    expect(displayEventTitle("German Ifo Business Climate", "fr")).toContain("Ifo");
   });
 
   /**

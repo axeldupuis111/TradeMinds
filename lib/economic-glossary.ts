@@ -41,6 +41,10 @@ const NATIONALITIES = new Set([
  */
 const NOISE = new Set([
   "m/m", "y/y", "q/q", "q/y", "mom", "yoy", "qoq", "m/m.", "y/y.", "3m/3m", "3m/3m.",
+  // ⚠️ « ytd/y » : cumul depuis le début d'année, employé par le flux chinois
+  // (« Fixed Asset Investment ytd/y »). Sans lui, le titre ne réduisait à rien
+  // de connu et repartait en anglais.
+  "ytd/y", "ytd", "ytd/y.",
   "flash", "prelim", "preliminary", "advance", "advanced", "final", "revised",
   "second", "third", "1st", "2nd", "3rd", "est", "estimate",
 ]);
