@@ -1200,7 +1200,10 @@ export default function ChallengePage() {
   }
 
   async function handleEdit(challengeId: string, data: Partial<Challenge>): Promise<boolean> {
-    const { error } = await supabase.from("prop_challenges").update(data).eq("id", challengeId);
+    // ⚠️ Un compte que le trader renomme et renumérote devient le sien : il ne
+    // doit pas disparaître à la sortie du mode démo. Même règle que la page
+    // Stratégie, où c'est le travail écrit qui était en jeu.
+    const { error } = await supabase.from("prop_challenges").update({ ...data, is_demo: false }).eq("id", challengeId);
     if (error) {
       console.error("[compte] modification refusee :", error.message);
       setMessage({ type: "error", text: messageDErreurSupabase(error, t) });

@@ -1396,9 +1396,12 @@ export async function executeCoachTool(
         if (nums === "invalid") return fail("Une règle numérique est hors bornes.");
         if (nums) Object.assign(patch, nums);
         if (Object.keys(patch).length === 0) return fail("Rien à mettre à jour.");
+        // ⚠️ Même règle que la page Stratégie : ce que le trader réécrit
+        // cesse d'être de la démonstration, sinon la sortie du mode démo
+        // efface son travail. Voir app/dashboard/strategy/page.tsx.
         const { data, error } = await supabase
           .from("strategies")
-          .update(patch)
+          .update({ ...patch, is_demo: false })
           .eq("id", input.strategy_id)
           .eq("user_id", userId)
           .select("id");

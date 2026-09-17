@@ -482,7 +482,26 @@ export default function StrategyPage() {
     let error;
 
     if (existingId) {
-      ({ error } = await supabase.from("strategies").update(payload).eq("id", existingId));
+      /**
+       * ⚠️⚠️ CE QU'UN TRADER RÉÉCRIT LUI APPARTIENT, DONC CE N'EST PLUS DE LA DÉMO.
+       *
+       * Le mode démo insère une stratégie et un compte marqués `is_demo = true`, et
+       * la sortie du mode démo SUPPRIME toutes les lignes ainsi marquées. Mais les
+       * écrans d'édition chargent ces lignes comme les autres et les mettent à jour
+       * sans toucher au drapeau : un trader qui découvre le produit en démo, puis
+       * écrit SA stratégie par-dessus celle de démonstration, garde une ligne
+       * `is_demo = true` qui contient son propre travail. Le jour où il quitte le
+       * mode démo, elle est effacée sans un mot.
+       *
+       * ⚠️ CE N'EST PAS THÉORIQUE : mesuré le 2026-09-17, un compte est exactement
+       * dans cet état, avec une stratégie nommée « VP + FVG m1 » (son nom, son
+       * texte) encore marquée comme démonstration.
+       *
+       * Éditer une ligne de démonstration la fait donc passer du côté réel. La démo
+       * n'y perd rien : ce qui est resté fictif porte toujours son drapeau et sera
+       * purgé normalement.
+       */
+      ({ error } = await supabase.from("strategies").update({ ...payload, is_demo: false }).eq("id", existingId));
     } else {
       const res = await supabase.from("strategies").insert(payload).select("id").single();
       error = res.error;

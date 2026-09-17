@@ -99,12 +99,27 @@ describe("les règles extraites de la stratégie", () => {
   });
 
   /**
-   * ⚠️ ET L'ENREGISTREMENT RESTE PARTIEL. Passer à un objet complet (ou à un
-   * `upsert`) effacerait toute colonne oubliée, ce qui transformerait ce défaut
-   * d'affichage en perte de données.
+   * ⚠️ ET L'ENREGISTREMENT RESTE PARTIEL. Passer à un `upsert`, ou reconstruire
+   * un objet complet ailleurs, effacerait toute colonne oubliée : ce défaut
+   * d'affichage deviendrait une perte de données.
+   *
+   * ⚠️⚠️ ON ÉPINGLE L'INTENTION, PAS LA SIGNATURE. La première version exigeait
+   * `update(payload)` au caractère près et a cassé le jour où l'enregistrement
+   * a dû ajouter `is_demo: false` — une correction qui EMPÊCHE justement une
+   * perte de données (voir `ce-qui-est-reecrit-nest-plus-de-la-demo`). Un garde
+   * qui interdit une amélioration finit désactivé.
    */
   it("l'enregistrement met à jour sans écraser les colonnes absentes", () => {
-    expect(page()).toContain('.from("strategies").update(payload).eq("id", existingId)');
+    const src = page();
+    const i = src.indexOf('.from("strategies").update(');
+    expect(i, "l'enregistrement n'est plus une mise à jour de la table").toBeGreaterThan(-1);
+    const appel = src.slice(i, src.indexOf("\n", i));
+    // La mise à jour porte bien `payload`, et vise UNE ligne par son id.
+    expect(appel, "le payload n'est plus celui qui vient d'être construit").toContain("payload");
+    expect(appel, "la mise à jour ne vise plus une ligne précise").toContain('.eq("id", existingId)');
+    // Et rien n'est passé en `upsert`, qui écraserait les colonnes absentes.
+    expect(src, "l'enregistrement est passé en upsert : les colonnes absentes seront effacées")
+      .not.toContain('.from("strategies").upsert(');
   });
 
   it("le nouveau champ porte un libellé dans les quatre langues", () => {
