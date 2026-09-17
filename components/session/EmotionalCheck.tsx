@@ -1,16 +1,23 @@
 "use client";
 
+import { estARisque } from "@/lib/emotions";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 
+/**
+ * ⚠️ « À RISQUE » NE SE DÉCIDE PLUS ICI. Ce drapeau était posé à la main, et le
+ * coach en tenait un autre, plus court, tout en promettant dans son commentaire
+ * de dire la même chose : un trader qui déclarait son anxiété était averti ici
+ * et rassuré par le coach. Voir lib/emotions.ts.
+ */
 const EMOTIONS = [
-  { key: "confident", emoji: "😎", risky: false },
-  { key: "neutral", emoji: "😐", risky: false },
-  { key: "anxious", emoji: "😰", risky: true },
-  { key: "frustrated", emoji: "😤", risky: true },
-  { key: "fomo", emoji: "🤑", risky: true },
-  { key: "revenge", emoji: "😡", risky: true },
+  { key: "confident", emoji: "😎" },
+  { key: "neutral", emoji: "😐" },
+  { key: "anxious", emoji: "😰" },
+  { key: "frustrated", emoji: "😤" },
+  { key: "fomo", emoji: "🤑" },
+  { key: "revenge", emoji: "😡" },
 ];
 
 interface Props {
@@ -51,7 +58,7 @@ export default function EmotionalCheck({ sessionId, onFeedback }: Props) {
     }
 
     const em = EMOTIONS.find((e) => e.key === emotionKey);
-    if (em?.risky) {
+    if (estARisque(em?.key)) {
       onFeedback({ type: "warning", message: t("session_active_pause_recommended") });
     } else {
       onFeedback({ type: "ok", message: t("session_active_emotion_logged") });

@@ -1,3 +1,4 @@
+import { estImpulsive } from "@/lib/emotions";
 import { NextResponse } from "next/server";
 import { bornesDePeriode } from "@/lib/periode-objectif";
 import { addDaysToDateKey as decalerJours, localDateKey, normalizeTimezone } from "@/lib/timezone";
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 // Émotions clairement impulsives vs clairement posées. Les autres (hésitant,
 // anxieux, sans tag) restent dans un milieu neutre exclu du contraste pour que
 // la comparaison "discipline vs impulsivité" reste nette et défendable.
-const IMPULSIVE = new Set(["revenge", "fomo", "greedy", "cupide", "frustrated", "overconfident"]);
+// ⚠️ QUATRIÈME COPIE DE LA MÊME LISTE (fuites, défis, coach, ici). Elle vit
+// maintenant dans lib/emotions.ts, déduite de la catégorie du catalogue.
 const COMPOSED = new Set(["calm", "confident", "neutral"]);
 
 interface TradeRow { pnl: number; commission: number | null; swap: number | null; emotion: string | null; open_time: string | null }
@@ -84,7 +86,7 @@ export async function GET() {
 
   // ── Edge de discipline : trades posés vs impulsifs (win rate + résultat moyen).
   const composed = aggregate(trades.filter((t) => t.emotion != null && COMPOSED.has(t.emotion)));
-  const impulsive = aggregate(trades.filter((t) => t.emotion != null && IMPULSIVE.has(t.emotion)));
+  const impulsive = aggregate(trades.filter((t) => estImpulsive(t.emotion)));
   const edge = composed.count >= 3 && impulsive.count >= 2 ? { composed, impulsive } : null;
 
   // ── Tableau de bord du mois : métriques clés mois en cours vs mois précédent.

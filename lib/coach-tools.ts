@@ -29,11 +29,12 @@ import { mesurerAdherence } from "./strategy-adherence";
 import { verifierCoherence } from "./strategy-coherence";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 import { etatDesGels } from "@/lib/gels-de-serie";
+import { estARisque } from "@/lib/emotions";
 import { computeTradeStats, deviseUniqueDuSeau, type InsightTrade } from "@/lib/analysis-insights";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { getFuturesContract } from "@/lib/futures-contracts";
-import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
+import { ICT_CHECKLIST_ITEMS, ICT_EMOTIONS } from "@/lib/ict-constants";
 import { calculatePips } from "@/lib/pips";
 import {
   actualRiskForContracts,
@@ -65,7 +66,15 @@ const METRIC_COMPARATOR: Record<Metric, "gte" | "lte"> = {
 };
 
 // Émotions annotables (mêmes valeurs que QuickAnnotateModal / la checklist de session).
-const EMOTIONS = ["confident", "neutral", "anxious", "frustrated", "fomo", "revenge"] as const;
+/**
+ * Les émotions que le coach peut enregistrer.
+ *
+ * ⚠️ ELLES VIENNENT DU CATALOGUE. Écrites à la main, elles n'en couvraient que
+ * six sur dix : un trader qui disait au coach sa cupidité ou son excès de
+ * confiance ne pouvait pas les faire noter, alors que la fiche de trade les lui
+ * propose et que de vraies lignes en portent.
+ */
+const EMOTIONS = ICT_EMOTIONS.map((e) => e.value);
 
 // Règles numériques éditables d'une stratégie (bornes de garde-fou incluses).
 const STRATEGY_NUM_RULES: Record<string, { min: number; max: number; int?: boolean }> = {
@@ -2654,7 +2663,14 @@ export async function executeCoachTool(
         if (error || !data) return fail("Enregistrement du ressenti impossible.");
         // Les émotions à risque déclenchent une mise en garde côté produit :
         // le coach doit dire la même chose, sinon les deux voix se contredisent.
-        const risky = ["frustrated", "fomo", "revenge"].includes(emotion);
+        /**
+         * ⚠️⚠️ CETTE LISTE N'ÉTAIT PAS CELLE DE L'ÉCRAN, alors que le
+         * commentaire ci-dessus promet le contraire : l'anxiété y manquait, et
+         * un trader qui la déclarait au coach s'entendait répondre « poursuis
+         * la conversation normalement » pendant que le bandeau de séance
+         * l'avertissait. Voir lib/emotions.ts.
+         */
+        const risky = estARisque(emotion);
         return {
           result: {
             ok: true,

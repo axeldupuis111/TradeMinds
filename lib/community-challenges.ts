@@ -21,6 +21,8 @@
  * 20260713).
  */
 
+import { EMOTIONS_IMPULSIVES } from "@/lib/emotions";
+
 export type ChallengeMetric =
   | "clean_days"
   | "clean_run"
@@ -73,15 +75,15 @@ export function getCommunityChallenge(key: string): CommunityChallenge | undefin
   return CHALLENGE_POOL.find((c) => c.key === key);
 }
 
-/** Emotions that count as impulsive (break a "clean" day). Kept in sync with goals/insights. */
-export const IMPULSIVE_EMOTIONS = new Set([
-  "revenge",
-  "fomo",
-  "greedy",
-  "cupide",
-  "frustrated",
-  "overconfident",
-]);
+/**
+ * Emotions that count as impulsive (break a "clean" day).
+ *
+ * ⚠️ RECOPIÉE À L'IDENTIQUE DANS lib/analytics/leaks.ts, et une TROISIÈME liste,
+ * plus courte, servait au coach et au bandeau de séance. Le commentaire disait
+ * « kept in sync » : c'est exactement ce qu'aucune copie ne peut promettre. La
+ * liste vit dans lib/emotions.ts, déduite de la catégorie du vocabulaire.
+ */
+export const IMPULSIVE_EMOTIONS = EMOTIONS_IMPULSIVES;
 
 // ── ISO week helpers (UTC) ────────────────────────────────────────────────────
 

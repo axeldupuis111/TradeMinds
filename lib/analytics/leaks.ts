@@ -13,6 +13,7 @@
  */
 
 import { localDateKey, localHour } from "@/lib/timezone";
+import { estImpulsive } from "@/lib/emotions";
 
 export interface LeakTrade {
   open_time: string;
@@ -47,8 +48,12 @@ export interface LeaksResult {
   flaggedCount: number;
 }
 
-/** Émotions considérées à risque (alignées sur lib/emotions.ts). */
-const RISK_EMOTIONS = new Set(["revenge", "fomo", "greedy", "cupide", "overconfident", "frustrated"]);
+/**
+ * ⚠️ LA LISTE VIT DANS lib/emotions.ts. Elle était recopiée ici ET dans
+ * lib/community-challenges.ts, et une TROISIÈME, plus courte, servait au coach
+ * et au bandeau de séance. Le commentaire disait déjà « alignées sur
+ * lib/emotions.ts » : ce fichier ne l'importait simplement pas.
+ */
 
 /** Un trade repris moins de 30 min après une perte = signal revenge. */
 const REVENGE_WINDOW_MS = 30 * 60 * 1000;
@@ -153,8 +158,7 @@ function flagTrades(sorted: LeakTrade[], opts?: LeakOptions): FlagResult {
 
   // ── Émotions à risque annotées par le trader ──────────────────────────
   for (let i = 0; i < sorted.length; i++) {
-    const emotion = sorted[i].emotion?.toLowerCase();
-    if (emotion && RISK_EMOTIONS.has(emotion)) flag(i, "emotional");
+    if (estImpulsive(sorted[i].emotion)) flag(i, "emotional");
   }
 
   // ── Overtrading : au-delà de la limite quotidienne de la stratégie ────

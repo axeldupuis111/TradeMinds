@@ -98,8 +98,11 @@ function EmotionTag({
   emotion: string | null;
   checklist: Record<string, boolean> | null;
 }) {
+  // ⚠️ LA LANGUE VIENT DU LECTEUR : ce nom sortait en français pour tout le
+  // monde, sur la colonne Émotion de la liste des trades. Voir lib/emotions.ts.
+  const { lang } = useLanguage();
   if (emotion) {
-    const display = getEmotionDisplay(emotion);
+    const display = getEmotionDisplay(emotion, lang);
     if (!display) return <span className="text-muted">—</span>;
     return (
       <span className="text-xs flex items-center gap-1 whitespace-nowrap">
