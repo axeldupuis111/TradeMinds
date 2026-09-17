@@ -6,6 +6,7 @@ import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { Gem } from "lucide-react";
 import { useMemo } from "react";
 import { pourcent } from "@/lib/nombres";
+import { enMoisEtAnnee } from "@/lib/dates";
 
 interface Trade {
   open_time: string;
@@ -238,6 +239,23 @@ export default function PublicProfileView({
           <div className="bg-card border border-border rounded-xl p-5 mb-8">
             <h2 className="text-foreground font-semibold mb-4">{t("pubprofile_achievements")}</h2>
             <div className="flex flex-wrap gap-2">
+              {/**
+               * ⚠️⚠️ UNE DISTINCTION EST UN ACQUIS, ET SANS DATE ELLE SE LIT AU
+               * PRÉSENT. Cette page affichait « 🎯 Taux de réussite > 60 % » et
+               * « 🏆 10 jours de discipline » à côté de « 45,9 % » et de
+               * « 7 jours de discipline », mesurés le 2026-09-17 sur un profil
+               * réel. Pire pour la série : le RECORD de ce trader est de huit
+               * jours, la distinction des dix a été obtenue sous une définition
+               * de la série qui n'existe plus (voir
+               * lib/discipline-streak-source.ts, qui raconte les deux comptes
+               * rivaux). Un lecteur de passage n'a aucun moyen de recouper : le
+               * profil public est la seule surface du produit dont il ne verra
+               * jamais l'envers.
+               *
+               * ⚠️ ON NE RETIRE RIEN : un badge gagné reste gagné, c'est la
+               * règle écrite du produit. On DATE, ce qui suffit à le remettre au
+               * passé.
+               */}
               {achievements.map((a) => {
                 const def = BADGES[a.key];
                 if (!def) return null;
@@ -245,6 +263,22 @@ export default function PublicProfileView({
                   <div key={a.key} className="flex items-center gap-2 px-3 py-2 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs">
                     <span>{def.emoji}</span>
                     <span>{t(def.cle)}</span>
+                    {/*
+                      ⚠️ AUCUNE OPACITÉ SUR CETTE ENCRE : diluer l'accent le fait
+                      tomber sous 4,5:1, et le garde des encres diluées le refuse.
+                      La règle du dépôt est de descendre d'un jeton ; ici le point
+                      médian suffit à séparer la date du libellé.
+
+                      ⚠️ LA LANGUE EST PASSÉE, comme pour le taux plus haut :
+                      cette page est rendue sur le SERVEUR, où la langue courante
+                      n'a aucun document à lire et rendrait « juin » à un lecteur
+                      anglophone.
+                    */}
+                    {a.unlocked_at && (
+                      <span>
+                        · {t("pubprofile_badge_since").replace("{date}", enMoisEtAnnee(a.unlocked_at, lang))}
+                      </span>
+                    )}
                   </div>
                 );
               })}

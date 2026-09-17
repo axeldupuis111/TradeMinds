@@ -60,6 +60,20 @@ export function enDateLongue(valeur: Date | number | string, langue?: string): s
   });
 }
 
+/**
+ * Un mois et une année : « juin 2026 », « June 2026 ».
+ *
+ * ⚠️ POUR DATER UN ACQUIS, pas un rendez-vous : une distinction obtenue en juin
+ * n'a pas besoin du jour, mais elle a besoin de dire QUAND, sinon elle se lit
+ * au présent.
+ */
+export function enMoisEtAnnee(valeur: Date | number | string, langue?: string): string {
+  return new Date(valeur).toLocaleDateString(langue ?? langueCourante(), {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** Un jour et un mois, pour un axe de graphique : « 09/07 », « 07/09 ». */
 export function enJourEtMois(valeur: Date | number | string, langue?: string): string {
   return new Date(valeur).toLocaleDateString(langue ?? langueCourante(), {
