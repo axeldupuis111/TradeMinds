@@ -1,3 +1,4 @@
+import { logAiCost } from "@/lib/ai-cost-log";
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
@@ -156,6 +157,12 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
       max_tokens: 5000,
       messages: [{ role: "user", content: prompt }],
     });
+
+    // ⚠️ Un appel qui ne se journalise pas est un coût invisible : la règle
+    // est écrite dans `lib/ai-cost-log.ts` et n'était tenue que par quatre
+    // routes sur treize.
+    const { createClient: clientPourCout } = await import("@/lib/supabase/server");
+    logAiCost(await clientPourCout(), auth.userId, { route: "parse-strategy", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: message.usage });
 
     const textBlock = message.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {

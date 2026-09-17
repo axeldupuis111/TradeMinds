@@ -1,3 +1,4 @@
+import { logAiCost } from "@/lib/ai-cost-log";
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { createClient } from "@supabase/supabase-js";
@@ -163,6 +164,9 @@ export async function POST(req: Request) {
       max_tokens: 400,
       messages: [{ role: "user", content: buildPrompt(input, today) }],
     });
+    // ⚠️ Un appel qui ne se journalise pas est un coût invisible : la règle est
+    // écrite dans `lib/ai-cost-log.ts` et n'était tenue que par quatre routes.
+    logAiCost(serviceClient(), auth.userId, { route: "community-interpret", model: "claude-sonnet-5", plan: auth.plan, usage: msg.usage });
     const raw = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

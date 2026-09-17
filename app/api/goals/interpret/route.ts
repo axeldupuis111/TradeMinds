@@ -1,3 +1,4 @@
+import { logAiCost } from "@/lib/ai-cost-log";
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { NextResponse } from "next/server";
@@ -52,6 +53,12 @@ Choisis une cible (target) raisonnable si l'utilisateur n'en donne pas. Utilise 
       max_tokens: 200,
       messages: [{ role: "user", content: prompt }],
     });
+    // ⚠️ Un appel qui ne se journalise pas est un coût invisible : la règle
+    // est écrite dans `lib/ai-cost-log.ts` et n'était tenue que par quatre
+    // routes sur treize.
+    const { createClient: clientPourCout } = await import("@/lib/supabase/server");
+    logAiCost(await clientPourCout(), auth.userId, { route: "goals-interpret", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
+
     const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim();
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ trackable: false });
