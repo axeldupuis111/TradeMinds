@@ -102,6 +102,19 @@ describe("les deux appelants", () => {
     "app/api/chat-coach/route.ts",
   ];
 
+  /**
+   * ⚠️⚠️ ET UN QUATRIÈME ENDROIT, À L'ÉCRAN CELUI-LÀ : le tableau « Quelle
+   * stratégie te rapporte ? » écrivait le dénominateur « /7 » EN DUR, dans un
+   * tableau qui compare justement des fiches dont les checklists n'ont pas la
+   * même taille. Un trader de « INFX OTO+ » (8 items) qui cochait tout lisait
+   * « 8,0/7 ».
+   */
+  it("le tableau de comparaison ne code plus son dénominateur en dur", () => {
+    const src = readFileSync(join(RACINE, "components/analytics/StrategyCompareBlock.tsx"), "utf8");
+    expect(src, "le dénominateur « /7 » est revenu en dur").not.toMatch(/\/7`/);
+    expect(src, "le tableau ne lit pas le nombre d'items de chaque fiche").toContain("totalDeChecklist(");
+  });
+
   it("ne prennent plus le nombre de règles d'entrée", () => {
     const fautes: string[] = [];
     for (const chemin of APPELANTS) {

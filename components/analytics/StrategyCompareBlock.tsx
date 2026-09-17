@@ -16,6 +16,7 @@ import { cn } from "@/lib/cn";
 import { Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { nombre, pourcent } from "@/lib/nombres";
+import { totalDeChecklist } from "@/lib/total-de-checklist";
 
 interface StrategyTrade {
   pnl: number;
@@ -33,6 +34,8 @@ interface Bucket {
   winrate: number;
   profitFactor: number | null;
   avgChecklist: number | null;
+  /** Sur combien la checklist de CETTE fiche se coche. */
+  totalChecklist: number;
 }
 
 function netPnl(t: StrategyTrade): number {
@@ -42,6 +45,14 @@ function netPnl(t: StrategyTrade): number {
 export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURRENCY }: { trades: StrategyTrade[]; currency?: string }) {
   const { t } = useLanguage();
   const [names, setNames] = useState<Record<string, string>>({});
+  /**
+   * ⚠️⚠️ LE DÉNOMINATEUR ÉTAIT ÉCRIT « /7 » EN DUR, dans un tableau qui COMPARE
+   * des fiches entre elles. La checklist d'une fiche a le nombre d'items
+   * qu'elle s'est donné : « INFX OTO+ » en a huit, donc un trader qui les coche
+   * tous lisait « 8,0/7 ». Et un score brut moyen n'est de toute façon pas
+   * comparable d'une fiche à l'autre : la colonne affiche donc un taux.
+   */
+  const [totaux, setTotaux] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const supabase = createClient();
@@ -54,6 +65,21 @@ export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURREN
         const map: Record<string, string> = {};
         for (const s of data) map[s.id] = s.name?.trim() || t("stratcmp_unnamed");
         setNames(map);
+
+        // Les items de checklist de chaque fiche, pour le dénominateur.
+        const { data: tags } = await supabase
+          .from("strategy_tags")
+          .select("strategy_id")
+          .eq("tag_type", "checklist")
+          .in("strategy_id", data.map((s) => s.id));
+        if (!cancelled) {
+          const compte: Record<string, number> = {};
+          for (const tag of tags ?? []) {
+            const id = (tag as { strategy_id: string }).strategy_id;
+            compte[id] = (compte[id] ?? 0) + 1;
+          }
+          setTotaux(compte);
+        }
       }
     }
     load();
@@ -85,10 +111,11 @@ export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURREN
           winrate: (wins / list.length) * 100,
           profitFactor: grossLoss > 0 ? grossWin / grossLoss : null,
           avgChecklist: checklistN > 0 ? checklistSum / checklistN : null,
+          totalChecklist: totalDeChecklist(id === null ? null : totaux[id]),
         };
       })
       .sort((a, b) => b.pnl - a.pnl);
-  }, [trades, names, t]);
+  }, [trades, names, totaux, t]);
 
   // Comparaison sans objet avec moins de deux stratégies actives
   if (buckets.length < 2) return null;
@@ -128,7 +155,13 @@ export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURREN
                   {b.profitFactor !== null ? nombre(b.profitFactor, 2) : "—"}
                 </td>
                 <td className="py-2.5 pl-3 text-right tabular-nums text-foreground-muted">
-                  {b.avgChecklist !== null ? `${nombre(b.avgChecklist, 1)}/7` : "—"}
+                  {b.avgChecklist !== null ? (
+                    <span title={`${nombre(b.avgChecklist, 1)} / ${b.totalChecklist}`}>
+                      {pourcent((b.avgChecklist / b.totalChecklist) * 100, 0)}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}
