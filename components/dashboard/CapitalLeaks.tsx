@@ -20,6 +20,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { browserTimezone } from "@/lib/timezone";
 import { AlertTriangle, Clock, Flame, Gauge, HeartPulse, PiggyBank, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -126,15 +127,23 @@ export default function CapitalLeaks({
     return () => { cancelled = true; };
   }, [selectedAccountId]);
 
+  /**
+   * ⚠️ LE FUSEAU EST DIT, IL N'EST PLUS DEVINÉ. Le module prenait l'heure de la
+   * machine qui l'exécute : ici le navigateur, mais côté serveur (alerte de
+   * tilt) c'est UTC, et les deux surfaces désignaient deux « pires heures »
+   * différentes sur les mêmes trades.
+   */
+  const fuseau = browserTimezone();
+
   const result = useMemo(
-    () => (trades ? computeCapitalLeaks(trades, { maxTradesPerDay, minTrades: MIN_TRADES }) : null),
-    [trades, maxTradesPerDay]
+    () => (trades ? computeCapitalLeaks(trades, { maxTradesPerDay, minTrades: MIN_TRADES, timezone: fuseau }) : null),
+    [trades, maxTradesPerDay, fuseau]
   );
 
   // Discipline Backtest : contrefactuel « plan respecté » sur la même fenêtre.
   const curves = useMemo(
-    () => (trades ? computeDisciplineCurves(trades, { maxTradesPerDay, minTrades: MIN_TRADES }) : null),
-    [trades, maxTradesPerDay]
+    () => (trades ? computeDisciplineCurves(trades, { maxTradesPerDay, minTrades: MIN_TRADES, timezone: fuseau }) : null),
+    [trades, maxTradesPerDay, fuseau]
   );
 
   // Pas encore chargé ou pas assez de données pour un chiffre honnête.

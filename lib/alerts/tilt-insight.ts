@@ -85,7 +85,9 @@ export async function checkTiltInsight(
     const trades = (rows ?? []) as LeakTrade[];
     if (trades.length < MIN_TRADES) return;
 
-    const result = computeCapitalLeaks(trades, { minTrades: MIN_TRADES });
+    // ⚠️ LE FUSEAU DU TRADER, celui-là même qui sert au débounce dix lignes
+    // plus bas. Sans lui, le jour et l'heure de la mesure sont ceux de Vercel.
+    const result = computeCapitalLeaks(trades, { minTrades: MIN_TRADES, timezone });
     const top = result.leaks[0];
     if (!top || top.cost < 1) return; // session propre → silence
 

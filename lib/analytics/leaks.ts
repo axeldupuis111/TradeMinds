@@ -12,6 +12,8 @@
  * orientées impact financier plutôt qu'alerte comportementale.
  */
 
+import { localDateKey, localHour } from "@/lib/timezone";
+
 export interface LeakTrade {
   open_time: string;
   close_time?: string | null;
@@ -80,8 +82,27 @@ function netPnl(t: LeakTrade): number {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-function dayKey(iso: string): string {
-  return iso.slice(0, 10);
+/**
+ * ⚠️⚠️ LE JOUR ET L'HEURE SONT CEUX DU TRADER, PAS CEUX DE LA MACHINE.
+ *
+ * Ce module tournait des DEUX côtés avec deux horloges différentes :
+ * `iso.slice(0, 10)` prend le jour UTC, et `new Date(...).getHours()` prend
+ * l'heure de qui exécute le code. Sur le tableau de bord c'est le navigateur du
+ * trader ; dans l'alerte de tilt, envoyée par le rail de synchronisation, c'est
+ * Vercel, donc UTC. La carte annonçait « ta pire heure : 20 h » quand le
+ * serveur, sur les mêmes trades, en désignait une autre.
+ *
+ * ⚠️ ET `checkTiltInsight` AVAIT DÉJÀ LE FUSEAU EN MAIN : il le lit pour le
+ * débounce de la notification, ligne voisine, et ne le passait pas à la mesure.
+ * Une règle écrite, appliquée à une partie seulement de ce qu'elle vise.
+ *
+ * ⚠️ MESURE DU 2026-09-17 : les traders du produit vivent dans VINGT-DEUX
+ * fuseaux, de America/Chicago à Australia/Sydney. L'hypothèse « tout le monde
+ * est à Paris » n'a jamais été vraie.
+ */
+function dayKey(iso: string, tz: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : localDateKey(tz, d);
 }
 
 function median(values: number[]): number {
@@ -93,6 +114,11 @@ function median(values: number[]): number {
 interface LeakOptions {
   maxTradesPerDay?: number | null;
   minTrades?: number;
+  /**
+   * Fuseau du trader. Sans lui, le jour et l'heure sont ceux de la machine qui
+   * calcule, et deux surfaces du produit ne parlent plus du même moment.
+   */
+  timezone?: string;
 }
 
 interface FlagResult {
@@ -105,6 +131,7 @@ interface FlagResult {
 /** Cœur partagé : flague les trades indisciplinés (ordre chronologique). */
 function flagTrades(sorted: LeakTrade[], opts?: LeakOptions): FlagResult {
   const minTrades = opts?.minTrades ?? DEFAULT_MIN_TRADES;
+  const tz = opts?.timezone || "UTC";
   // index → catégories qui le flaguent (pour l'union du total)
   const flagged = new Map<number, Set<LeakType>>();
   function flag(idx: number, type: LeakType) {
@@ -135,7 +162,7 @@ function flagTrades(sorted: LeakTrade[], opts?: LeakOptions): FlagResult {
   if (maxPerDay != null && maxPerDay > 0) {
     const perDay = new Map<string, number>();
     for (let i = 0; i < sorted.length; i++) {
-      const key = dayKey(sorted[i].open_time);
+      const key = dayKey(sorted[i].open_time, tz);
       const n = (perDay.get(key) ?? 0) + 1;
       perDay.set(key, n);
       if (n > maxPerDay) flag(i, "overtrading");
@@ -158,8 +185,9 @@ function flagTrades(sorted: LeakTrade[], opts?: LeakOptions): FlagResult {
   // ── Pire tranche horaire (≥ 5 trades, total négatif) ──────────────────
   const byHour = new Map<number, number[]>();
   for (let i = 0; i < sorted.length; i++) {
-    const h = new Date(sorted[i].open_time).getHours();
-    if (Number.isNaN(h)) continue;
+    const d = new Date(sorted[i].open_time);
+    if (Number.isNaN(d.getTime())) continue;
+    const h = localHour(tz, d);
     const arr = byHour.get(h) ?? [];
     arr.push(i);
     byHour.set(h, arr);

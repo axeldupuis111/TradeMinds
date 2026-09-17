@@ -115,12 +115,19 @@ describe("computeCapitalLeaks", () => {
     expect(oversizing!.cost).toBe(120);
   });
 
+  /**
+   * ⚠️ LES HORODATAGES DE CE TEST SONT SANS FUSEAU, donc lus comme des heures
+   * LOCALES DE LA MACHINE : longtemps sans conséquence, parce que le module
+   * lisait lui aussi l'horloge de la machine. Il prend maintenant le fuseau du
+   * trader (voir fuites-a-lheure-du-trader.test.ts), alors on le DIT ici :
+   * l'heure attendue est celle qu'on a écrite, pas celle du serveur d'intégration.
+   */
   it("identifie la pire tranche horaire (≥ 10 trades, total négatif)", () => {
     const losers = Array.from({ length: 10 }, (_, i) =>
-      mk({ open_time: `2026-06-${String(i + 1).padStart(2, "0")}T09:15:00`, pnl: -40 })
+      mk({ open_time: `2026-06-${String(i + 1).padStart(2, "0")}T09:15:00Z`, pnl: -40 })
     );
     const trades = [...filler(10, 12, "2026-06-01"), ...losers];
-    const res = computeCapitalLeaks(trades);
+    const res = computeCapitalLeaks(trades, { timezone: "UTC" });
     const bad = res.leaks.find((l) => l.type === "bad_hour");
     expect(bad).toBeDefined();
     expect(bad!.count).toBe(10);
