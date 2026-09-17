@@ -84,6 +84,15 @@ const MAX_FIND_LIMIT = 60;
 const MAX_TAGS = 5;
 const MAX_TEXT = 300;
 const MAX_EXPORT_ROWS = 2000;
+/**
+ * Plafonds des deux lectures qui agrègent tout le journal.
+ *
+ * ⚠️ UNE LECTURE BORNÉE PREND LES TRADES LES PLUS RÉCENTS ET LE DIT. Au-delà,
+ * le chiffre rendu ne porte plus sur tout le journal, et le modèle n'a aucun
+ * moyen de le deviner : il présentera un échantillon comme un bilan.
+ */
+const PLAFOND_PERFORMANCE = 1000;
+const PLAFOND_PROJECTION = 5000;
 const MAX_RULE_ITEMS = 20;
 const MAX_EVENTS = 40;
 /** Suppression : volontairement plus bas que l'annotation, le geste est définitif. */
@@ -2060,16 +2069,27 @@ export async function executeCoachTool(
           .select("open_time, pnl, commission, swap, pair, direction, emotion, ict_setup")
           .eq("user_id", userId)
           .eq("status", "closed")
-          .order("open_time", { ascending: true })
-          .limit(5000);
+          /**
+           * ⚠️⚠️ LA LECTURE EST BORNÉE, DONC ELLE PREND LES PLUS RÉCENTS.
+           * Triée en ascendant, elle gardait les cinq mille PREMIERS trades :
+           * un trader qui importe l'historique complet de son compte MT5 se
+           * voyait projeter son avenir sur ses débuts, et ses derniers mois
+           * n'entraient pas du tout dans le calcul. On lit donc à l'envers, et
+           * on remet l'ordre chronologique juste après, parce que la
+           * projection tire par BLOCS et que l'ordre y a un sens.
+           */
+          .order("open_time", { ascending: false })
+          .limit(PLAFOND_PROJECTION);
         if (typeof input.strategy_id === "string") q = q.eq("strategy_id", input.strategy_id);
         const { data, error } = await q;
         if (error) return fail("Lecture des trades impossible.");
 
-        const lignes = (data ?? []) as {
+        const lignes = ((data ?? []) as {
           open_time: string; pnl: number; commission: number | null; swap: number | null;
           pair: string | null; direction: string | null; emotion: string | null; ict_setup: string | null;
-        }[];
+        }[]).slice().reverse();
+        /** ⚠️ Un échantillon coupé qui ne le dit pas est présenté comme complet. */
+        const projectionTronquee = lignes.length >= PLAFOND_PROJECTION;
         const pourProjection = lignes.map((x) => ({
           open_time: x.open_time,
           netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0),
@@ -2192,6 +2212,11 @@ export async function executeCoachTool(
             part_scenarios_gagnants: Math.round(p.partGagnante * 100) / 100,
             capital_de_base: capital,
             capital_reel: taille > 0,
+            /** ⚠️ Dit quand l'échantillon est coupé, sinon il passe pour complet. */
+            echantillon_tronque: projectionTronquee || undefined,
+            note_echantillon: projectionTronquee
+              ? `Projection calculée sur ses ${PLAFOND_PROJECTION} trades les plus récents, pas sur tout son journal. Dis-le si tu cites le nombre de trades.`
+              : undefined,
             coherence,
             adherence,
             // ⚠️ L'HYPOTHÈSE DE LA PROJECTION, TESTÉE. Quand les deux moitiés
@@ -2327,7 +2352,7 @@ export async function executeCoachTool(
           .eq("user_id", userId)
           .eq("status", "closed")
           .order("open_time", { ascending: false })
-          .limit(1000);
+          .limit(PLAFOND_PERFORMANCE);
         const from = typeof input.date_from === "string" ? startOfDateKeyUtc(input.date_from, timezone) : null;
         const to = typeof input.date_to === "string" ? startOfDateKeyUtc(input.date_to, timezone) : null;
         if (from) q = q.gte("open_time", from.toISOString());
@@ -2397,9 +2422,14 @@ export async function executeCoachTool(
             dimension,
             total_trades: rows.length,
             devise_unique: deviseGlobale,
+            /** ⚠️ Un échantillon coupé qui ne le dit pas est présenté comme un bilan. */
+            echantillon_tronque: rows.length >= PLAFOND_PERFORMANCE || undefined,
             segments,
             note:
               "Un segment sous 5 trades ne prouve rien : signale-le au trader au lieu d'en tirer une conclusion." +
+              (rows.length >= PLAFOND_PERFORMANCE
+                ? ` ⚠️ Lecture coupée à ses ${PLAFOND_PERFORMANCE} trades les plus récents : ce n'est PAS tout son journal, dis-le si tu cites le nombre de trades.`
+                : "") +
               (deviseGlobale
                 ? ""
                 : " ⚠️ Ce journal mêle plusieurs devises : chaque segment donne `net_pnl_par_devise` et n'a PAS de total unique. Ne les additionne jamais entre elles."),
