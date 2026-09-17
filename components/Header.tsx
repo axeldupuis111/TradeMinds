@@ -62,9 +62,20 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
     <header className="h-14 bg-card/70 backdrop-blur-xl border-b border-border/70 flex items-center justify-between px-5 shrink-0 relative z-[60]">
       {/* Left: hamburger (mobile) + breadcrumb */}
       <div className="flex items-center gap-3">
+        {/*
+          ⚠️⚠️ VINGT PIXELS SUR VINGT, ET C'EST LA SEULE NAVIGATION SUR TÉLÉPHONE.
+          Mesuré le 2026-09-17 dans un cadre de 390 px : le bouton n'avait aucune
+          marge intérieure, donc sa zone tactile valait exactement son icône. Le
+          minimum de la WCAG 2.5.8 est de 24 px, celui d'Apple de 44, et ce
+          bouton-là ouvre le menu : le rater, c'est ne plus pouvoir changer de
+          page.
+
+          `p-2.5 -m-2.5` agrandit la cible à 40 px sans déplacer quoi que ce soit :
+          la marge négative rend l'espace que la marge intérieure prend.
+        */}
         <button
           onClick={onMenuToggle}
-          className="lg:hidden text-muted hover:text-foreground transition-colors"
+          className="lg:hidden p-2.5 -m-2.5 text-muted hover:text-foreground transition-colors"
           aria-label="Menu"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

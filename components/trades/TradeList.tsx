@@ -1306,7 +1306,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       aria-label={t("trades_select_page")}
                       checked={allSelected}
                       onChange={toggleSelectAll}
-                      className="accent-accent w-4 h-4 cursor-pointer"
+                      className="accent-accent w-4 h-4 cursor-pointer p-2 -m-2 box-content"
                     />
                   </th>
                   <SortableTh column="date"       label="Date"       sort={sort} onSort={handleSortClick} />
@@ -1375,7 +1375,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                           })}
                           checked={isChecked(tr.id)}
                           onChange={() => toggleSelect(tr.id)}
-                          className="accent-accent w-4 h-4 cursor-pointer"
+                          className="accent-accent w-4 h-4 cursor-pointer p-2 -m-2 box-content"
                         />
                       </td>
 

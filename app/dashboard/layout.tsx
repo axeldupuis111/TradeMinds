@@ -99,7 +99,8 @@ function SessionReminderBanner() {
       >
         {t("session_banner_cta")}
       </Link>
-      <button onClick={dismiss} className="shrink-0 text-muted hover:text-foreground transition-colors ml-1" aria-label={t("detail_close")}>
+      {/* ⚠️ Zone tactile de 16 px sans marge intérieure : voir components/Header.tsx. */}
+      <button onClick={dismiss} className="shrink-0 p-2 -m-2 ml-1 text-muted hover:text-foreground transition-colors" aria-label={t("detail_close")}>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
         </svg>
