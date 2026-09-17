@@ -155,12 +155,52 @@ describe("le bloc de statistiques envoyé au modèle", () => {
    * profit factor et une espérance, qui n'ont pas de sens ventilés sur de
    * petits effectifs. On DIT au modèle que ces totaux ne sont pas des montants.
    */
-  it("avertit quand les devises se mêlent", () => {
-    const src = readFileSync(join(RACINE, "app/api/analyze/route.ts"), "utf8");
-    expect(src, "le bloc de statistiques ne dit plus quand ses totaux ne sont pas des montants")
-      .toContain("CE JOURNAL MÊLE PLUSIEURS DEVISES");
-    // Et l'avertissement est conditionné, sinon il crierait sur tout le monde.
-    const i = src.indexOf("const statsBlock");
-    expect(src.slice(i, i + 400)).toContain("devisesMelangees");
+  /**
+   * ⚠️⚠️ LES DEUX ROUTES QUI L'ENVOIENT, PAS UNE. `/api/analyze` le construit
+   * pour le rapport, `/api/chat-coach` le construit à CHAQUE message du coach,
+   * sur toutes les pages du produit. Corriger la première seule aurait laissé
+   * la surface la plus employée avec des totaux inventés.
+   */
+  const ROUTES = ["app/api/analyze/route.ts", "app/api/chat-coach/route.ts"];
+
+  it("avertit quand les devises se mêlent, sur les deux routes", () => {
+    const fautes: string[] = [];
+    for (const route of ROUTES) {
+      const src = readFileSync(join(RACINE, route), "utf8");
+      if (!src.includes("CE JOURNAL MÊLE PLUSIEURS DEVISES")) fautes.push(`${route} : pas d'avertissement`);
+      /**
+       * Et l'avertissement est conditionné, sinon il crierait sur tout le monde.
+       *
+       * ⚠️ L'ANCRE EST L'APPEL, PAS LE NOM DE LA VARIABLE : `statsBlock =`
+       * trouvait d'abord sa DÉCLARATION (`let statsBlock = "";`), trois cents
+       * lignes plus haut, et la fenêtre n'atteignait jamais la condition.
+       */
+      const i = src.indexOf("renderStatsBlock(");
+      const bloc = src.slice(i, i + 500);
+      if (!/devisesMelangees|deviseCommune === null/.test(bloc)) {
+        fautes.push(`${route} : avertissement non conditionné`);
+      }
+    }
+    expect(
+      fautes,
+      "blocs de statistiques qui ne disent pas quand leurs totaux ne sont pas " +
+        "des montants :\n  " + fautes.join("\n  "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ SEUL LE COACH LIT LES TRADES LUI-MÊME. `/api/analyze` les reçoit du
+   * client, qui lui envoie aussi la devise de l'écran (`currency: ""` quand
+   * elles se mêlent) : c'est ce signal-là qu'il doit employer, et le tester sur
+   * `challenge_id` accuserait une route correcte.
+   */
+  it("la route du coach lit le compte de chaque trade", () => {
+    const src = readFileSync(join(RACINE, "app/api/chat-coach/route.ts"), "utf8");
+    const i = src.indexOf('.from("trades")');
+    expect(i, "la route ne lit plus les trades").toBeGreaterThan(-1);
+    expect(
+      src.slice(i, i + 400),
+      "le coach agrège des montants sans savoir de quel compte ils viennent",
+    ).toContain("challenge_id");
   });
 });

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { computeTradeStats, renderStatsBlock, type InsightTrade } from "@/lib/analysis-insights";
+import { buildCurrencyMap, commonCurrency, deviseSansCompte, tradeCurrency } from "@/lib/account-currency";
 import { logAiCost, sumUsage, type AiUsage } from "@/lib/ai-cost-log";
 import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { addDaysToDateKey, localDateKey } from "@/lib/timezone";
@@ -268,7 +269,7 @@ export async function POST(request: Request) {
     try {
       const { data: statTrades, error: statsError } = await sb
         .from("trades")
-        .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score")
+        .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score, challenge_id")
         .eq("user_id", userId)
         .eq("status", "closed")
         .order("open_time", { ascending: false })
@@ -280,13 +281,44 @@ export async function POST(request: Request) {
         );
       }
       if (statTrades && statTrades.length > 0) {
-        statsBlock = renderStatsBlock(
-          computeTradeStats(
-            statTrades.map((t) => ({ ...t, checklist_total: checklistTotal })) as InsightTrade[],
-            timezone,
-          ),
-          timezone,
+        /**
+         * ⚠️⚠️ SANS LA DEVISE, CE BLOC ADDITIONNE DES EUROS ET DES DOLLARS. Il
+         * part dans le prompt du coach à CHAQUE message, sur toutes les pages
+         * du produit. Mesuré le 2026-09-17 sur un compte réel : « P&L net
+         * -7069 » pour -6 619,77 € et -449,36 $. Même défaut, même jour, dans
+         * `get_performance` et dans le bloc de `/api/analyze` ; celui-ci était
+         * le troisième.
+         *
+         * ⚠️ On ne recompose pas le bloc par devise (moyennes, profit factor et
+         * espérance n'ont pas de sens ventilés sur de petits effectifs) : on
+         * DIT au coach que ces totaux ne sont pas des montants.
+         */
+        const { data: comptesDuTrader } = await sb
+          .from("prop_challenges")
+          .select("id, currency, synced_currency")
+          .eq("user_id", userId);
+        const devisesDuTrader = buildCurrencyMap(
+          (comptesDuTrader ?? []) as unknown as Parameters<typeof buildCurrencyMap>[0],
         );
+        const repliDevise = deviseSansCompte(devisesDuTrader);
+        const lignes = statTrades.map((t) => ({
+          ...t,
+          checklist_total: checklistTotal,
+          devise: tradeCurrency(
+            (t as unknown as { challenge_id: string | null }).challenge_id,
+            devisesDuTrader,
+            repliDevise,
+          ),
+        })) as InsightTrade[];
+        const deviseCommune = commonCurrency(
+          statTrades.map((t) => (t as unknown as { challenge_id: string | null }).challenge_id),
+          devisesDuTrader,
+        );
+        statsBlock =
+          renderStatsBlock(computeTradeStats(lignes, timezone), timezone) +
+          (deviseCommune === null && devisesDuTrader.size > 1
+            ? `\n⚠️ CE JOURNAL MÊLE PLUSIEURS DEVISES. Les montants ci-dessus additionnent des sommes libellées différemment : ce sont des ORDRES DE GRANDEUR, pas des montants. Ne les cite jamais comme une somme d'argent et n'y accole aucun symbole.`
+            : "");
       }
     } catch {
       // statistiques indisponibles — le coach répond sans elles
