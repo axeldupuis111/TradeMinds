@@ -20,7 +20,7 @@ import {
 import { logAiCost } from "@/lib/ai-cost-log";
 import { CATEGORIE_DE_VIOLATION, computeDisciplineScore, type Violation } from "@/lib/discipline-score";
 import { calculatePips, getTradeResult } from "@/lib/pips";
-import { prixDeSortieConnu } from "@/lib/prix-de-sortie";
+import { prixConnu, prixDeSortieConnu } from "@/lib/prix-connu";
 import { localDateKey } from "@/lib/timezone";
 import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -287,13 +287,15 @@ export async function POST(request: Request) {
       .filter(({ idx }) => selectedIdx.has(idx))
       .map(({ t, idx }) => {
         const pnlNet = t.pnl + (t.commission || 0) + (t.swap || 0);
-        const effectiveSL = t.sl_initial ?? t.sl;
-        const effectiveTP = t.tp_initial ?? t.tp;
+        // ⚠️ Zéro vaut absent, ici aussi : MetaTrader annonce « pas de stop »
+        // par un zéro, et `Risque: 45000 pips` en découlait. Voir lib/prix-connu.ts.
+        const effectiveSL = prixConnu(t.sl_initial) ?? prixConnu(t.sl);
+        const effectiveTP = prixConnu(t.tp_initial) ?? prixConnu(t.tp);
         const riskPips = effectiveSL != null ? calculatePips(t.pair, t.entry_price, effectiveSL) : null;
         const rewardPips = effectiveTP != null ? calculatePips(t.pair, t.entry_price, effectiveTP) : null;
         /**
          * ⚠️⚠️ UN PRIX DE SORTIE À ZÉRO N'EST PAS UN PRIX (voir
-         * `lib/prix-de-sortie.ts`) : 27 % des trades du produit sont clôturés
+         * `lib/prix-connu.ts`) : 27 % des trades du produit sont clôturés
          * avec `exit_price = 0`, parce que le fichier importé ne portait pas la
          * colonne. `calculatePips(pair, 4500, 0)` rendait alors 45 000 pips, et
          * `exit > entry` faisait passer un SELL pour un gain. La ligne envoyée

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { prixDeSortieConnu } from "./prix-de-sortie";
+import { prixConnu, prixDeSortieConnu } from "./prix-connu";
 import { sansCommentaires } from "./sans-commentaires";
 
 /**
@@ -121,5 +121,54 @@ describe("les lecteurs d'un prix de sortie", () => {
     );
     // Et la ligne dit « non renseigné » au lieu d'un nombre.
     expect(src).toContain('"non renseigné (prix de sortie absent du fichier importé)"');
+  });
+});
+
+/**
+ * ⚠️⚠️ ET LE STOP A LE MÊME DÉFAUT, PAR UNE AUTRE PORTE. MetaTrader annonce
+ * « pas de stop » par un ZÉRO (`OrderStopLoss()` vaut 0) et le rail de synchro
+ * l'enregistrait tel quel. Mesuré en base le 2026-09-17 : 20 trades ont
+ * `sl = 0` et 67 ont `tp = 0`, à côté de 125 qui valent bien `null`.
+ *
+ * La conséquence tire dans TROIS directions à la fois :
+ *   - `if (sl == null) add("missing_sl")` ne voit pas le zéro, donc un trade
+ *     SANS STOP n'est pas signalé, et le score de discipline est meilleur que
+ *     la réalité ;
+ *   - `sl_too_wide` le compare quand même, sur des dizaines de milliers de
+ *     pips, donc il se déclenche à tort ;
+ *   - le prompt annonce « Risque: 45000 pips » et un RR planifié absurde.
+ */
+describe("le stop et l'objectif", () => {
+  it("zéro vaut absent, comme pour la sortie", () => {
+    expect(prixConnu(0)).toBeNull();
+    expect(prixConnu(1.0825)).toBe(1.0825);
+  });
+
+  it("le comptage des violations traite le zéro comme une absence", () => {
+    const src = sansCommentaires(readFileSync(join(RACINE, "lib/analysis-selection.ts"), "utf8"));
+    expect(src, "le stop à zéro échappe encore à missing_sl").not.toContain(
+      "const sl = t.sl_initial ?? t.sl;",
+    );
+    expect(src).toContain("const sl = prixConnu(t.sl_initial) ?? prixConnu(t.sl);");
+    expect(src).toContain("const tp = prixConnu(t.tp_initial) ?? prixConnu(t.tp);");
+  });
+
+  it("le prompt ne calcule plus un risque sur un stop à zéro", () => {
+    const src = sansCommentaires(readFileSync(join(RACINE, "app/api/analyze/route.ts"), "utf8"));
+    expect(src).toContain("const effectiveSL = prixConnu(t.sl_initial) ?? prixConnu(t.sl);");
+  });
+
+  /**
+   * ⚠️ ET LE RAIL NE L'ÉCRIT PLUS. Corriger la lecture protège les 20 lignes
+   * déjà en base ; corriger l'écriture évite les suivantes. Les deux, parce
+   * qu'aucune des deux ne suffit.
+   */
+  it("le rail de synchro traduit le zéro de MetaTrader", () => {
+    const src = sansCommentaires(readFileSync(join(RACINE, "lib/sync/push-handler.ts"), "utf8"));
+    expect(src, "le rail enregistre encore le zéro de MetaTrader").not.toContain(
+      "sl: nombreLisible(t.sl),",
+    );
+    expect(src).toContain("sl: prixConnu(nombreLisible(t.sl)),");
+    expect(src).toContain("tp: prixConnu(nombreLisible(t.tp)),");
   });
 });

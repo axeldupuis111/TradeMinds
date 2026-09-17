@@ -22,7 +22,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
-import { prixDeSortieConnu } from "@/lib/prix-de-sortie";
+import { prixDeSortieConnu } from "@/lib/prix-connu";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -703,7 +703,7 @@ export default function DashboardContent({
                           27 % des trades sont clôturés avec `exit_price = 0`, parce
                           que le fichier importé ne portait pas la colonne. L'écran
                           affichait donc « 4500.00 → 0.00000 », c'est-à-dire un prix
-                          de sortie inventé. Voir lib/prix-de-sortie.ts.
+                          de sortie inventé. Voir lib/prix-connu.ts.
                         */}
                         {tr.entry_price != null && prixDeSortieConnu(tr.exit_price) != null && (
                           <p className="text-[10px] text-foreground tabular-nums leading-none">

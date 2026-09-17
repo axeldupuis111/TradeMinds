@@ -6,6 +6,7 @@
 // each trade's `source` field. Both /api/sync/mt (legacy) and /api/sync/push
 // delegate here so installed EAs keep working while new bots use the new URL.
 
+import { prixConnu } from "@/lib/prix-connu";
 import { NextRequest, NextResponse } from "next/server";
 import { purgeDemoData } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -259,8 +260,16 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       pnl: nombreLisible(t.profit) as number,
       commission: nombreLisible(t.commission) ?? 0,
       swap: nombreLisible(t.swap) ?? 0,
-      sl: nombreLisible(t.sl),
-      tp: nombreLisible(t.tp),
+      /**
+       * ⚠️⚠️ ZÉRO N'EST PAS UN STOP, C'EST L'ABSENCE DE STOP. MetaTrader
+       * annonce « pas de stop » par un zéro : `OrderStopLoss()` vaut 0 quand
+       * aucun n'est posé. Enregistré tel quel, ce zéro passait ensuite au
+       * travers de `if (sl == null) add("missing_sl")`, donc un trade SANS
+       * STOP n'était pas signalé comme tel. Mesuré en base le 2026-09-17 :
+       * 20 trades à `sl = 0` et 67 à `tp = 0`. Voir `lib/prix-connu.ts`.
+       */
+      sl: prixConnu(nombreLisible(t.sl)),
+      tp: prixConnu(nombreLisible(t.tp)),
       status: "closed" as const,
       source: mapSource(t.source),
       external_id: String(t.ticket),

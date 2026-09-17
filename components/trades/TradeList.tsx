@@ -1,7 +1,7 @@
 "use client";
 
 import { buildCurrencyMap, money, tradeCurrency, deviseSansCompte } from "@/lib/account-currency";
-import { prixDeSortieConnu } from "@/lib/prix-de-sortie";
+import { prixDeSortieConnu } from "@/lib/prix-connu";
 import { enHeure, enJourEtMois } from "@/lib/dates";
 import { enDate } from "@/lib/dates";
 import { getEmotionDisplay } from "@/lib/emotions";
@@ -974,7 +974,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
       return [
         tr.open_time ? new Date(tr.open_time).toISOString().split("T")[0] : "",
         // ⚠️ Un prix de sortie absent sort VIDE, pas à zéro : ce fichier se
-        // réimporte, et un zéro y redeviendrait un prix. Voir lib/prix-de-sortie.ts.
+        // réimporte, et un zéro y redeviendrait un prix. Voir lib/prix-connu.ts.
         tr.pair, tr.direction, tr.lot_size, tr.entry_price, prixDeSortieConnu(tr.exit_price) ?? "",
         tr.sl ?? "", tr.tp ?? "", tr.pnl, tr.commission ?? 0, tr.swap ?? 0,
         csvNum(net), tr.emotion ?? "",

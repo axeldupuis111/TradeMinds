@@ -20,6 +20,7 @@
  * continue de désigner le bon trade côté client.
  */
 
+import { prixConnu } from "@/lib/prix-connu";
 import { calculatePips, getTradeResult } from "@/lib/pips";
 
 export interface SelectionTrade {
@@ -151,10 +152,20 @@ export function computeMechanicalViolations(
       }
     }
 
-    // SL/TP absents. On regarde le SL initial s'il est renseigné : un SL déplacé
-    // au BE ne doit pas être compté comme « pas de SL ».
-    const sl = t.sl_initial ?? t.sl;
-    const tp = t.tp_initial ?? t.tp;
+    /**
+     * SL/TP absents. On regarde le SL initial s'il est renseigné : un SL déplacé
+     * au BE ne doit pas être compté comme « pas de SL ».
+     *
+     * ⚠️⚠️ ET ZÉRO VAUT ABSENT. MetaTrader annonce « pas de stop » par un ZÉRO
+     * (`OrderStopLoss()` vaut 0) et le rail de synchro l'enregistrait tel quel :
+     * mesuré en base le 2026-09-17, 20 trades ont `sl = 0` et 67 ont `tp = 0`.
+     * Le test `== null` ne les voyait pas, donc un trade SANS STOP n'était pas
+     * signalé comme tel et le score de discipline du trader était meilleur que
+     * la réalité — pendant que `sl_too_wide`, lui, se déclenchait à tort sur une
+     * distance de dizaines de milliers de pips. Voir `lib/prix-connu.ts`.
+     */
+    const sl = prixConnu(t.sl_initial) ?? prixConnu(t.sl);
+    const tp = prixConnu(t.tp_initial) ?? prixConnu(t.tp);
     if (sl == null) add("missing_sl", idx);
     if (tp == null) add("missing_tp", idx);
 
