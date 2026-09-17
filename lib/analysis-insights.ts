@@ -220,14 +220,32 @@ export function computeTradeStats(trades: InsightTrade[], timezone = "UTC"): Tra
     checklist = { high, low };
   }
 
-  const decided = wins + losses;
   return {
     total: {
       trades: trades.length,
       wins,
       losses,
       breakevens,
-      winRate: decided === 0 ? 0 : Math.round((wins / decided) * 100),
+      /**
+       * ⚠️⚠️ CE TAUX SE CALCULAIT SUR LES TRADES « DÉCIDÉS » (gagnants +
+       * perdants), ET IL ÉTAIT LE SEUL DU PRODUIT À LE FAIRE. Seize autres
+       * surfaces divisent par le nombre TOTAL de trades : le tableau de bord,
+       * Analytics, la jauge, le profil public, les deux PDF, les e-mails, les
+       * seaux par segment de CE MODULE, et jusqu'à l'outil `get_performance` du
+       * coach.
+       *
+       * ⚠️ LA MÊME PHRASE SE CONTREDISAIT. La ligne GLOBAL envoyée au modèle
+       * disait, pour un compte de production mesuré le 2026-09-17 : « 28 trades
+       * — 17 gagnants / 8 perdants / 3 BE — winrate 68% ». 17 sur 28 font 61.
+       * Le rapport d'analyse annonçait 68 % à un trader dont Analytics affiche
+       * 61 %, le même jour, sur la même période, et cette prose est stockée
+       * puis relue.
+       *
+       * ⚠️ ON ALIGNE SUR LA MAJORITÉ, pas sur la finesse : compter un trade
+       * nul au dénominateur est aussi la convention des plateformes (MT5
+       * annonce « % du total »), et les trades nuls restent affichés à part.
+       */
+      winRate: trades.length === 0 ? 0 : Math.round((wins / trades.length) * 100),
       netPnl: round2(total),
       grossProfit: round2(grossProfit),
       grossLoss: round2(grossLoss),

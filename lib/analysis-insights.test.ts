@@ -47,7 +47,15 @@ describe("computeTradeStats", () => {
     expect(stats.total.losses).toBe(2);
     expect(stats.total.breakevens).toBe(1);
     expect(stats.total.netPnl).toBe(20);
-    expect(stats.total.winRate).toBe(50); // 2 wins / 4 décidés
+    /**
+     * ⚠️ 2 GAGNANTS SUR 5 TRADES, PAS SUR 4 « DÉCIDÉS ». Ce taux se calculait
+     * hors trades nuls, et il était le SEUL du produit à le faire : seize
+     * autres surfaces divisent par le total, y compris les seaux par segment de
+     * ce module. La ligne envoyée au modèle se contredisait d'ailleurs
+     * elle-même (« 17 gagnants / 8 perdants / 3 BE — winrate 68% », alors que
+     * 17 sur 28 font 61).
+     */
+    expect(stats.total.winRate).toBe(40); // 2 gagnants / 5 trades, trades nuls compris
     expect(stats.total.profitFactor).toBeCloseTo(150 / 130, 2);
     expect(stats.total.bestTrade).toBe(100);
     expect(stats.total.worstTrade).toBe(-80);
