@@ -66,21 +66,41 @@ describe("les cibles tactiles", () => {
   });
 
   /**
-   * ⚠️ `box-content` EST INDISPENSABLE ICI : sans lui, Tailwind met
-   * `box-sizing: border-box` et la marge intérieure MANGE les seize pixels de
-   * la case au lieu de s'y ajouter. La cible resterait à seize.
+   * ⚠️⚠️ LA MARGE INTÉRIEURE NE FAIT RIEN SUR UNE CASE À COCHER, et mon premier
+   * correctif l'ignorait : j'avais posé `p-2 -m-2 box-content` sur l'input.
+   * Mesuré dans le navigateur juste après le déploiement, `padding: 0px` et
+   * zone restée à 16×16 — Chrome ignore la marge intérieure d'un contrôle en
+   * `appearance: auto`. Et la première version de CE TEST lisait la classe dans
+   * le source, donc elle est passée au vert sur un correctif qui ne faisait
+   * rien.
+   *
+   * ⚠️ LA LEÇON EST DANS LE GARDE AUTANT QUE DANS LE CODE : une classe présente
+   * ne prouve pas un pixel rendu. On épingle ici la STRUCTURE qui, elle, marche
+   * (une étiquette qui porte la zone et à qui le clic suffit), et la mesure
+   * reste à faire dans le navigateur.
    */
   it("les cases à cocher de la liste des trades", () => {
     const src = readFileSync(join(RACINE, "components/trades/TradeList.tsx"), "utf8");
-    const cases = Array.from(src.matchAll(/className="accent-accent w-4 h-4 cursor-pointer([^"]*)"/g));
+    const cases = Array.from(src.matchAll(/type="checkbox"/g));
     expect(cases.length, "les cases à cocher ont disparu : le garde est cassé").toBe(2);
-    const fautes = cases
-      .map((m) => m[1])
-      .filter((suffixe) => !/p-2/.test(suffixe) || !/-m-2/.test(suffixe) || !/box-content/.test(suffixe));
+
+    // Chacune est enveloppée par une étiquette qui porte la zone tactile.
+    const etiquettes = Array.from(
+      src.matchAll(/<label className="([^"]*)">\s*<input\s+type="checkbox"/g),
+    ).map((m) => m[1]);
     expect(
-      fautes,
-      "cases à cocher revenues à seize pixels : sur un téléphone, la " +
-        "sélection en lot devient un jeu d'adresse",
-    ).toEqual([]);
+      etiquettes.length,
+      "une case à cocher n'est plus enveloppée : sa zone tactile retombe à " +
+        "seize pixels, et la marge intérieure n'y peut rien",
+    ).toBe(2);
+    for (const classe of etiquettes) {
+      expect(classe, "l'étiquette ne porte pas de zone agrandie").toMatch(/w-8|p-2/);
+    }
+
+    // Et la marge intérieure inutile n'est pas revenue sur l'input lui-même.
+    expect(
+      src,
+      "la marge intérieure est de nouveau posée sur l'input, où elle ne fait rien",
+    ).not.toContain("cursor-pointer p-2 -m-2 box-content");
   });
 });

@@ -1301,13 +1301,24 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                   <th className="px-3 py-2 w-8">
                     {/* ⚠️ Une case à cocher sans nom s'annonce « case à
                         cocher », point. Celle-ci en sélectionne cinquante. */}
-                    <input
-                      type="checkbox"
-                      aria-label={t("trades_select_page")}
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      className="accent-accent w-4 h-4 cursor-pointer p-2 -m-2 box-content"
-                    />
+                    {/*
+                      ⚠️⚠️ LA MARGE INTÉRIEURE NE FAIT RIEN SUR UNE CASE À COCHER.
+                      Première tentative : `p-2 -m-2 box-content` sur l'input.
+                      Mesuré dans le navigateur juste après : `padding: 0px`, zone
+                      restée à 16×16. Chrome ignore la marge intérieure d'un
+                      contrôle en `appearance: auto`. C'est l'ÉTIQUETTE qui porte
+                      la zone tactile, et un clic sur elle bascule l'input sans
+                      qu'on ait rien à brancher.
+                    */}
+                    <label className="flex items-center justify-center p-2 -m-2 w-8 h-8 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        aria-label={t("trades_select_page")}
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        className="accent-accent w-4 h-4 cursor-pointer"
+                      />
+                    </label>
                   </th>
                   <SortableTh column="date"       label="Date"       sort={sort} onSort={handleSortClick} />
                   <SortableTh column="pair"       label={t("trades_col_pair")} sort={sort} onSort={handleSortClick} />
@@ -1367,16 +1378,19 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                         {/* ⚠️ ET CHAQUE LIGNE DIT LAQUELLE : sans ça,
                             cinquante et une cases identiques se suivaient,
                             toutes nommées « case à cocher ». */}
-                        <input
-                          type="checkbox"
-                          aria-label={t("trades_select_one", {
-                            pair: tr.pair,
-                            date: tr.open_time ? enDate(tr.open_time) : "—",
-                          })}
-                          checked={isChecked(tr.id)}
-                          onChange={() => toggleSelect(tr.id)}
-                          className="accent-accent w-4 h-4 cursor-pointer p-2 -m-2 box-content"
-                        />
+                        {/* ⚠️ Zone tactile portée par l'étiquette : voir l'en-tête. */}
+                        <label className="flex items-center justify-center p-2 -m-2 w-8 h-8 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            aria-label={t("trades_select_one", {
+                              pair: tr.pair,
+                              date: tr.open_time ? enDate(tr.open_time) : "—",
+                            })}
+                            checked={isChecked(tr.id)}
+                            onChange={() => toggleSelect(tr.id)}
+                            className="accent-accent w-4 h-4 cursor-pointer"
+                          />
+                        </label>
                       </td>
 
                       {/* Date + Heure */}
