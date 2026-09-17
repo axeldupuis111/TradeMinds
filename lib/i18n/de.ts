@@ -2717,7 +2717,7 @@ const dict: Record<string, string> = {
   "settings_notif_title": "Benachrichtigungen",
   "settings_notif_subtitle": "Verwalte deine Benachrichtigungseinstellungen.",
   "settings_notif_session": "Tägliche Sitzungserinnerung",
-  "settings_notif_email_session": "Tägliche Erinnerungs-E-Mail erhalten",
+  "settings_notif_email_session": "Journal-E-Mails erhalten: tägliche Erinnerung, Wochenbericht und eine Nachricht bei längerer Abwesenheit",
   "settings_danger_title": "Gefahrenzone",
   "settings_danger_subtitle": "Diese Aktionen sind unwiderruflich.",
   "settings_delete_account": "Mein Konto und alle Daten löschen",

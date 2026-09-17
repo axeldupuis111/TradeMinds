@@ -2717,7 +2717,7 @@ const dict: Record<string, string> = {
   "settings_notif_title": "Notifications",
   "settings_notif_subtitle": "Manage your notification preferences.",
   "settings_notif_session": "Daily session reminder",
-  "settings_notif_email_session": "Receive a daily reminder email",
+  "settings_notif_email_session": "Receive journal emails: daily reminder, weekly report and a nudge if you stop coming",
   "settings_danger_title": "Danger zone",
   "settings_danger_subtitle": "These actions are irreversible.",
   "settings_delete_account": "Delete my account and all my data",
