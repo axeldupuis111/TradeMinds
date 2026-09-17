@@ -279,7 +279,7 @@ export function buildDemoAnalysis(
     trades.reduce<number[]>((acc, t, i) => (pred(t) ? [...acc, i] : acc), []);
 
   const tiltIdx = indicesWhere((t) => t.emotion === "revenge" || t.emotion === "frustrated");
-  const morningIdx = indicesWhere((t) => new Date(t.open_time).getHours() === 9);
+  const morningIdx = indicesWhere((t) => heureDeLaDemo(t.open_time) === 9);
   const fomoIdx = indicesWhere((t) => t.emotion === "fomo");
 
   const idsByType: Record<string, number[]> = {
@@ -642,6 +642,28 @@ const VERDICTS: Record<Locale, Record<DemoVerdictKind, { grade: string; comment:
 };
 
 /** Classe le trade depuis ses propres données, sans dépendre du générateur. */
+/**
+ * L'HEURE D'UN TRADE DE DÉMONSTRATION SE LIT EN UTC, TOUJOURS.
+ *
+ * ⚠️⚠️ ELLE SE LISAIT SUR L'HORLOGE DU LECTEUR. Ces deux fonctions tournent
+ * dans le navigateur, et `new Date(iso).getHours()` y rend l'heure locale : la
+ * visite guidée ne se comportait correctement que pour un lecteur placé en UTC.
+ * Pour tous les autres, `morningIdx` était VIDE, donc la violation « hors
+ * session » de l'analyse de démonstration n'attachait plus aucun trade alors
+ * que son texte annonce « 6 trades à 9 h », et la fiche de trade du matin
+ * disparaissait des exemples. Mesuré depuis Paris : zéro trade trouvé à 9 h sur
+ * les six que le générateur y place.
+ *
+ * ⚠️ LA DÉMO EST ÉCRITE EN UTC, et ce n'est pas un hasard : c'est le fuseau des
+ * fenêtres de session du produit (`SESSION_WINDOWS`, lib/analysis-selection.ts)
+ * et celui dans lequel le générateur pose ses heures (lib/demo-data.ts). Ses
+ * textes figés, « 9 h » et « ton plan démarre à 13 h », parlent de cette
+ * heure-là dans les quatre langues.
+ */
+function heureDeLaDemo(iso: string): number {
+  return new Date(iso).getUTCHours();
+}
+
 export function demoTradeVerdict(
   trade: { emotion?: string | null; open_time: string; ict_confluence_score?: number | null },
   locale: Locale
@@ -650,6 +672,6 @@ export function demoTradeVerdict(
   const e = trade.emotion ?? "";
   if (e === "revenge" || e === "frustrated") return table.tilt;
   if (e === "fomo") return table.fomo;
-  if (new Date(trade.open_time).getHours() < 12) return table.morning;
+  if (heureDeLaDemo(trade.open_time) < 12) return table.morning;
   return table.clean;
 }

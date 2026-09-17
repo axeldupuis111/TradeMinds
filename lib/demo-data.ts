@@ -133,10 +133,20 @@ function iso(d: Date): string {
   return d.toISOString();
 }
 
-/** Recule au dernier jour ouvré (la démo ne trade pas le week-end). */
+/**
+ * Recule au dernier jour ouvré (la démo ne trade pas le week-end).
+ *
+ * ⚠️ EN UTC, COMME LES HEURES CI-DESSOUS. Ces trades sont fabriqués pour tomber
+ * dans les fenêtres de session du produit, qui sont en UTC (voir
+ * `SESSION_WINDOWS` dans lib/analysis-selection.ts) : la démo déclare les
+ * sessions de Londres et de New York, et la moindre dérive de fuseau ferait
+ * apparaître des violations « hors session » dans la visite guidée. Lu sur
+ * l'horloge de la machine, le jeu de démonstration changeait selon qu'il était
+ * fabriqué sur Vercel (UTC) ou sur un poste à Paris.
+ */
 function toWeekday(d: Date): Date {
   const out = new Date(d);
-  while (out.getDay() === 0 || out.getDay() === 6) out.setDate(out.getDate() - 1);
+  while (out.getUTCDay() === 0 || out.getUTCDay() === 6) out.setUTCDate(out.getUTCDate() - 1);
   return out;
 }
 
@@ -208,7 +218,7 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
   const rows: DemoTradeRow[] = specs.map((s) => {
     const p = PAIRS[Math.floor(rng() * PAIRS.length)];
     const open = toWeekday(new Date(now.getTime() - s.dayOffset * 86400000));
-    open.setHours(s.hour, s.minute ?? 0, 0, 0);
+    open.setUTCHours(s.hour, s.minute ?? 0, 0, 0);
     const durationMin = s.durationMin ?? 20 + Math.floor(rng() * 90);
     const close = new Date(open.getTime() + durationMin * 60000);
 
@@ -267,10 +277,25 @@ export function demoStrategyRow(userId: string) {
     is_demo: true,
     name: "Stratégie de démonstration",
     pairs: ["EURUSD", "GBPUSD", "XAUUSD", "NAS100"],
-    // ⚠️ `new_york` avec un souligné : c'est le vocabulaire de tout le reste
-    // du produit. Écrit « newyork », la règle « hors session » ne reconnaissait
-    // que Londres et accusait 45 des 53 trades de démonstration.
-    sessions: ["london", "new_york"],
+    /**
+     * ⚠️ `new_york` avec un souligné : c'est le vocabulaire de tout le reste
+     * du produit. Écrit « newyork », la règle « hors session » ne reconnaissait
+     * que Londres et accusait 45 des 53 trades de démonstration.
+     *
+     * ⚠️⚠️ ET LONDRES N'Y EST PLUS, PARCE QUE LA DÉMO RACONTE LE CONTRAIRE.
+     * Toute la visite guidée tient sur une phrase, écrite dans les quatre
+     * langues et répétée par le coach : « tu trades à 9 h alors que ton plan
+     * démarre à 13 h », « c'est une règle que tu as déjà écrite et que tu ne
+     * respectes pas ». Avec Londres (8 h-12 h UTC) dans la fiche, cette règle
+     * n'était écrite nulle part : les six trades de 9 h étaient DANS le plan,
+     * et la violation « hors session » de l'analyse de démonstration ne
+     * désignait aucun trade (`trade_ids: []`) tout en accusant quand même.
+     *
+     * Le générateur dit la même chose que la prose : ses trades sains sont
+     * l'après-midi (13 h-16 h UTC), sa mauvaise tranche est 9 h. La fiche est
+     * la seule pièce qui disait autre chose.
+     */
+    sessions: ["new_york"],
     /**
      * ⚠️ RESTE À 2, ET C'EST VOULU. Les trades de démonstration ont un RR réel
      * de 1,31 à 2,77, médiane 1,85 : la règle est exigeante mais ATTEIGNABLE,
