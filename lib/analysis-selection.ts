@@ -93,6 +93,14 @@ const SESSION_WINDOWS: Record<string, [number, number]> = {
   new_york: [13, 17],
   asian: [0, 6],
   london_ny_overlap: [13, 16],
+  /**
+   * ⚠️ ALIAS POUR LES LIGNES DÉJÀ EN BASE. Le vocabulaire du produit est
+   * `new_york` (prompt d'extraction, écran de séance, fiche stratégie), mais
+   * la stratégie de démonstration a longtemps écrit « newyork » : trois
+   * comptes en portent une. Corriger le gabarit ne corrige pas les lignes
+   * déjà écrites.
+   */
+  newyork: [13, 17],
 };
 
 export function netPnl(t: SelectionTrade): number {
@@ -136,7 +144,27 @@ export function computeMechanicalViolations(
   };
 
   const allowedPairs = strategy.pairs.map(normPair).filter(Boolean);
-  const windows = strategy.sessions.map((s) => SESSION_WINDOWS[s]).filter(Boolean);
+  /**
+   * ⚠️⚠️ UNE SESSION NON RECONNUE FAISAIT JUGER SUR LA MOITIÉ DE LA RÈGLE. Le
+   * `.filter(Boolean)` laissait tomber en silence les identifiants inconnus :
+   * une stratégie déclarant « london » et « newyork » n'était plus jugée que
+   * sur Londres, donc TOUT trade de la session américaine passait pour un
+   * trade hors session.
+   *
+   * ⚠️ MESURÉ EN PRODUCTION le 2026-09-17 : la stratégie de DÉMONSTRATION
+   * écrivait « newyork » là où tout le reste du produit écrit « new_york »,
+   * et le rejeu des règles donnait 45 violations « hors session » sur ses
+   * 53 trades. C'est la visite guidée du produit qui accusait son trader
+   * fictif quatre fois sur cinq.
+   *
+   * ⚠️ ON SE TAIT PLUTÔT QUE DE JUGER À MOITIÉ : si un seul identifiant est
+   * inconnu, on ne connaît pas l'ensemble des heures permises, donc on ne
+   * peut rien reprocher. C'est déjà ce que faisait le code quand AUCUNE
+   * session n'était reconnue ; il manquait le cas intermédiaire.
+   */
+  const fenetresDeclarees = strategy.sessions.map((s) => SESSION_WINDOWS[s]);
+  const toutesReconnues = fenetresDeclarees.every(Boolean);
+  const windows = toutesReconnues ? fenetresDeclarees.filter(Boolean) : [];
 
   trades.forEach((t, idx) => {
     // Paire hors périmètre (seulement si le trader a listé ses paires).

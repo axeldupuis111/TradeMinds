@@ -267,7 +267,10 @@ export function demoStrategyRow(userId: string) {
     is_demo: true,
     name: "Stratégie de démonstration",
     pairs: ["EURUSD", "GBPUSD", "XAUUSD", "NAS100"],
-    sessions: ["london", "newyork"],
+    // ⚠️ `new_york` avec un souligné : c'est le vocabulaire de tout le reste
+    // du produit. Écrit « newyork », la règle « hors session » ne reconnaissait
+    // que Londres et accusait 45 des 53 trades de démonstration.
+    sessions: ["london", "new_york"],
     risk_reward: 2,
     max_sl_pips: 25,
     max_daily_loss: 150,
