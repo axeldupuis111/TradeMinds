@@ -120,3 +120,63 @@ export function estARisque(emotion: string | null | undefined): boolean {
 export function estImpulsive(emotion: string | null | undefined): boolean {
   return !!emotion && EMOTIONS_IMPULSIVES.has(emotion.toLowerCase());
 }
+
+/**
+ * Les valeurs anciennes et leur équivalent au catalogue.
+ *
+ * ⚠️ `cupide` EST LE `greedy` D'AVANT, en français. Il traîne dans les listes
+ * du produit et dans d'éventuelles lignes ; le traduire comme son équivalent
+ * vaut mieux que de lui inventer une clé rien que pour lui.
+ */
+const ALIAS: Record<string, string> = { cupide: "greedy" };
+
+/**
+ * LE NOM D'UNE ÉMOTION DANS UNE PHRASE, JAMAIS UNE CLÉ.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ NEUF ENDROITS COMPOSAIENT LA CLÉ À LA MAIN (`t(`emotion_${valeur}`)`), et
+ * six d'entre eux la composent à partir d'une valeur VENUE DE LA BASE. Comme
+ * `t()` rend la clé quand elle manque, une valeur sans traduction s'affiche
+ * telle quelle dans une phrase : « Ton pire état : emotion_cupide, -340 € ».
+ * C'est exactement le défaut qui a fait lire
+ * « violation_lot_increase_after_loss » à des traders, sur trois analyses
+ * payées, et il attendait ici sur une autre surface.
+ *
+ * ⚠️ TROIS VALEURS N'ONT AUCUNE CLÉ : `cupide` (l'ancien nom de `greedy`,
+ * connu de trois listes du produit) et `excited` / `fearful`, que le tableau
+ * d'émojis du bilan de séance listait alors qu'aucun écran ne permet de les
+ * choisir et qu'aucune ligne n'en porte.
+ *
+ * ── LA RÈGLE ────────────────────────────────────────────────────────────────
+ *
+ * On passe par ici, et le repli est le NOM DU CATALOGUE puis la valeur brute.
+ * Une valeur inconnue reste moche ; une clé d'internationalisation à l'écran
+ * est un bogue lisible par le client.
+ */
+export function libelleDEmotion(
+  valeur: string | null | undefined,
+  t: (cle: string) => string,
+  /**
+   * ⚠️ TYPÉE `string`, PAS `Lang`, ET C'EST VOULU : plusieurs écrans portent
+   * leur langue en `string`, et la refuser à la compilation déplacerait
+   * simplement le problème chez l'appelant, qui n'a pas plus de moyen de la
+   * valider. Un code inconnu retombe sur l'anglais.
+   */
+  langue?: string,
+): string {
+  if (!valeur) return "";
+  const canonique = ALIAS[valeur.toLowerCase()] ?? valeur.toLowerCase();
+  const cle = `emotion_${canonique}`;
+  const rendu = t(cle);
+  if (rendu !== cle) return rendu;
+  const connue = ICT_EMOTIONS.find((e) => e.value === canonique);
+  return (langue && connue?.label[langue as Lang]) || connue?.label.en || canonique;
+}
+
+/** L'émoji d'une émotion, alias compris. */
+export function emojiDEmotion(valeur: string | null | undefined): string {
+  if (!valeur) return "📝";
+  const canonique = ALIAS[valeur.toLowerCase()] ?? valeur.toLowerCase();
+  return EMOTION_EMOJIS[canonique] ?? "🙂";
+}

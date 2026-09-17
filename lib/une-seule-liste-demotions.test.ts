@@ -4,10 +4,16 @@ import { describe, expect, it } from "vitest";
 import {
   EMOTIONS_A_RISQUE,
   EMOTIONS_IMPULSIVES,
+  emojiDEmotion,
   estARisque,
   estImpulsive,
   getEmotionDisplay,
+  libelleDEmotion,
 } from "./emotions";
+import fr from "./i18n/fr";
+import en from "./i18n/en";
+import de from "./i18n/de";
+import es from "./i18n/es";
 import { ICT_EMOTIONS } from "./ict-constants";
 
 /**
@@ -144,6 +150,70 @@ describe("les surfaces", () => {
       fautes,
       "fichiers qui réécrivent la liste des émotions à risque : c'est ainsi que " +
         "le coach et l'écran ont fini par ne plus dire la même chose :\n  " + fautes.join("\n  "),
+    ).toEqual([]);
+  });
+});
+
+describe("le nom d'une emotion dans une phrase", () => {
+  const DICTS: [string, Record<string, string>][] = [["fr", fr], ["en", en], ["de", de], ["es", es]];
+  const traduire = (dict: Record<string, string>) => (cle: string) => dict[cle] ?? cle;
+
+  /**
+   * ⚠️⚠️ NEUF ENDROITS COMPOSAIENT LA CLÉ À LA MAIN, dont six à partir d'une
+   * valeur venue de la BASE. `t()` rendant la clé quand elle manque, une
+   * émotion sans traduction s'affichait telle quelle dans la phrase :
+   * « Ton pire état : emotion_cupide, -340 € ». C'est le défaut qui a fait lire
+   * « violation_lot_increase_after_loss » à de vrais traders, sur une autre
+   * surface, la veille.
+   */
+  it("n'affiche jamais une cle, meme pour une valeur inconnue", () => {
+    for (const [, dict] of DICTS) {
+      expect(libelleDEmotion("zzz_inventee", traduire(dict))).not.toContain("emotion_");
+      expect(libelleDEmotion("cupide", traduire(dict))).not.toContain("emotion_");
+    }
+  });
+
+  /** ⚠️ `cupide` est l'ancien nom de `greedy` : il se traduit comme lui. */
+  it("traduit l'alias francais comme son equivalent", () => {
+    expect(libelleDEmotion("cupide", traduire(fr))).toBe(fr["emotion_greedy"]);
+    expect(libelleDEmotion("cupide", traduire(en))).toBe(en["emotion_greedy"]);
+  });
+
+  it("traduit chaque emotion du catalogue, dans les quatre langues", () => {
+    const fautes: string[] = [];
+    for (const e of ICT_EMOTIONS) {
+      for (const [langue, dict] of DICTS) {
+        const rendu = libelleDEmotion(e.value, traduire(dict), langue);
+        if (rendu.startsWith("emotion_") || rendu === e.value) fautes.push(`${langue} : ${e.value}`);
+      }
+    }
+    expect(
+      fautes,
+      "emotions sans nom lisible : le trader lira la valeur technique : " + fautes.join(", "),
+    ).toEqual([]);
+  });
+
+  it("rend un emoji pour chaque emotion du catalogue, alias compris", () => {
+    for (const e of ICT_EMOTIONS) expect(emojiDEmotion(e.value), e.value).not.toBe("🙂");
+    expect(emojiDEmotion("cupide")).toBe(emojiDEmotion("greedy"));
+  });
+
+  /**
+   * ⚠️ ET PLUS AUCUN ÉCRAN NE COMPOSE LA CLÉ LUI-MÊME à partir d'une valeur du
+   * journal. Les trois listes de choix fixes le peuvent encore : leurs valeurs
+   * sont écrites dans le code, à côté de leurs clés.
+   */
+  it("les ecrans nourris par la base ne composent plus la cle", () => {
+    const fautes: string[] = [];
+    for (const chemin of ["app/dashboard/review/page.tsx", "app/dashboard/projection/page.tsx"]) {
+      const src = readFileSync(join(RACINE, chemin), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
+      if (/t\(`emotion_\$\{/.test(src)) fautes.push(chemin);
+    }
+    expect(
+      fautes,
+      "ecrans qui composent la cle a partir d'une valeur de la base : " + fautes.join(", "),
     ).toEqual([]);
   });
 });

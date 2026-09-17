@@ -1,5 +1,6 @@
 "use client";
 
+import { emojiDEmotion, libelleDEmotion } from "@/lib/emotions";
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { objectifAtteint, type ObjectifJugeable } from "@/lib/objectif-atteint";
 import LectureRatee from "@/components/LectureRatee";
@@ -46,10 +47,6 @@ interface DayDetail {
 // Onglets de la page : vue d'ensemble → performance → discipline & mental.
 type RevTab = "overview" | "perf" | "mind";
 
-const EMOTION_EMOJI: Record<string, string> = {
-  confident: "\u{1F60E}", neutral: "\u{1F610}", anxious: "\u{1F630}", frustrated: "\u{1F624}", fomo: "\u{1F911}", revenge: "\u{1F621}",
-  calm: "\u{1F60C}", greedy: "\u{1F4B0}", hesitant: "\u{1F615}", overconfident: "\u{1F913}", excited: "\u{1F929}", fearful: "\u{1F628}",
-};
 
 /**
  * ⚠️⚠️ DEVISE VIDE = LA VUE MÊLE PLUSIEURS MONNAIES, et aucun total n'a alors
@@ -391,7 +388,7 @@ export default function MonthlyReviewPage() {
         const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
         pdf.bars(
           emotions.map((e) => ({
-            label: `${t(`emotion_${e.emotion}`)} (${pourcent(e.winRate)})`,
+            label: `${libelleDEmotion(e.emotion, t, lang)} (${pourcent(e.winRate)})`,
             value: fmtMoney(e.pnl, displayCurrency),
             ratio: Math.abs(e.pnl) / maxAbs,
             color: e.pnl >= 0 ? C.green : C.red,
@@ -1000,13 +997,13 @@ export default function MonthlyReviewPage() {
                         <p className="text-xs text-muted mt-0.5 mb-3">{t("review_emotion_sub")}</p>
                         {!devisesMelangees && worst && worst.pnl < 0 ? (
                           <div className="mb-3 flex items-start gap-2 rounded-lg border border-loss/30 bg-loss/[0.05] p-2.5 text-xs text-foreground">
-                            <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[worst.emotion] ?? "\u{1F642}"}</span>
-                            <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl, displayCurrency))}</span>
+                            <span className="text-base leading-none shrink-0">{emojiDEmotion(worst.emotion)}</span>
+                            <span>{t("review_emotion_warning").replace("{emotion}", libelleDEmotion(worst.emotion, t, lang)).replace("{money}", fmtMoney(worst.pnl, displayCurrency))}</span>
                           </div>
                         ) : !devisesMelangees && best && best.pnl > 0 ? (
                           <div className="mb-3 flex items-start gap-2 rounded-lg border border-profit/30 bg-profit/[0.05] p-2.5 text-xs text-foreground">
-                            <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[best.emotion] ?? "\u{1F642}"}</span>
-                            <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl, displayCurrency))}</span>
+                            <span className="text-base leading-none shrink-0">{emojiDEmotion(best.emotion)}</span>
+                            <span>{t("review_emotion_best").replace("{emotion}", libelleDEmotion(best.emotion, t, lang)).replace("{money}", fmtMoney(best.pnl, displayCurrency))}</span>
                           </div>
                         ) : null}
                         <div className="space-y-2">
@@ -1015,8 +1012,8 @@ export default function MonthlyReviewPage() {
                             return (
                               <div key={e.emotion} className="flex items-center gap-2 text-xs" title={`${e.count} ${t("review_kpi_trades").toLowerCase()}`}>
                                 <div className="w-24 shrink-0 flex items-center gap-1.5 min-w-0">
-                                  <span className="text-base leading-none">{EMOTION_EMOJI[e.emotion] ?? "\u{1F642}"}</span>
-                                  <span className="text-foreground truncate">{t(`emotion_${e.emotion}`)}</span>
+                                  <span className="text-base leading-none">{emojiDEmotion(e.emotion)}</span>
+                                  <span className="text-foreground truncate">{libelleDEmotion(e.emotion, t, lang)}</span>
                                 </div>
                                 <span className="w-9 text-muted tabular-nums shrink-0 text-right">{pourcent(e.winRate)}</span>
                                 <div className="flex-1 flex items-center min-w-0">
@@ -1296,8 +1293,8 @@ function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void 
                   <div className="flex flex-wrap gap-2">
                     {data!.sessions.map((s, i) => (
                       <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/40 px-2.5 py-1.5 text-xs text-foreground">
-                        <span className="text-base leading-none">{s.emotion ? EMOTION_EMOJI[s.emotion] ?? "\u{1F4DD}" : "\u{1F4DD}"}</span>
-                        {s.emotion ? t(`emotion_${s.emotion}`) : t("review_kpi_sessions")}
+                        <span className="text-base leading-none">{emojiDEmotion(s.emotion)}</span>
+                        {s.emotion ? libelleDEmotion(s.emotion, t, lang) : t("review_kpi_sessions")}
                         {s.checklistCompleted ? <span className="text-profit">✓</span> : null}
                       </span>
                     ))}

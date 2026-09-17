@@ -30,6 +30,7 @@
 
 // ⚠️ La signature vient d'un seul endroit : recopiée sans ses valeurs, elle
 // interdit tout accord au composant qui la reçoit.
+import { libelleDEmotion } from "@/lib/emotions";
 import type { Traduire } from "@/lib/LanguageContext";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -1242,7 +1243,9 @@ function EncartSegments({
    */
   const nommer = (s: Segment) => {
     const prefixe = t(`seg_dim_${s.dimension}`);
-    if (s.dimension === "emotion") return `${prefixe} ${t(`emotion_${s.cle}`)}`;
+    // ⚠️ La valeur vient du journal : une émotion sans clé s'afficherait en
+    // clair (« emotion_cupide ») dans la phrase. Voir lib/emotions.ts.
+    if (s.dimension === "emotion") return `${prefixe} ${libelleDEmotion(s.cle, t, lang)}`;
     if (s.dimension === "direction") {
       return `${prefixe} ${t(s.cle === "short" ? "review_day_short" : "review_day_long")}`;
     }
