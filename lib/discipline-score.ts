@@ -63,6 +63,41 @@ const PENALTY_MAP: Record<ViolationType, { perOccurrence: number }> = {
   missing_setup_tag: { perOccurrence: 1 },
 };
 
+/**
+ * LA CATEGORIE D'UNE VIOLATION SE DEDUIT DE SON TYPE.
+ *
+ * ⚠️⚠️ ELLE ETAIT RECOPIEE DEPUIS LA SORTIE DU MODELE, telle quelle. Le
+ * champ `category` arrivait de `/api/analyze` sans aucune normalisation, alors
+ * que ses voisins (`trade_ids`, `occurrences`, `explanation`) en avaient tous
+ * une : une regle ecrite pour quatre champs, appliquee a trois.
+ *
+ * ⚠️ ET LA CONSEQUENCE ETAIT UN PLANTAGE, pas un affichage de travers :
+ * `categoryPenalties[v.category].push(...)` sur une categorie inconnue lit
+ * `undefined.push`, donc leve. C'est un 500 sur la route PAYANTE, et le credit
+ * est deja consomme quand il survient (incident du 2026-08-03, meme route).
+ * Le cas le plus probable n'est meme pas une hallucination : l'orthographe
+ * britannique « behaviour » suffit, dans un prompt majoritairement francais.
+ *
+ * Le modele n'a plus a se prononcer : le type suffit a dire la categorie, et
+ * c'est le prompt qui les lie. Une table ici, et le type fait foi.
+ */
+export const CATEGORIE_DE_VIOLATION: Record<ViolationType, "strategy" | "behavior" | "execution"> = {
+  wrong_pair: "strategy",
+  wrong_session: "strategy",
+  low_rr: "strategy",
+  sl_too_wide: "strategy",
+  max_trades_day: "strategy",
+  max_daily_loss: "strategy",
+  consecutive_losses: "strategy",
+  revenge_trading: "behavior",
+  overtrading: "behavior",
+  lot_increase_after_loss: "behavior",
+  fomo: "behavior",
+  missing_sl: "execution",
+  missing_tp: "execution",
+  missing_setup_tag: "execution",
+};
+
 const CATEGORY_CAPS: Record<string, number> = {
   strategy: 40,
   behavior: 40,
@@ -92,10 +127,13 @@ export function computeDisciplineScore(
   for (const v of violations) {
     const penalty = PENALTY_MAP[v.type];
     if (!penalty) continue;
+    // ⚠️ LA CATEGORIE VIENT DU TYPE, jamais de ce que l'appelant a transmis :
+    // voir CATEGORIE_DE_VIOLATION. Indexer avec une cle non validee levait.
+    const categorie = CATEGORIE_DE_VIOLATION[v.type];
     const points = penalty.perOccurrence * v.occurrences;
-    categoryPenalties[v.category].push({
+    categoryPenalties[categorie].push({
       type: v.type,
-      category: v.category,
+      category: categorie,
       points,
       occurrences: v.occurrences,
       explanation: v.explanation,
