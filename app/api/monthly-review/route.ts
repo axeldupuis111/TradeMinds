@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { refusSiDemo, requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { codeDeLangue } from "@/lib/langue-du-modele";
+import { localDateKey, localHour, localWeekday, startOfDateKeyUtc } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 interface TradeRow { pnl: number; commission: number | null; swap: number | null; open_time: string; pair: string; emotion: string | null; direction: string | null }
 interface ReviewRow { discipline_score: number | null; created_at: string }
 
-function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toIso: string) {
+function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toIso: string, tz: string) {
   const inRange = (d: string) => d >= fromIso && d < toIso;
   const t = trades.filter((x) => inRange(x.open_time));
   const r = reviews.filter((x) => inRange(x.created_at));
@@ -31,14 +32,19 @@ function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toI
     totalPnl: Math.round(totalPnl * 100) / 100,
     sessions: r.length,
     avgDisciplineScore: r.length ? Math.round(r.reduce((s, x) => s + (x.discipline_score ?? 0), 0) / r.length) : null,
-    tradingDays: new Set(t.map((x) => x.open_time.slice(0, 10))).size,
+    tradingDays: new Set(t.map((x) => localDateKey(tz, new Date(x.open_time)))).size,
   };
 }
 
 // Parse "YYYY-MM" → {year, month0}. Défaut = mois courant. Borne au mois courant max.
-function resolveMonth(param: string | null): { year: number; month0: number } {
-  const now = new Date();
-  const cur = { year: now.getFullYear(), month0: now.getMonth() };
+/**
+ * ⚠️⚠️ LE MOIS COURANT EST CELUI DU TRADER. Lu sur `new Date()` c'etait celui
+ * de Vercel, donc UTC : le 1er au matin a Sydney, le recapitulatif refusait le
+ * mois que le trader venait de commencer et lui rendait le precedent.
+ */
+function resolveMonth(param: string | null, tz: string): { year: number; month0: number } {
+  const aujourdhui = localDateKey(tz);
+  const cur = { year: Number(aujourdhui.slice(0, 4)), month0: Number(aujourdhui.slice(5, 7)) - 1 };
   if (!param || !/^\d{4}-\d{2}$/.test(param)) return cur;
   const [y, m] = param.split("-").map(Number);
   const month0 = m - 1;
@@ -46,17 +52,38 @@ function resolveMonth(param: string | null): { year: number; month0: number } {
   return { year: y, month0 };
 }
 
-async function gather(userId: string, monthParam: string | null) {
+/**
+ * ⚠️⚠️ TOUT CE QUI SUIT SE COMPTE DANS LE FUSEAU DU TRADER, et ca n'etait pas
+ * le cas : `getDay()`, `getHours()` et `new Date(annee, mois, 1)` lisaient
+ * l'horloge de la machine, c'est-a-dire UTC sur Vercel. L'ecran Analytics, lui,
+ * compte les memes faits dans le navigateur. Le recapitulatif mensuel pouvait
+ * donc annoncer une autre « meilleure heure » et un autre « meilleur jour » que
+ * la page qui les affiche, et attribuer au dimanche un trade du lundi matin a
+ * Sydney.
+ *
+ * ⚠️ LE FUSEAU ETAIT DEJA LA : `requireAuth()` le rend, et cette route s'en
+ * sert pour son quota quelques lignes plus bas. Encore une regle ecrite et
+ * appliquee a une partie seulement de ce qu'elle vise.
+ */
+async function gather(userId: string, monthParam: string | null, tz: string) {
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
 
-  const now = new Date();
-  const { year, month0 } = resolveMonth(monthParam);
-  const selStart = new Date(year, month0, 1);
-  const selEnd = new Date(year, month0 + 1, 1);
-  const prevStart = new Date(year, month0 - 1, 1);
-  const trendStart = new Date(year, month0 - 5, 1); // 6 mois incl. sélectionné
-  const isCurrentMonth = year === now.getFullYear() && month0 === now.getMonth();
+  const { year, month0 } = resolveMonth(monthParam, tz);
+  /** Le 1er du mois a minuit CHEZ LE TRADER, exprime en UTC. */
+  const premierDuMois = (decalage: number) => {
+    const m = month0 + decalage;
+    const annee = year + Math.floor(m / 12);
+    const mois = ((m % 12) + 12) % 12;
+    const cle = `${annee}-${String(mois + 1).padStart(2, "0")}-01`;
+    return startOfDateKeyUtc(cle, tz) ?? new Date(Date.UTC(annee, mois, 1));
+  };
+  const selStart = premierDuMois(0);
+  const selEnd = premierDuMois(1);
+  const prevStart = premierDuMois(-1);
+  const trendStart = premierDuMois(-5); // 6 mois incl. selectionne
+  const moisCourant = resolveMonth(null, tz);
+  const isCurrentMonth = year === moisCourant.year && month0 === moisCourant.month0;
 
   const [{ data: tradesRaw }, { data: reviewsRaw }] = await Promise.all([
     supabase.from("trades").select("pnl, commission, swap, open_time, pair, emotion, direction").eq("user_id", userId).gte("open_time", trendStart.toISOString()),
@@ -65,8 +92,8 @@ async function gather(userId: string, monthParam: string | null) {
   const trades = (tradesRaw ?? []) as TradeRow[];
   const reviews = (reviewsRaw ?? []) as ReviewRow[];
 
-  const stats = statsFor(trades, reviews, selStart.toISOString(), selEnd.toISOString());
-  const prev = statsFor(trades, reviews, prevStart.toISOString(), selStart.toISOString());
+  const stats = statsFor(trades, reviews, selStart.toISOString(), selEnd.toISOString(), tz);
+  const prev = statsFor(trades, reviews, prevStart.toISOString(), selStart.toISOString(), tz);
 
   const deltas = {
     trades: stats.trades - prev.trades,
@@ -84,13 +111,13 @@ async function gather(userId: string, monthParam: string | null) {
 
   const pnlByDay = new Map<string, number>();
   for (const t of monthTrades) {
-    const d = t.open_time.slice(0, 10);
+    const d = localDateKey(tz, new Date(t.open_time));
     pnlByDay.set(d, (pnlByDay.get(d) ?? 0) + netPnl(t));
   }
   const scoreByDay = new Map<string, { sum: number; n: number }>();
   for (const r of monthReviews) {
     if (r.discipline_score == null) continue;
-    const d = r.created_at.slice(0, 10);
+    const d = localDateKey(tz, new Date(r.created_at));
     const a = scoreByDay.get(d) ?? { sum: 0, n: 0 };
     a.sum += r.discipline_score; a.n += 1; scoreByDay.set(d, a);
   }
@@ -142,7 +169,7 @@ async function gather(userId: string, monthParam: string | null) {
   // ── Performance par jour de la semaine (lundi = 0) ────────────────────────
   const wdAgg = Array.from({ length: 7 }, () => ({ pnl: 0, count: 0, wins: 0 }));
   for (const t of monthTrades) {
-    const idx = (new Date(t.open_time).getDay() + 6) % 7; // lundi = 0
+    const idx = (localWeekday(tz, new Date(t.open_time)) + 6) % 7; // lundi = 0
     const n = netPnl(t);
     wdAgg[idx].pnl += n; wdAgg[idx].count += 1; if (n > 0) wdAgg[idx].wins += 1;
   }
@@ -212,7 +239,7 @@ async function gather(userId: string, monthParam: string | null) {
   // ── Performance par heure de la journée ──────────────────────────────────
   const hourAgg = new Map<number, { pnl: number; count: number; wins: number }>();
   for (const t of monthTrades) {
-    const h = new Date(t.open_time).getHours();
+    const h = localHour(tz, new Date(t.open_time));
     const a = hourAgg.get(h) ?? { pnl: 0, count: 0, wins: 0 };
     const n = netPnl(t);
     a.pnl += n; a.count += 1; if (n > 0) a.wins += 1;
@@ -239,10 +266,13 @@ async function gather(userId: string, monthParam: string | null) {
   // ── Tendance 6 mois (score de discipline + P&L) ──────────────────────────
   const trend: { label: string; score: number | null; pnl: number }[] = [];
   for (let i = 5; i >= 0; i--) {
-    const ms = new Date(year, month0 - i, 1);
-    const me = new Date(year, month0 - i + 1, 1);
-    const s = statsFor(trades, reviews, ms.toISOString(), me.toISOString());
-    trend.push({ label: `${ms.getFullYear()}-${String(ms.getMonth() + 1).padStart(2, "0")}`, score: s.avgDisciplineScore, pnl: s.totalPnl });
+    // Meme decoupage que le mois selectionne : minuit chez le trader.
+    const ms = premierDuMois(-i);
+    const me = premierDuMois(-i + 1);
+    const s = statsFor(trades, reviews, ms.toISOString(), me.toISOString(), tz);
+    const m = month0 - i;
+    const etiquette = `${year + Math.floor(m / 12)}-${String((((m % 12) + 12) % 12) + 1).padStart(2, "0")}`;
+    trend.push({ label: etiquette, score: s.avgDisciplineScore, pnl: s.totalPnl });
   }
 
   const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
@@ -256,7 +286,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Feature not available on free plan" }, { status: 403 });
   }
   const monthParam = new URL(req.url).searchParams.get("month");
-  const data = await gather(auth.userId, monthParam);
+  const data = await gather(auth.userId, monthParam, auth.timezone);
   return NextResponse.json(data);
 }
 
@@ -276,7 +306,7 @@ export async function POST(req: Request) {
   // Repli et validation partagés : voir lib/langue-du-modele.ts.
   const lang = codeDeLangue(body.language);
 
-  const { month, stats, prev, deltas, extras, calendar, trend } = await gather(auth.userId, body.month ?? null);
+  const { month, stats, prev, deltas, extras, calendar, trend } = await gather(auth.userId, body.month ?? null, auth.timezone);
 
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review: null });
