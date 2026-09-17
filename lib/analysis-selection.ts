@@ -334,7 +334,28 @@ export function selectSignificantTrades(
     .sort((a, b) => a.open - b.open);
   for (let i = 1; i < chrono.length; i++) {
     const prev = chrono[i - 1];
-    if (getTradeResult(prev.net) === "loss" && !Number.isNaN(prev.close) && chrono[i].open - prev.close < 30 * 60 * 1000) {
+    if (getTradeResult(prev.net) !== "loss" || Number.isNaN(prev.close)) continue;
+    const ecart = chrono[i].open - prev.close;
+    /**
+     * ⚠️⚠️ IL MANQUAIT LA BORNE BASSE, ET ELLE FAISAIT LA MAJORITÉ DU LOT.
+     * Un écart NÉGATIF veut dire que le trade s'est ouvert AVANT que le
+     * précédent ne se referme : ce sont deux positions simultanées, pas une
+     * réaction à une perte. Le trader ne pouvait même pas savoir qu'il
+     * perdait, la perte n'était pas réalisée.
+     *
+     * Mesuré en production le 2026-09-17 sur les 447 trades : 195 paires dont
+     * le précédent est perdant, 28 vraies ouvertures dans les trente minutes
+     * et 48 chevauchements. Près des deux tiers de ce que le serveur
+     * étiquetait « moins de 30 min après une perte » n'en était pas, et ces
+     * trades partent DÉTAILLÉS dans le prompt, présentés au modèle comme la
+     * preuve d'un revenge trading.
+     *
+     * ⚠️ LES DEUX AUTRES IMPLÉMENTATIONS DE LA MÊME RÈGLE L'AVAIENT :
+     * `lib/analytics/leaks.ts` (`gap >= 0 && gap <= REVENGE_WINDOW_MS`) et
+     * `lib/analysis-insights.ts` (`gapMin >= 0 && gapMin < 30`). Celle-ci, qui
+     * est la seule à parler au modèle, ne l'avait pas.
+     */
+    if (ecart >= 0 && ecart < 30 * 60 * 1000) {
       mark(chrono[i].idx, "moins_30min_apres_perte");
     }
   }
