@@ -1,3 +1,4 @@
+import { compterLesItemsDeChecklist, totalDeChecklist } from "@/lib/total-de-checklist";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { computeTradeStats, renderStatsBlock, type InsightTrade } from "@/lib/analysis-insights";
@@ -243,7 +244,14 @@ export async function POST(request: Request) {
           // pas de vocabulaire personnalisé — les champs suffisent
         }
         strategyBlock = renderStrategyContext(strategyRow as StrategyRow, tagRows);
-        checklistTotal = Array.isArray(strategyRow.setup_rules) ? strategyRow.setup_rules.length : null;
+        /**
+         * ⚠️⚠️ LE DÉNOMINATEUR EST CELUI DE LA CHECKLIST, PAS DES RÈGLES
+         * D'ENTRÉE. Ce sont deux listes différentes de la même fiche : le score
+         * du trade compte des cases cochées, et il était divisé par le nombre
+         * de règles écrites dans le plan. Voir lib/total-de-checklist.ts, qui
+         * porte la mesure.
+         */
+        checklistTotal = totalDeChecklist(compterLesItemsDeChecklist(tagRows));
       } else if (strategyError) {
         console.error(
           "[chat-coach] fiche stratégie illisible, le coach perd la méthode du trader :",

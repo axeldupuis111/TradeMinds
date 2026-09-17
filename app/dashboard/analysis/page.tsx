@@ -1,5 +1,6 @@
 "use client";
 
+import { totalDeChecklist } from "@/lib/total-de-checklist";
 import { tradesConformes } from "@/lib/trades-conformes";
 import { langueCourante } from "@/lib/nombres";
 import { enTextePlat, stripLongDashes } from "@/lib/coach-typography";
@@ -833,9 +834,25 @@ export default function AnalysisPage() {
         return;
       }
 
-      // Le total de la checklist vient de la stratégie (le score coché est
-      // sur le trade) : il permet à l'IA de lire « 3/5 éléments validés ».
-      const checklistTotal = Array.isArray(strategy.setup_rules) ? strategy.setup_rules.length : null;
+      /**
+       * Le total de la checklist vient de la fiche (le score coché est sur le
+       * trade) : il permet à l'IA de lire « 3 éléments validés sur 8 ».
+       *
+       * ⚠️⚠️ C'EST LA CHECKLIST, PAS LES RÈGLES D'ENTRÉE. Ce sont deux listes
+       * différentes de la même fiche, et diviser par la mauvaise donnait à
+       * « INFX OTO+ » un 7 coché sur 8 présenté comme « 7/34 ». Voir
+       * lib/total-de-checklist.ts, qui porte la mesure.
+       *
+       * ⚠️ UNE LECTURE RATÉE NE VAUT PAS « AUCUN ITEM » : `count` rend `null`
+       * en cas d'erreur, et `totalDeChecklist` retombe alors sur la liste par
+       * défaut, celle que la fiche affiche quand elle n'a pas la sienne.
+       */
+      const { count: itemsDeChecklist } = await supabase
+        .from("strategy_tags")
+        .select("id", { count: "exact", head: true })
+        .eq("strategy_id", strategy.id)
+        .eq("tag_type", "checklist");
+      const checklistTotal = totalDeChecklist(itemsDeChecklist);
 
       const res = await fetch("/api/analyze", {
         method: "POST",
