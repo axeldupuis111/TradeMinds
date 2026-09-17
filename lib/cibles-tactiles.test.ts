@@ -58,6 +58,19 @@ describe("les cibles tactiles", () => {
     expect(balise, "la marge n'est pas compensée : la mise en page va bouger").toMatch(/-m-2(\.5)?\b/);
   });
 
+  /**
+   * ⚠️⚠️ ET LE LIEN DU MÊME BANDEAU, QUE LA PASSE PRÉCÉDENTE AVAIT RATÉ. La
+   * croix avait reçu sa marge, pas l'action à côté d'elle : mesuré le
+   * 2026-09-18 dans un cadre de 390 px, 165 × 20. Deux commandes dans le même
+   * bandeau, une seule corrigée — la forme même du défaut que ce dépôt traque.
+   */
+  it("l'action du bandeau de séance", () => {
+    const src = readFileSync(join(RACINE, "app/dashboard/layout.tsx"), "utf8");
+    const classe = classeApres(src, 'href="/dashboard/session"');
+    expect(classe, "le lien du bandeau a perdu sa zone tactile : il retombe à vingt pixels").toMatch(/py-2|p-2/);
+    expect(classe, "la marge n'est pas compensée : le bandeau va grandir").toMatch(/-my-2|-m-2/);
+  });
+
   it("la croix du bandeau de séance aussi", () => {
     const src = readFileSync(join(RACINE, "app/dashboard/layout.tsx"), "utf8");
     const classe = classeApres(src, "onClick={dismiss}");

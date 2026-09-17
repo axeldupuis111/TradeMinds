@@ -93,9 +93,16 @@ function SessionReminderBanner() {
     <div className="flex items-center gap-3 px-4 py-3 bg-accent/10 border-b border-accent/20 text-sm">
       <span className="shrink-0">🎯</span>
       <p className="flex-1 text-foreground">{t("session_banner_text")}</p>
+      {/**
+       * ⚠️⚠️ VINGT PIXELS DE HAUT, ET C'EST L'ACTION DU BANDEAU. Mesuré le
+       * 2026-09-18 en rendant le produit dans un cadre de 390 px : 165 × 20,
+       * sous le minimum de 24 de la WCAG 2.5.8. La croix juste à côté avait
+       * reçu sa marge lors de la passe précédente, pas ce lien : deux commandes
+       * dans le même bandeau, une seule corrigée.
+       */}
       <Link
         href="/dashboard/session"
-        className="shrink-0 text-accent font-semibold hover:underline whitespace-nowrap"
+        className="shrink-0 py-2 -my-2 text-accent font-semibold hover:underline whitespace-nowrap"
       >
         {t("session_banner_cta")}
       </Link>

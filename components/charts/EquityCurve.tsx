@@ -172,7 +172,15 @@ export default function EquityCurve({ data, initialBalance, currency = DEFAULT_C
               stroke={c.referenceLine}
               strokeDasharray="4 4"
               strokeWidth={1}
-              label={{ value: t(recale ? "equity_depart_recale" : "challenge_initial_capital"), position: "right", fill: c.axis, fontSize: 10 }}
+              /**
+               * ⚠️⚠️ « position: right » POSAIT L'ÉTIQUETTE HORS DU GRAPHIQUE.
+               * Mesuré le 2026-09-18 dans un cadre de 390 px : le texte
+               * « Départ recalé sur le solde du courtier » commence à x=310 et
+               * court jusqu'à 482, alors que le graphique s'arrête à 315. Sur un
+               * téléphone, le trader en voit cinq pixels : l'explication de la
+               * courbe, celle qui dit POURQUOI elle part de là, est invisible.
+               */
+              label={{ value: t(recale ? "equity_depart_recale" : "challenge_initial_capital"), position: "insideTopLeft", fill: c.axis, fontSize: 10 }}
             />
             <Area
               type="monotone"
