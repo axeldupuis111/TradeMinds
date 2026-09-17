@@ -12,8 +12,8 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import LectureRatee from "@/components/LectureRatee";
 import { joursEmotionnels, serieDepuisLesTrades } from "@/lib/discipline-streak-source";
 import { weekStartLocalKey, browserTimezone, localDateKey } from "@/lib/timezone";
-import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
-import { challengeFreezeBonus } from "@/lib/community-challenges";
+import { BASE_FREEZE_QUOTA } from "@/lib/badges";
+import { etatDesGels, jourAGeler } from "@/lib/gels-de-serie";
 
 interface Achievement {
   id: string;
@@ -159,36 +159,25 @@ export default function GoalsStreaks() {
     // Quota is per calendar month, counted by when each freeze was spent.
     // Les badges du classement (streak_7, regular, comeback…) ajoutent des
     // gels permanents au quota mensuel — récompense réelle des badges.
-    const badgeBonus = freezeBonusFor((badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key));
     // ⚠️ Le mois DU TRADER : en UTC, le quota de gels d'un trader à Sydney
     // changeait de mois dix heures trop tard, donc le 1er au matin il
     // comptait encore les gels du mois précédent.
     const monthPrefix = localDateKey(browserTimezone()).slice(0, 7); // YYYY-MM
-    // Chaque défi communautaire réussi ce mois-ci offre +1 gel (plafonné pour
-    // qu'une grosse semaine ne rende pas la série incassable).
-    const challengeGels = challengeFreezeBonus(
-      (challengeAwards || []).filter(
-        (a) => ((a as { awarded_at: string }).awarded_at || "").slice(0, 7) === monthPrefix,
-      ).length,
+    // ⚠️ LA FORMULE EST PARTAGÉE (lib/gels-de-serie.ts) : le coach annonce le
+    // même reste, et il vivait ici, dans un composant client que le serveur ne
+    // pouvait pas lire.
+    const gels = etatDesGels(
+      (freezes || []) as { day: string; created_at: string | null }[],
+      (badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key),
+      (challengeAwards || []) as { awarded_at: string | null }[],
+      monthPrefix,
     );
-    const bonus = badgeBonus + challengeGels;
-    setFreezeBonus(bonus);
-    const usedThisMonth = (freezes || []).filter(
-      (f) => ((f as { created_at: string }).created_at || "").slice(0, 7) === monthPrefix,
-    ).length;
-    setFreezeRemaining(Math.max(0, FREEZE_QUOTA_PER_MONTH + bonus - usedThisMonth));
+    setFreezeBonus(gels.bonus);
+    setFreezeRemaining(gels.restants);
 
     // Candidate = most recent emotional, not-yet-frozen day (the one breaking the
     // current streak), only if recent enough (≤ 30 days) to be worth protecting.
-    const emotionalDays = Array.from(joursEmotionnels(trades || []).entries())
-      .filter(([day, emotional]) => emotional && !frozenDays.has(day))
-      .map(([day]) => day)
-      .sort();
-    const mostRecentEmotional = emotionalDays.length > 0 ? emotionalDays[emotionalDays.length - 1] : null;
-    const recentEnough =
-      mostRecentEmotional != null &&
-      Date.now() - new Date(mostRecentEmotional).getTime() < 30 * 24 * 60 * 60 * 1000;
-    setFreezeCandidate(recentEnough ? mostRecentEmotional : null);
+    setFreezeCandidate(jourAGeler(joursEmotionnels(trades || []), frozenDays));
 
     // Weekly goal: count revenge trades this week (Monday in the trader's local zone)
     const monday = weekStartLocalKey(browserTimezone());

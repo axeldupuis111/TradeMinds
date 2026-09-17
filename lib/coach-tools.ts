@@ -28,6 +28,7 @@ import { mesurerStabilite } from "./projection-stability";
 import { mesurerAdherence } from "./strategy-adherence";
 import { verifierCoherence } from "./strategy-coherence";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
+import { etatDesGels } from "@/lib/gels-de-serie";
 import { computeTradeStats, deviseUniqueDuSeau, type InsightTrade } from "@/lib/analysis-insights";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
@@ -2653,7 +2654,15 @@ export async function executeCoachTool(
          * le tableau de bord et le profil public : `chargerLaSerieDeDiscipline`.
          * Un deuxième calcul ici recréerait le défaut que ce module a corrigé.
          */
-        const [{ data: profile }, { data: badges }, serie] = await Promise.all([
+        /**
+         * ⚠️⚠️ ET LES GELS, QUE LA DESCRIPTION PROMET. « Répond à [...] "il me
+         * reste des gels" » : le résultat n'en portait pas un mot. Le chiffre
+         * existait, mais seulement dans un composant client (« Objectifs &
+         * Discipline »), donc hors de portée d'ici. La formule est maintenant
+         * partagée (lib/gels-de-serie.ts) : un deuxième calcul ici rejouerait
+         * le défaut que ce module a déjà payé sur la série elle-même.
+         */
+        const [{ data: profile }, { data: badges }, serie, { data: gels }, { data: defis }] = await Promise.all([
           supabase.from("profiles")
             .select("username, plan")
             .eq("id", userId).maybeSingle(),
@@ -2661,8 +2670,17 @@ export async function executeCoachTool(
             .select("badge_key, awarded_at").eq("user_id", userId)
             .order("awarded_at", { ascending: false }).limit(30),
           chargerLaSerieDeDiscipline(supabase, userId),
+          supabase.from("streak_freezes").select("day, created_at").eq("user_id", userId),
+          supabase.from("challenge_awards").select("awarded_at")
+            .eq("user_id", userId).eq("completed", true),
         ]);
         const earned = (badges ?? []) as unknown as { badge_key: string; awarded_at: string }[];
+        const gelsDuMois = etatDesGels(
+          (gels ?? []) as { day: string; created_at: string | null }[],
+          earned.map((b) => b.badge_key),
+          (defis ?? []) as { awarded_at: string | null }[],
+          localDateKeyFor(timezone).slice(0, 7),
+        );
         return {
           result: {
             username: profile?.username ?? null,
@@ -2671,6 +2689,9 @@ export async function executeCoachTool(
             listed: !!profile?.username,
             current_streak: serie.current,
             best_streak: serie.record,
+            gels_restants: gelsDuMois.restants,
+            gels_quota_du_mois: gelsDuMois.quota,
+            gels_utilises_ce_mois: gelsDuMois.utilises,
             badges_earned: earned.map((b) => b.badge_key),
             badges_count: earned.length,
             note: profile?.username

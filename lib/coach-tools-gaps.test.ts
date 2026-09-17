@@ -94,6 +94,7 @@ describe("get_leaderboard_standing", () => {
       badge_awards: { data: [], error: null },
       trades: { data: [], error: null },
       streak_freezes: { data: [], error: null },
+      challenge_awards: { data: [], error: null },
     });
     const r = await executeCoachTool(client, USER, "get_leaderboard_standing", {});
     const res = r.result as { listed: boolean; note: string };
@@ -107,6 +108,7 @@ describe("get_leaderboard_standing", () => {
       badge_awards: { data: [{ badge_key: "streak_7", awarded_at: "2026-08-01" }, { badge_key: "regular", awarded_at: "2026-07-01" }], error: null },
       trades: { data: [], error: null },
       streak_freezes: { data: [], error: null },
+      challenge_awards: { data: [], error: null },
     });
     const r = await executeCoachTool(client, USER, "get_leaderboard_standing", {});
     const res = r.result as { listed: boolean; badges_earned: string[]; badges_count: number };
@@ -135,6 +137,7 @@ describe("get_leaderboard_standing", () => {
         error: null,
       },
       streak_freezes: { data: [], error: null },
+      challenge_awards: { data: [], error: null },
     });
     const r = await executeCoachTool(client, USER, "get_leaderboard_standing", {});
     const res = r.result as { current_streak: number; best_streak: number };
