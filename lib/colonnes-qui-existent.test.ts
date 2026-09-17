@@ -113,8 +113,62 @@ function colonnesCitees(bloc: string): string[] {
   return noms;
 }
 
+/**
+ * Les colonnes ÉCRITES par un `insert`, un `update` ou un `upsert`.
+ *
+ * ⚠️⚠️ UNE ÉCRITURE VERS UNE COLONNE ABSENTE EST UN NO-OP SILENCIEUX. PostgREST
+ * refuse la requête entière (`PGRST204 Could not find the 'x' column`), le
+ * client Supabase ne jette pas, et un appelant qui ne lit pas `error` croit
+ * avoir enregistré. Ce garde ne regardait que les LECTURES : la moitié du
+ * problème, et la moins grave des deux.
+ *
+ * ⚠️ UN OBJET AVEC UN SPREAD N'EST PAS VÉRIFIABLE ICI (`{ ...patch, x: 1 }`) :
+ * on le laisse passer en entier plutôt que de rendre un verdict faux sur la
+ * partie visible. C'est une limite, elle est écrite.
+ */
+function colonnesEcrites(bloc: string): string[] {
+  const noms: string[] = [];
+  const re = /\.(insert|update|upsert)\(\s*(\{)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(bloc))) {
+    let profondeur = 0;
+    let fin = -1;
+    for (let i = m.index + m[0].length - 1; i < bloc.length; i++) {
+      const c = bloc[i];
+      if (c === "{") profondeur++;
+      else if (c === "}") {
+        profondeur--;
+        if (profondeur === 0) { fin = i; break; }
+      }
+    }
+    if (fin === -1) continue;
+    const corps = bloc.slice(m.index + m[0].length, fin);
+    if (corps.includes("...")) continue;
+
+    // Découpe aux virgules de PREMIER NIVEAU : une valeur peut être un objet,
+    // un tableau ou un appel, et ses virgules ne séparent pas des colonnes.
+    let p = 0;
+    let courant = "";
+    const morceaux: string[] = [];
+    for (const c of corps) {
+      if ("{[(".includes(c)) p++;
+      else if ("}])".includes(c)) p--;
+      if (c === "," && p === 0) { morceaux.push(courant); courant = ""; } else courant += c;
+    }
+    morceaux.push(courant);
+    for (const morceau of morceaux) {
+      const cle = morceau.trim().match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*[:,]?\s*$/)
+        ?? morceau.trim().match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*:/);
+      if (cle) noms.push(cle[1]);
+    }
+  }
+  return noms;
+}
+
 describe("les requêtes ne citent que des tables et des colonnes qui existent", () => {
   const anomalies: string[] = [];
+  const ecritures: string[] = [];
+  let ecrituresVerifiees = 0;
 
   for (const fichier of fichiersSources()) {
     const src = fs.readFileSync(fichier, "utf8");
@@ -132,11 +186,30 @@ describe("les requêtes ne citent que des tables et des colonnes qui existent", 
           anomalies.push(`${relatif}:${ligne} — ${table}.${nom} n'existe pas`);
         }
       }
+      for (const nom of colonnesEcrites(bloc)) {
+        if (!connues.includes(nom)) {
+          ecritures.push(`${relatif}:${ligne} — écriture vers ${table}.${nom}, qui n'existe pas`);
+        }
+        ecrituresVerifiees++;
+      }
     }
   }
 
   it("aucune table ni colonne fantôme", () => {
     expect(anomalies).toEqual([]);
+  });
+
+  it("aucune écriture vers une colonne fantôme", () => {
+    expect(
+      ecritures,
+      "PostgREST refuse la requête entière et le client ne jette pas : ces " +
+        "écritures ne font rien, en silence : " + ecritures.join(" | "),
+    ).toEqual([]);
+  });
+
+  /** ⚠️ Un balayage cassé rendrait le test précédent vert sans rien lire. */
+  it("a bien inspecté des écritures", () => {
+    expect(ecrituresVerifiees, "plus aucune écriture lue : le balayage est cassé").toBeGreaterThan(200);
   });
 
   it("la photographie du schéma couvre les tables du produit", () => {
