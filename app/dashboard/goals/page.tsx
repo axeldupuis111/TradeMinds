@@ -1127,7 +1127,8 @@ export default function GoalsPage() {
                                       <button
                                         onClick={() => { setEditingTarget(g.id); setEditValue(String(g.target)); }}
                                         title={t("goals_edit_target")} aria-label={t("goals_edit_target")}
-                                        className="group/edit inline-flex items-center gap-1 text-[11px] text-muted mt-0.5 hover:text-accent transition-colors">
+                                        /* ⚠️ 30 × 17 sans marge : voir la note du bouton de suppression. */
+                                        className="group/edit inline-flex items-center gap-1 py-1.5 -my-1.5 text-[11px] text-muted mt-0.5 hover:text-accent transition-colors">
                                         {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}
                                         <PenLine className="w-2.5 h-2.5 opacity-0 group-hover/edit:opacity-60 transition-opacity" />
                                       </button>
@@ -1222,7 +1223,16 @@ export default function GoalsPage() {
                                 </button>
                               ) : (
                                 <button onClick={() => { setConfirmDelete(g.id); window.setTimeout(() => setConfirmDelete((c) => (c === g.id ? null : c)), 3500); }}
-                                  className="shrink-0 text-muted hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={t("goals_delete")}>
+                                  /**
+                                   * ⚠️⚠️ SEIZE PIXELS POUR UNE SUPPRESSION, ET
+                                   * TOUJOURS VISIBLE SUR TÉLÉPHONE (le masquage
+                                   * au survol ne vaut qu'à partir de `sm`).
+                                   * Mesuré le 2026-09-18 dans un cadre de
+                                   * 390 px : 16 × 16, sous le minimum de 24 de
+                                   * la WCAG 2.5.8. La marge agrandit la ZONE,
+                                   * pas le dessin.
+                                   */
+                                  className="shrink-0 p-2 -m-2 text-muted hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={t("goals_delete")}>
                                   <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                                 </button>
                               )}

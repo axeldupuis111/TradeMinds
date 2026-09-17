@@ -155,7 +155,13 @@ function SortableTh({
     <th className="px-3 py-2">
       <button
         onClick={() => onSort(column)}
-        className="group inline-flex items-center gap-1 cursor-pointer select-none font-medium hover:text-foreground transition-colors"
+        /**
+         * ⚠️ VINGT PIXELS DE HAUT SANS LA MARGE. Mesuré le 2026-09-18 dans un
+         * cadre de 390 px : les en-têtes de tri font 47 × 20, sous le minimum
+         * de 24 de la WCAG 2.5.8. La marge agrandit la ZONE sans bouger la
+         * ligne, comme pour les cases à cocher de la même table.
+         */
+        className="group inline-flex items-center gap-1 py-1 -my-1 cursor-pointer select-none font-medium hover:text-foreground transition-colors"
       >
         <span>{label}</span>
         <Icon
@@ -1420,7 +1426,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                               pair: tr.pair,
                               date: tr.open_time ? enDate(tr.open_time) : "—",
                             })}
-                            className="font-mono text-sm font-semibold text-foreground hover:text-accent transition-colors"
+                            /* ⚠️ 50 × 20 : voir la note de l'en-tête de tri. */
+                            className="font-mono text-sm font-semibold py-1 -my-1 text-foreground hover:text-accent transition-colors"
                           >
                             {tr.pair}
                           </button>
