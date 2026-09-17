@@ -178,7 +178,7 @@ Les leviers portent sur ce qu'il contrôle : taille de position, nombre de trade
     // Coût réel de l'appel. ⚠️ C'est ce qui fera passer cette route de
     // « majorant » à « mesurée » dans `product-margin.ts`, et chaque route qui
     // fait ce chemin rend du quota au trader.
-    logAiCost(createClient(), auth.userId, {
+    await logAiCost(createClient(), auth.userId, {
       route: "projection-verdict",
       model: "claude-haiku-4-5-20251001",
       plan: auth.plan,

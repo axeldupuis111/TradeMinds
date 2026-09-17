@@ -113,7 +113,7 @@ Réponds UNIQUEMENT avec le résumé, sans titre ni formatage.`;
     // est écrite dans `lib/ai-cost-log.ts` et n'était tenue que par quatre
     // routes sur treize.
     const { createClient: clientPourCout } = await import("@/lib/supabase/server");
-    logAiCost(await clientPourCout(), auth.userId, { route: "daily-summary", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: message.usage });
+    await logAiCost(await clientPourCout(), auth.userId, { route: "daily-summary", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: message.usage });
 
     const textBlock = message.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {

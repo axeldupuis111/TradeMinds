@@ -347,7 +347,7 @@ ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le prix se sit
       messages: [{ role: "user", content: message }],
     });
 
-    logAiCost(createClient(), auth.userId, {
+    await logAiCost(createClient(), auth.userId, {
       route: "compiler-strategie",
       model: MODELE,
       plan: auth.plan,

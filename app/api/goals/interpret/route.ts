@@ -57,7 +57,7 @@ Choisis une cible (target) raisonnable si l'utilisateur n'en donne pas. Utilise 
     // est écrite dans `lib/ai-cost-log.ts` et n'était tenue que par quatre
     // routes sur treize.
     const { createClient: clientPourCout } = await import("@/lib/supabase/server");
-    logAiCost(await clientPourCout(), auth.userId, { route: "goals-interpret", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
+    await logAiCost(await clientPourCout(), auth.userId, { route: "goals-interpret", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
 
     const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim();
     const match = raw.match(/\{[\s\S]*\}/);

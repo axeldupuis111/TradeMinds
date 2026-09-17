@@ -644,7 +644,7 @@ export async function POST(request: Request) {
         } finally {
           // Coût réel du message (somme de tous les tours), pour le suivi admin.
           if (roundUsages.length > 0) {
-            logAiCost(sb, userId, {
+            await logAiCost(sb, userId, {
               route: "chat-coach",
               model: coachModel,
               plan,

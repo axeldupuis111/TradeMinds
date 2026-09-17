@@ -160,7 +160,7 @@ Base les objectifs sur les données ci-dessus quand c'est pertinent (ex. réduir
     // ⚠️ Un appel qui ne se journalise pas est un coût invisible : la règle
     // est écrite dans `lib/ai-cost-log.ts` (« un événement ai_call par appel »)
     // et n'était tenue que par quatre routes sur treize.
-    logAiCost(supabase, auth.userId, { route: "weekly-plan", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
+    await logAiCost(supabase, auth.userId, { route: "weekly-plan", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
     const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim();
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ plan: null, reason: "parse_failed" });

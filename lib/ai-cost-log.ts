@@ -63,9 +63,29 @@ export interface AiCallLog {
 /**
  * Écrit l'événement de coût. `supabase` est le client user-scoped de la route :
  * la policy « insert own events » de product_events suffit.
+ *
+ * ⚠️⚠️ ELLE S'ATTEND, ET CE N'EST PAS UN DÉTAIL DE STYLE. Cette fonction lançait
+ * son écriture sans l'attendre (`void (async () => …)()`), au nom de « la mesure
+ * ne casse jamais la fonctionnalité mesurée ». Sur une fonction sans serveur,
+ * une promesse qui traîne après la fin de la réponse meurt avec l'instance :
+ * l'écriture ne part jamais, sans erreur ni trace.
+ *
+ * ⚠️ MESURÉ EN PRODUCTION le 2026-09-17 : le coach a répondu deux fois le
+ * 15 septembre (13 h 59 et 14 h 05, prouvé par `chat_messages` ET par
+ * `ai_analysis_history`) et le dernier événement de coût date du 13. Deux appels
+ * payés, absents du tableau de bord des coûts. C'est exactement ce que ce module
+ * existe pour empêcher.
+ *
+ * ⚠️ ELLE NE JETTE TOUJOURS PAS : la promesse se résout quoi qu'il arrive, donc
+ * l'attendre ne peut pas casser la route. C'était le vrai besoin, et il est
+ * tenu autrement.
  */
-export function logAiCost(supabase: SupabaseClient, userId: string, log: AiCallLog): void {
-  void (async () => {
+export async function logAiCost(
+  supabase: SupabaseClient,
+  userId: string,
+  log: AiCallLog,
+): Promise<void> {
+  {
     try {
       const cost = costEur(log.model, log.usage);
       await supabase.from("product_events").insert({
@@ -87,7 +107,7 @@ export function logAiCost(supabase: SupabaseClient, userId: string, log: AiCallL
     } catch {
       // la mesure ne casse jamais la fonctionnalité mesurée
     }
-  })();
+  }
 }
 
 /** Somme les compteurs de plusieurs tours (boucle agentique du coach). */

@@ -107,4 +107,47 @@ describe("le journal des coûts IA", () => {
     expect(costEur("claude-sonnet-5", { input_tokens: 1_000_000, output_tokens: 0 })).toBeGreaterThan(0);
     expect(costEur("zzz-modele-inconnu", { input_tokens: 1_000_000, output_tokens: 0 })).toBe(0);
   });
+  /**
+   * ⚠️⚠️ ET L'ÉCRITURE S'ATTEND. `logAiCost` lançait son insertion sans
+   * l'attendre, au nom de « la mesure ne casse jamais la fonctionnalité
+   * mesurée ». Sur une fonction sans serveur, une promesse qui traîne après la
+   * fin de la réponse meurt avec l'instance : l'écriture ne part jamais, sans
+   * erreur ni trace.
+   *
+   * ⚠️ MESURÉ EN PRODUCTION le 2026-09-17 : le coach a répondu deux fois le
+   * 15 septembre (prouvé par `chat_messages` et par `ai_analysis_history`) et le
+   * dernier événement de coût datait du 13. Deux appels payés, absents du
+   * tableau de bord.
+   */
+  it("chaque route attend l'écriture de son coût", () => {
+    const fautes: string[] = [];
+    for (const { nom, src } of routesIa()) {
+      const nue = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+      /**
+       * ⚠️ LE MOTIF NE CAPTURE PAS LE MOT D'AVANT. Sa première version était
+       * `(\w+\s+)?logAiCost\(` : le groupe facultatif avalait « await », la
+       * position du match reculait de six caractères, et le garde accusait les
+       * onze routes correctes. Un garde qui accuse du code juste finit
+       * désactivé.
+       */
+      for (const m of Array.from(nue.matchAll(/logAiCost\(/g))) {
+        const avant = nue.slice(Math.max(0, m.index! - 6), m.index!);
+        if (!/await\s*$/.test(avant)) fautes.push(`${nom} : appel non attendu`);
+      }
+    }
+    expect(
+      fautes,
+      "appels dont l'écriture n'est pas attendue : sur une fonction sans " +
+        "serveur, elle peut ne jamais partir : " + fautes.join(" | "),
+    ).toEqual([]);
+  });
+
+  /** ⚠️ Et la fonction rend bien une promesse, sinon l'attendre ne veut rien dire. */
+  it("le journal des coûts rend une promesse", () => {
+    const src = readFileSync(join(RACINE, "lib/ai-cost-log.ts"), "utf8");
+    expect(src, "logAiCost ne rend plus de promesse").toMatch(/export async function logAiCost/);
+    // ⚠️ Le commentaire du module RACONTE le défaut : on lit le code, pas la prose.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(code, "l'écriture repart en tâche de fond").not.toMatch(/void \(async \(\) =>/);
+  });
 });

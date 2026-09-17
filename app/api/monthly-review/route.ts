@@ -324,7 +324,7 @@ Mois précédent : score ${prev.avgDisciplineScore ?? "N/A"}/100, sessions ${pre
     // est écrite dans `lib/ai-cost-log.ts` (« un événement ai_call par appel »)
     // et n'était tenue que par quatre routes sur treize.
     const { createClient: clientPourCout } = await import("@/lib/supabase/server");
-    logAiCost(await clientPourCout(), auth.userId, { route: "monthly-review", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
+    await logAiCost(await clientPourCout(), auth.userId, { route: "monthly-review", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
     const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
     let review: { headline: string; strength: string; improvement: string; focus: string } | null = null;
     // ⚠️ Le tiret long se retire par du CODE (lib/coach-typography.ts) :

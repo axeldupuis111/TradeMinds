@@ -179,7 +179,7 @@ N'invente JAMAIS de chiffre, de prévision ou de valeur. Décris seulement le r�
     });
     // ⚠️ Un appel qui ne se journalise pas est un coût invisible : la règle est
     // écrite dans `lib/ai-cost-log.ts` et n'était tenue que par quatre routes.
-    logAiCost(serviceClient(), auth.userId, { route: "calendar-explain", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
+    await logAiCost(serviceClient(), auth.userId, { route: "calendar-explain", model: "claude-haiku-4-5-20251001", plan: auth.plan, usage: msg.usage });
     const raw = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
