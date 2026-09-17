@@ -1,3 +1,4 @@
+import { libelleDeSession } from "@/lib/sessions-de-marche";
 import Anthropic from "@anthropic-ai/sdk";
 import { nettoyerLesTextes } from "@/lib/coach-typography";
 import { currencySymbol, isSupportedCurrency } from "@/lib/account-currency";
@@ -111,13 +112,6 @@ interface AnalyzeRequest {
    */
   accountSize?: number;
 }
-
-const SESSION_MAP: Record<string, string> = {
-  london: "London (08:00–12:00 UTC)",
-  new_york: "New York (13:00–17:00 UTC)",
-  asian: "Asian (00:00–06:00 UTC)",
-  london_ny_overlap: "London-NY Overlap (13:00–16:00 UTC)",
-};
 
 export async function POST(request: Request) {
   let reserved: { userId: string; plan: PlanType; timezone: string } | null = null;
@@ -292,7 +286,7 @@ export async function POST(request: Request) {
     const mechanicalBlock = renderMechanicalBlock(mechanicalViolations, recentTrades.length);
 
     const sessionsText = strategy.sessions
-      .map((s) => SESSION_MAP[s] || s)
+      .map(libelleDeSession)
       .join(", ");
 
     const rulesText = strategy.setup_rules.length > 0

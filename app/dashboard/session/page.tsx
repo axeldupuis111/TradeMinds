@@ -1,5 +1,6 @@
 "use client";
 
+import { libelleDeSession } from "@/lib/sessions-de-marche";
 import DayStatus from "@/components/DayStatus";
 import { langueCourante } from "@/lib/nombres";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
@@ -22,13 +23,6 @@ import { fermerLesSeancesOubliees } from "@/lib/sessions-oubliees";
 import { startOfBrowserDayIso } from "@/lib/timezone";
 import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
-
-const SESSION_LABELS: Record<string, string> = {
-  london: "London (08:00–12:00 UTC)",
-  new_york: "New York (13:00–17:00 UTC)",
-  asian: "Asian (00:00–06:00 UTC)",
-  london_ny_overlap: "London-NY Overlap (13:00–16:00 UTC)",
-};
 
 const DEFAULT_CHECKLIST = [
   "pretrade_default_1",
@@ -714,7 +708,7 @@ export default function SessionPage() {
               {strategy.sessions && strategy.sessions.length > 0 && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">🕐</span>
-                  <span>{strategy.sessions.map((s) => SESSION_LABELS[s] || s).join(" · ")}</span>
+                  <span>{strategy.sessions.map(libelleDeSession).join(" · ")}</span>
                 </li>
               )}
               {strategy.pairs && strategy.pairs.length > 0 && (

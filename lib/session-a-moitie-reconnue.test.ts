@@ -1,3 +1,4 @@
+import { fenetreDeSession, libelleDeSession, SESSIONS } from "./sessions-de-marche";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -110,12 +111,15 @@ describe("la règle « hors session »", () => {
 });
 
 describe("le vocabulaire des sessions", () => {
-  const fenetres = () => {
-    const src = readFileSync(join(RACINE, "lib/analysis-selection.ts"), "utf8");
-    const bloc = /const SESSION_WINDOWS[^=]*=\s*\{([\s\S]*?)\n\};/.exec(src);
-    expect(bloc, "la table des fenêtres a changé de forme").not.toBeNull();
-    return new Set(Array.from(bloc![1].matchAll(/^\s*([a-z_]+):\s*\[/gm)).map((m) => m[1]));
-  };
+  /**
+   * ⚠️ ON DEMANDE AU MODULE, ON NE LIT PLUS SA SOURCE. La première version de ce
+   * garde cherchait la table `SESSION_WINDOWS` par expression régulière dans
+   * `lib/analysis-selection.ts` : le jour où les fenêtres ont déménagé vers
+   * `lib/sessions-de-marche.ts`, il a échoué sur du code CORRECT, faute de
+   * trouver un texte. Un garde qui interroge la fonction survit à un
+   * déménagement.
+   */
+  const connaitLaSession = (id: string) => fenetreDeSession(id) !== undefined;
 
   /**
    * ⚠️⚠️ LA VRAIE RÈGLE : ce que le modèle d'extraction a le droit d'écrire doit
@@ -129,8 +133,7 @@ describe("le vocabulaire des sessions", () => {
     const ids = Array.from(liste![1].matchAll(/"([a-z_]+)"/g)).map((m) => m[1]);
     expect(ids.length, "aucun identifiant lu dans le prompt").toBeGreaterThanOrEqual(4);
 
-    const connus = fenetres();
-    const manquants = ids.filter((id) => !connus.has(id));
+    const manquants = ids.filter((id) => !connaitLaSession(id));
     expect(
       manquants,
       "identifiants que l'extraction peut écrire et que la règle ne connaît " +
@@ -140,9 +143,8 @@ describe("le vocabulaire des sessions", () => {
 
   /** ⚠️ Et le gabarit de démonstration parle la même langue que le produit. */
   it("la stratégie de démonstration emploie les identifiants du produit", () => {
-    const connus = fenetres();
     const demo = demoStrategyRow("utilisateur-de-test") as { sessions: string[] };
-    const inconnus = demo.sessions.filter((s) => !connus.has(s));
+    const inconnus = demo.sessions.filter((s) => !connaitLaSession(s));
     expect(
       inconnus,
       "la visite guidée déclare des sessions que la règle ne comprend pas : " +
@@ -150,5 +152,53 @@ describe("le vocabulaire des sessions", () => {
     ).toEqual([]);
     // Et c'est bien l'orthographe canonique, pas l'alias de compatibilité.
     expect(demo.sessions, "le gabarit écrit encore la variante sans souligné").not.toContain("newyork");
+  });
+});
+
+describe("le libellé d'une session", () => {
+  /**
+   * ⚠️⚠️ QUATRE TABLES POUR LE MÊME FAIT. Les heures vivaient dans
+   * `analysis-selection`, qui décide de la violation, et le texte lu par le
+   * trader était RECOPIÉ dans trois autres fichiers : la route d'analyse,
+   * l'écran de séance et la fiche stratégie. Les quatre étaient d'accord, et
+   * rien ne les y obligeait : déplacer une fenêtre d'une heure laissait trois
+   * écrans annoncer l'ancienne, et le trader se serait vu reprocher une règle
+   * que le produit lui affiche autrement.
+   */
+  it("annonce exactement les heures que la règle applique", () => {
+    for (const id of Object.keys(SESSIONS)) {
+      const [debut, fin] = fenetreDeSession(id)!;
+      const libelle = libelleDeSession(id);
+      const heures = Array.from(libelle.matchAll(/(\d{2}):00/g)).map((m) => Number(m[1]));
+      expect(heures, `« ${libelle} » n'annonce pas deux heures`).toHaveLength(2);
+      expect(
+        heures,
+        `« ${libelle} » annonce ${heures.join("–")} alors que la règle applique ${debut}–${fin}`,
+      ).toEqual([debut, fin]);
+    }
+  });
+
+  it("rend un identifiant inconnu tel quel, plutôt que rien", () => {
+    expect(libelleDeSession("zzz_inconnue")).toBe("zzz_inconnue");
+  });
+
+  /**
+   * ⚠️ ET PLUS AUCUN ÉCRAN NE RECOPIE LA TABLE. C'est la recopie qui était le
+   * défaut, pas son contenu.
+   */
+  it("n'est plus recopié dans les écrans", () => {
+    const fautes: string[] = [];
+    for (const chemin of [
+      "app/api/analyze/route.ts",
+      "app/dashboard/session/page.tsx",
+      "app/dashboard/strategy/page.tsx",
+    ]) {
+      const src = readFileSync(join(RACINE, chemin), "utf8");
+      if (/london:\s*"London \(/.test(src)) fautes.push(chemin);
+    }
+    expect(
+      fautes,
+      "écrans qui réécrivent les heures des sessions à la main : " + fautes.join(", "),
+    ).toEqual([]);
   });
 });

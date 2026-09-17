@@ -1,5 +1,6 @@
 "use client";
 
+import { libelleDeSession, sessionsProposees } from "@/lib/sessions-de-marche";
 import { useLanguage } from "@/lib/LanguageContext";
 import LectureRatee from "@/components/LectureRatee";
 import { money } from "@/lib/account-currency";
@@ -30,13 +31,6 @@ function valeursLisibles(valeurs: Record<string, number>): Record<string, string
 }
 
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
-
-const SESSION_LABELS: Record<string, string> = {
-  london: "London (08:00–12:00 UTC)",
-  new_york: "New York (13:00–17:00 UTC)",
-  asian: "Asian (00:00–06:00 UTC)",
-  london_ny_overlap: "London-NY Overlap (13:00–16:00 UTC)",
-};
 
 const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
@@ -851,7 +845,7 @@ export default function StrategyPage() {
           <div className="bg-card border border-border rounded-xl p-4">
             <label className="block text-sm text-muted mb-2">{t("strategy_sessions")}</label>
             <div className="space-y-2">
-              {Object.entries(SESSION_LABELS).map(([id, label]) => (
+              {sessionsProposees().map(({ id, libelle }) => (
                 <label key={id} className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -859,7 +853,7 @@ export default function StrategyPage() {
                     onChange={() => toggleSession(id)}
                     className="w-4 h-4 rounded border-border bg-surface text-accent focus:ring-accent focus:ring-offset-0"
                   />
-                  <span className="text-foreground text-sm">{label}</span>
+                  <span className="text-foreground text-sm">{libelle}</span>
                 </label>
               ))}
             </div>
@@ -1073,7 +1067,7 @@ export default function StrategyPage() {
               <dl className="space-y-2 text-sm">
                 {[
                   { label: t("strategy_pairs"), value: parsed.pairs.length ? parsed.pairs.join(", ") : "—" },
-                  { label: t("strategy_sessions"), value: parsed.sessions.length ? parsed.sessions.map((s) => (SESSION_LABELS[s] || s).split(" ")[0]).join(", ") : "—" },
+                  { label: t("strategy_sessions"), value: parsed.sessions.length ? parsed.sessions.map((id) => libelleDeSession(id).split(" ")[0]).join(", ") : "—" },
                   { label: t("strategy_rr"), value: parsed.risk_reward != null ? `${parsed.risk_reward}:1` : "—" },
                   { label: t("strategy_sl_max"), value: parsed.max_sl_pips != null ? `${parsed.max_sl_pips} pips` : "—" },
                   { label: t("strategy_max_trades"), value: parsed.max_trades_per_day != null ? String(parsed.max_trades_per_day) : "—" },

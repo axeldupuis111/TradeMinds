@@ -20,6 +20,7 @@
  * continue de désigner le bon trade côté client.
  */
 
+import { fenetreDeSession } from "@/lib/sessions-de-marche";
 import { prixConnu } from "@/lib/prix-connu";
 import { calculatePips, getTradeResult } from "@/lib/pips";
 
@@ -87,21 +88,15 @@ const CATEGORY: Record<MechanicalViolationType, "strategy" | "execution"> = {
   missing_tp: "execution",
 };
 
-/** Fenêtres UTC des sessions, alignées sur SESSION_MAP de la route d'analyse. */
-const SESSION_WINDOWS: Record<string, [number, number]> = {
-  london: [8, 12],
-  new_york: [13, 17],
-  asian: [0, 6],
-  london_ny_overlap: [13, 16],
-  /**
-   * ⚠️ ALIAS POUR LES LIGNES DÉJÀ EN BASE. Le vocabulaire du produit est
-   * `new_york` (prompt d'extraction, écran de séance, fiche stratégie), mais
-   * la stratégie de démonstration a longtemps écrit « newyork » : trois
-   * comptes en portent une. Corriger le gabarit ne corrige pas les lignes
-   * déjà écrites.
-   */
-  newyork: [13, 17],
-};
+/**
+ * ⚠️⚠️ LES FENÊTRES VIVENT AILLEURS, AVEC LE LIBELLÉ QUI LES ANNONCE. Cette
+ * table existait ici, et le texte lu par le trader (« London (08:00–12:00
+ * UTC) ») était recopié à la main dans trois autres fichiers. Rien n'obligeait
+ * les quatre à rester d'accord : déplacer une fenêtre d'une heure laissait trois
+ * écrans annoncer l'ancienne, et le trader se serait vu reprocher une règle que
+ * le produit lui affiche autrement. Voir lib/sessions-de-marche.ts, où le
+ * libellé est CONSTRUIT à partir de la fenêtre.
+ */
 
 export function netPnl(t: SelectionTrade): number {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
@@ -162,9 +157,11 @@ export function computeMechanicalViolations(
    * peut rien reprocher. C'est déjà ce que faisait le code quand AUCUNE
    * session n'était reconnue ; il manquait le cas intermédiaire.
    */
-  const fenetresDeclarees = strategy.sessions.map((s) => SESSION_WINDOWS[s]);
+  const fenetresDeclarees = strategy.sessions.map(fenetreDeSession);
   const toutesReconnues = fenetresDeclarees.every(Boolean);
-  const windows = toutesReconnues ? fenetresDeclarees.filter(Boolean) : [];
+  const windows: [number, number][] = toutesReconnues
+    ? fenetresDeclarees.filter((f): f is [number, number] => f !== undefined)
+    : [];
 
   trades.forEach((t, idx) => {
     // Paire hors périmètre (seulement si le trader a listé ses paires).
