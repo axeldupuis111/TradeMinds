@@ -23,6 +23,7 @@ import { messageDErreurSupabase, messageDeBaseLisible } from "@/lib/erreurs-de-b
 import { enDate, enJourEtMois } from "@/lib/dates";
 import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { pourcent } from "@/lib/nombres";
+import { pourcentageAberrant, pourcentageDeRegle } from "@/lib/pourcentage-de-regle";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
@@ -356,12 +357,12 @@ function EditAccountModal({
       type: accountType,
       account_size: parseFloat(accountSize),
       currency,
-      profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 0) : 0,
-      max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 0) : 0,
-      max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 0) : 0,
+      profit_target_pct: accountType === "prop" ? pourcentageDeRegle(profitTarget) : 0,
+      max_daily_dd_pct: accountType === "prop" ? pourcentageDeRegle(maxDailyDd) : 0,
+      max_total_dd_pct: accountType === "prop" ? pourcentageDeRegle(maxTotalDd) : 0,
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       market_type: marketType,
-      max_daily_loss_pct: maxDailyLoss.trim() ? parseFloat(maxDailyLoss) : null,
+      max_daily_loss_pct: maxDailyLoss.trim() ? pourcentageDeRegle(maxDailyLoss) : null,
       start_date: startDate,
       end_date: endDate || null,
       status,
@@ -443,15 +444,15 @@ function EditAccountModal({
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label htmlFor="challenge-challenge-profit-target-pct" className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                  <input id="challenge-challenge-profit-target-pct" type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                  <input id="challenge-challenge-profit-target-pct" type="number" step="0.1" min="0" max="100" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="challenge-challenge-daily-dd-pct" className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                  <input id="challenge-challenge-daily-dd-pct" type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                  <input id="challenge-challenge-daily-dd-pct" type="number" step="0.1" min="0" max="100" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="challenge-challenge-total-dd-pct" className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                  <input id="challenge-challenge-total-dd-pct" type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                  <input id="challenge-challenge-total-dd-pct" type="number" step="0.1" min="0" max="100" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
@@ -624,6 +625,15 @@ function AccountCard({
       })
     : null;
 
+  /** Les règles déjà enregistrées qui sortent des bornes (voir plus bas). */
+  const reglesAberrantes = (
+    [
+      { cle: "challenge_profit_target", valeur: ac.profit_target_pct },
+      { cle: "challenge_daily_dd", valeur: ac.max_daily_dd_pct },
+      { cle: "challenge_total_dd", valeur: ac.max_total_dd_pct },
+    ] as const
+  ).filter((r) => pourcentageAberrant(r.valeur));
+
   const daysElapsed = Math.floor(
     (Date.now() - new Date(ac.start_date).getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -710,6 +720,32 @@ function AccountCard({
           >
             {t("challenge_currency_align").replace("{broker}", mismatch.broker)}
           </button>
+        </div>
+      )}
+
+      {/**
+       * ⚠️⚠️ UNE RÈGLE AU-DESSUS DE CENT POUR CENT NE PROTÈGE DE RIEN, et le
+       * trader n'a aucun moyen de s'en apercevoir : tous les écrans lui
+       * annoncent une marge énorme. Relevé en base le 2026-09-17 sur un compte
+       * FTMO de 10 000 € réglé à 500 % et 1 000 % de drawdown : des MONTANTS
+       * saisis dans des champs de pourcentage. Les nouvelles saisies sont
+       * bornées (lib/pourcentage-de-regle.ts) ; les lignes déjà écrites, on les
+       * SIGNALE au lieu de les corriger en douce, parce que personne ne peut
+       * deviner ce que le trader voulait dire.
+       */}
+      {isProp && reglesAberrantes.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {reglesAberrantes.map(({ cle, valeur }) => (
+            <p
+              key={cle}
+              role="alert"
+              className="rounded-lg border border-loss/40 bg-loss/5 px-3 py-2 text-xs text-foreground"
+            >
+              {t("challenge_rule_impossible")
+                .replace("{rule}", t(cle))
+                .replace("{value}", String(valeur))}
+            </p>
+          ))}
         </div>
       )}
 
@@ -1162,12 +1198,12 @@ export default function ChallengePage() {
       account_number: accountNumber.trim(),
       account_size: size,
       currency,
-      profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 8) : 0,
-      max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 5) : 0,
-      max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 10) : 0,
+      profit_target_pct: accountType === "prop" ? pourcentageDeRegle(profitTarget, 8) : 0,
+      max_daily_dd_pct: accountType === "prop" ? pourcentageDeRegle(maxDailyDd, 5) : 0,
+      max_total_dd_pct: accountType === "prop" ? pourcentageDeRegle(maxTotalDd, 10) : 0,
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       market_type: marketType,
-      max_daily_loss_pct: maxDailyLoss.trim() ? parseFloat(maxDailyLoss) : null,
+      max_daily_loss_pct: maxDailyLoss.trim() ? pourcentageDeRegle(maxDailyLoss) : null,
       start_date: startDate || localDateKey(browserTimezone()),
       end_date: accountType === "prop" ? (endDate || null) : null,
       balance: size,
@@ -1616,15 +1652,15 @@ export default function ChallengePage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label htmlFor="challenge-challenge-profit-target-pct-2" className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                  <input id="challenge-challenge-profit-target-pct-2" type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                  <input id="challenge-challenge-profit-target-pct-2" type="number" step="0.1" min="0" max="100" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="challenge-challenge-daily-dd-pct-2" className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                  <input id="challenge-challenge-daily-dd-pct-2" type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                  <input id="challenge-challenge-daily-dd-pct-2" type="number" step="0.1" min="0" max="100" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="challenge-challenge-total-dd-pct-2" className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                  <input id="challenge-challenge-total-dd-pct-2" type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                  <input id="challenge-challenge-total-dd-pct-2" type="number" step="0.1" min="0" max="100" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />

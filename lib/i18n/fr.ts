@@ -500,6 +500,7 @@ const dict: Record<string, string> = {
   "challenge_currency": "Devise",
   "challenge_currency_mismatch": "Ton broker annonce un compte en {broker}, ta fiche indique {saved}. Les montants sont affichés en {broker}.",
   "challenge_currency_align": "Passer la fiche en {broker}",
+  "challenge_rule_impossible": "Règle impossible : {rule} est réglée à {value} % de ton capital. Au-dessus de 100 %, aucun garde ne peut se déclencher. Corrige la valeur dans « Modifier ».",
   "challenge_balance_live": "en direct",
   "challenge_equity": "Equity",
   "challenge_open_position": "position ouverte",

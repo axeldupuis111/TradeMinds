@@ -500,6 +500,7 @@ const dict: Record<string, string> = {
   "challenge_currency": "Currency",
   "challenge_currency_mismatch": "Your broker reports a {broker} account, your settings say {saved}. Amounts are shown in {broker}.",
   "challenge_currency_align": "Switch settings to {broker}",
+  "challenge_rule_impossible": "Impossible rule: {rule} is set to {value}% of your capital. Above 100%, no guard can ever fire. Fix the value in \"Edit\".",
   "challenge_balance_live": "live",
   "challenge_equity": "Equity",
   "challenge_open_position": "open position",
