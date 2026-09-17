@@ -160,6 +160,24 @@ describe("un objectif sans activité", () => {
   });
 
   /**
+   * ⚠️⚠️ ET LA PROJECTION DE RYTHME SE TAIT AUSSI. Vu à l'écran le 2026-09-17,
+   * une fois la valeur et la barre corrigées : « Rythme insuffisant : ~0
+   * projetés en fin de période » subsistait sur un mois sans une seule séance.
+   * C'est un REPROCHE adressé à quelqu'un qui n'a pas commencé. Trois rendus du
+   * même objectif, trois fois la même règle à appliquer, et la troisième
+   * n'avait pas suivi.
+   */
+  it("la projection de rythme ne reproche rien à un mois vide", () => {
+    const i = page.indexOf('g.metric === "sessions"');
+    expect(i, "la projection de rythme a disparu").toBeGreaterThan(-1);
+    const ligne = page.slice(i, page.indexOf("\n", i));
+    expect(
+      ligne,
+      "le rythme se prononce encore sans qu'il se soit rien passé : " + ligne.trim(),
+    ).toContain("g.hadData !== false");
+  });
+
+  /**
    * ⚠️ « PROCHAINE VICTOIRE » NE PEUT PAS DÉSIGNER UN OBJECTIF SANS ACTIVITÉ, et
    * c'est son FILTRE qui l'en empêche, pas un hasard : un objectif plafond sans
    * donnée a une progression de 100 % (exclue) et un objectif plancher en a une

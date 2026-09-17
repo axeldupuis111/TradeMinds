@@ -1132,8 +1132,17 @@ export default function GoalsPage() {
                                         <PenLine className="w-2.5 h-2.5 opacity-0 group-hover/edit:opacity-60 transition-opacity" />
                                       </button>
                                     )}
-                                    {/* Projection de rythme (métriques cumulatives uniquement) */}
-                                    {g.metric === "sessions" && !g.met && (() => {
+                                    {/*
+                                      Projection de rythme (métriques cumulatives uniquement).
+
+                                      ⚠️⚠️ ET ELLE SE TAIT QUAND IL NE S'EST RIEN PASSÉ. Vu à
+                                      l'écran le 2026-09-17 : « Rythme insuffisant : ~0 projetés
+                                      en fin de période » sur un mois sans une seule séance. C'est
+                                      un REPROCHE adressé à quelqu'un qui n'a pas commencé, et
+                                      c'est la même règle que la valeur et la barre juste à côté
+                                      (`hadData`) : ne pas trader n'est pas un échec de rythme.
+                                    */}
+                                    {g.metric === "sessions" && !g.met && g.hadData !== false && (() => {
                                       const frac = elapsedFraction(g.period);
                                       if (frac < 0.1) return null;
                                       const proj = Math.round(g.value / frac);
