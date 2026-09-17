@@ -23,6 +23,18 @@ export interface InsightTrade {
   emotion?: string | null;
   ict_confluence_score?: number | null;
   checklist_total?: number | null;
+  /**
+   * ⚠️⚠️ LA DEVISE DU COMPTE DE CE TRADE. Sans elle, tout ce module ADDITIONNE
+   * DES EUROS ET DES DOLLARS : mesuré le 2026-09-17 sur un compte réel, la
+   * ventilation par paire annonçait « XAUUSD : -7 162 » pour des trades qui
+   * valent -6 619,77 € et -449,36 $. Ce nombre n'est aucune somme d'argent, et
+   * c'est précisément ce que l'outil voisin `get_journal_summary` interdit dans
+   * sa propre note : « ne les additionne jamais entre elles ».
+   *
+   * Absente, le comptage se poursuit comme avant : c'est le cas de neuf des dix
+   * comptes du produit, qui n'ont qu'une devise.
+   */
+  devise?: string | null;
 }
 
 /** P&L net (commissions et swap inclus). */
@@ -35,18 +47,36 @@ export interface Bucket {
   trades: number;
   wins: number;
   losses: number;
+  /** ⚠️ Somme BRUTE : elle n'a de sens que si `netParDevise` n'a qu'une clé. */
   netPnl: number;
+  /** Le net, ventilé. Clé « ? » quand la devise du trade est inconnue. */
+  netParDevise: Record<string, number>;
 }
 
 function emptyBucket(): Bucket {
-  return { trades: 0, wins: 0, losses: 0, netPnl: 0 };
+  return { trades: 0, wins: 0, losses: 0, netPnl: 0, netParDevise: {} };
 }
 
-function addToBucket(b: Bucket, pnl: number) {
+function addToBucket(b: Bucket, pnl: number, devise?: string | null) {
   b.trades += 1;
   b.netPnl += pnl;
+  const cle = devise || "?";
+  b.netParDevise[cle] = (b.netParDevise[cle] ?? 0) + pnl;
   if (pnl > 0) b.wins += 1;
   else if (pnl < 0) b.losses += 1;
+}
+
+/** Les devises présentes dans un seau, hors inconnues quand d'autres existent. */
+export function devisesDuSeau(b: Bucket): string[] {
+  const cles = Object.keys(b.netParDevise);
+  const connues = cles.filter((c) => c !== "?");
+  return connues.length > 0 ? connues : cles;
+}
+
+/** La devise du seau, ou null s'il en mêle plusieurs. */
+export function deviseUniqueDuSeau(b: Bucket): string | null {
+  const d = devisesDuSeau(b);
+  return d.length === 1 && d[0] !== "?" ? d[0] : null;
 }
 
 export function winRate(b: Bucket): number {
@@ -123,9 +153,9 @@ export function computeTradeStats(trades: InsightTrade[], timezone = "UTC"): Tra
   let grossProfit = 0, grossLoss = 0, total = 0;
   let best = -Infinity, worst = Infinity;
 
-  const bucketInto = (rec: Record<string, Bucket>, key: string, pnl: number) => {
+  const bucketInto = (rec: Record<string, Bucket>, key: string, pnl: number, devise?: string | null) => {
     (rec[key] ??= emptyBucket());
-    addToBucket(rec[key], pnl);
+    addToBucket(rec[key], pnl, devise);
   };
 
   for (const t of trades) {
@@ -138,12 +168,12 @@ export function computeTradeStats(trades: InsightTrade[], timezone = "UTC"): Tra
     if (pnl < worst) worst = pnl;
 
     const { hour, isoWeekday } = localParts(t.open_time, timezone);
-    bucketInto(byHour, String(hour), pnl);
-    bucketInto(byWeekday, String(isoWeekday), pnl);
-    bucketInto(byPair, t.pair.toUpperCase(), pnl);
-    bucketInto(byDirection, t.direction.toLowerCase(), pnl);
-    if (t.emotion) bucketInto(byEmotion, t.emotion.trim().toLowerCase(), pnl);
-    if (t.ict_setup) bucketInto(bySetup, t.ict_setup.trim(), pnl);
+    bucketInto(byHour, String(hour), pnl, t.devise);
+    bucketInto(byWeekday, String(isoWeekday), pnl, t.devise);
+    bucketInto(byPair, t.pair.toUpperCase(), pnl, t.devise);
+    bucketInto(byDirection, t.direction.toLowerCase(), pnl, t.devise);
+    if (t.emotion) bucketInto(byEmotion, t.emotion.trim().toLowerCase(), pnl, t.devise);
+    if (t.ict_setup) bucketInto(bySetup, t.ict_setup.trim(), pnl, t.devise);
   }
 
   // Séquentiel : trié par ouverture pour le comportement après perte.
@@ -168,7 +198,7 @@ export function computeTradeStats(trades: InsightTrade[], timezone = "UTC"): Tra
     if (prevPnl < 0) {
       lotsAfterLoss.push(seq[i].lot_size);
       const gapMin = (new Date(seq[i].open_time).getTime() - new Date(prev.close_time).getTime()) / 60_000;
-      addToBucket(gapMin >= 0 && gapMin < 30 ? within30min : later, pnl);
+      addToBucket(gapMin >= 0 && gapMin < 30 ? within30min : later, pnl, seq[i].devise);
     } else if (prevPnl > 0) {
       lotsAfterWin.push(seq[i].lot_size);
     }
@@ -185,7 +215,7 @@ export function computeTradeStats(trades: InsightTrade[], timezone = "UTC"): Tra
     const low = emptyBucket();
     for (const t of withChecklist) {
       const ratio = (t.ict_confluence_score ?? 0) / (t.checklist_total ?? 1);
-      addToBucket(ratio >= 0.8 ? high : low, netPnl(t));
+      addToBucket(ratio >= 0.8 ? high : low, netPnl(t), t.devise);
     }
     checklist = { high, low };
   }

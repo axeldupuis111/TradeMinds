@@ -243,7 +243,24 @@ export async function POST(request: Request) {
     // sur des agrégats fiables (winrate par heure, comportement après perte…)
     // au lieu de devoir les déduire de centaines de lignes brutes.
     const tradeStats = computeTradeStats(recentTrades as InsightTrade[], timezone);
-    const statsBlock = renderStatsBlock(tradeStats, timezone);
+    /**
+     * ⚠️⚠️ CE BLOC ADDITIONNE LES TRADES SANS REGARDER LEUR DEVISE. C'est sans
+     * conséquence tant que le trader n'en a qu'une, ce qui est le cas de neuf
+     * comptes sur dix ; sur le dixième, « P&L net -7069 » n'est aucune somme
+     * d'argent, et le modèle a pour consigne de reprendre ces chiffres tels
+     * quels.
+     *
+     * ⚠️ ON NE RECOMPOSE PAS LE BLOC PAR DEVISE : il porte aussi des moyennes,
+     * un profit factor et une espérance, qui n'ont pas de sens ventilés sur de
+     * petits effectifs. On DIT au modèle que ces totaux ne sont pas des
+     * montants, ce qui est la seule chose honnête à en faire.
+     */
+    const statsBlock =
+      renderStatsBlock(tradeStats, timezone) +
+      (devisesMelangees
+        ? `
+⚠️ CE JOURNAL MÊLE PLUSIEURS DEVISES. Les montants ci-dessus additionnent des sommes libellées différemment : ce sont des ORDRES DE GRANDEUR, pas des montants. Ne les cite jamais comme une somme d'argent et n'y accole aucun symbole ; parle en nombre de trades, en taux et en tendances.`
+        : "");
 
     // ── Comptage mécanique + sélection des trades à détailler ────────────────
     // Les violations dont la règle est vérifiable (paire, session, RR, SL, TP,

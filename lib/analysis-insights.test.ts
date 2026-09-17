@@ -181,7 +181,7 @@ describe("computeEdgeHighlights", () => {
 
 describe("winRate", () => {
   it("ignore les breakevens dans le dénominateur", () => {
-    expect(winRate({ trades: 3, wins: 1, losses: 1, netPnl: 0 })).toBe(50);
-    expect(winRate({ trades: 0, wins: 0, losses: 0, netPnl: 0 })).toBe(0);
+    expect(winRate({ trades: 3, wins: 1, losses: 1, netPnl: 0, netParDevise: {} })).toBe(50);
+    expect(winRate({ trades: 0, wins: 0, losses: 0, netPnl: 0, netParDevise: {} })).toBe(0);
   });
 });

@@ -20,7 +20,7 @@ import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/comm
 import { lireTousLesTradesDuCompte } from "./trades-du-compte";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { pnlNet, recapitulatif, type LigneDuRecapitulatif } from "@/lib/trades/recapitulatif";
-import { buildCurrencyMap, commonCurrency, sumByCurrency, deviseSansCompte } from "@/lib/account-currency";
+import { buildCurrencyMap, commonCurrency, sumByCurrency, deviseSansCompte, tradeCurrency } from "@/lib/account-currency";
 import { projeter } from "./projection";
 import { palierSousLeSeuil, paliersDeTaille } from "./projection-levers";
 import { analyserSegments } from "./projection-segments";
@@ -28,7 +28,7 @@ import { mesurerStabilite } from "./projection-stability";
 import { mesurerAdherence } from "./strategy-adherence";
 import { verifierCoherence } from "./strategy-coherence";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
-import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
+import { computeTradeStats, deviseUniqueDuSeau, type InsightTrade } from "@/lib/analysis-insights";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { getFuturesContract } from "@/lib/futures-contracts";
@@ -2322,7 +2322,7 @@ export async function executeCoachTool(
           // à la base, elle faisait refuser la requête ENTIÈRE (42703), et cet
           // outil répondait donc TOUJOURS « Lecture des trades impossible ».
           // Les dimensions rendues ci-dessous ne s'en servent pas.
-          .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score")
+          .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score, challenge_id")
           .eq("user_id", userId)
           .eq("status", "closed")
           .order("open_time", { ascending: false })
@@ -2337,27 +2337,71 @@ export async function executeCoachTool(
         const rows = (data ?? []) as unknown as InsightTrade[];
         if (rows.length === 0) return { result: { count: 0, note: "Aucun trade sur cette période." } };
 
-        const stats = computeTradeStats(rows, timezone || "UTC");
+        /**
+         * ⚠️⚠️ SANS LA DEVISE DE CHAQUE TRADE, CET OUTIL ADDITIONNAIT DES EUROS
+         * ET DES DOLLARS. Mesuré le 2026-09-17 en le rejouant sur un compte
+         * réel : « XAUUSD : 78 trades, net -7 162 » pour des lignes qui valent
+         * -6 619,77 € et -449,36 $. Ce nombre n'est aucune somme d'argent, et
+         * l'outil voisin `get_journal_summary` l'interdit dans sa propre note
+         * (« ne les additionne jamais entre elles ») dix lignes plus haut.
+         */
+        const { data: comptesPerf } = await supabase
+          .from("prop_challenges")
+          .select("id, currency, synced_currency")
+          .eq("user_id", userId);
+        const devisesPerf = buildCurrencyMap(
+          (comptesPerf ?? []) as unknown as Parameters<typeof buildCurrencyMap>[0],
+        );
+        const replivPerf = deviseSansCompte(devisesPerf);
+        const avecDevise = rows.map((t, i) => ({
+          ...t,
+          devise: tradeCurrency(
+            (data ?? [])[i] ? ((data ?? [])[i] as unknown as { challenge_id: string | null }).challenge_id : null,
+            devisesPerf,
+            replivPerf,
+          ),
+        }));
+
+        const stats = computeTradeStats(avecDevise, timezone || "UTC");
         const bucketMap = {
           pair: stats.byPair, hour: stats.byHour, weekday: stats.byWeekday,
           direction: stats.byDirection, emotion: stats.byEmotion, setup: stats.bySetup,
         }[dimension as "pair"];
+        const arrondir = (o: Record<string, number>) =>
+          Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v * 100) / 100]));
         const segments = Object.entries(bucketMap)
-          .map(([key, b]) => ({
-            key,
-            trades: b.trades,
-            wins: b.wins,
-            losses: b.losses,
-            win_rate: b.trades > 0 ? Math.round((b.wins / b.trades) * 100) : 0,
-            net_pnl: Math.round(b.netPnl * 100) / 100,
-          }))
-          .sort((a, b) => a.net_pnl - b.net_pnl);
+          .map(([key, b]) => {
+            const parDevise = arrondir(b.netParDevise);
+            const unique = deviseUniqueDuSeau(b);
+            return {
+              key,
+              trades: b.trades,
+              wins: b.wins,
+              losses: b.losses,
+              win_rate: b.trades > 0 ? Math.round((b.wins / b.trades) * 100) : 0,
+              /** ⚠️ Présent SEULEMENT si le segment tient dans une seule devise. */
+              ...(unique ? { net_pnl: parDevise[unique], devise: unique } : {}),
+              net_pnl_par_devise: parDevise,
+            };
+          })
+          // ⚠️ Tri sur le PIRE montant d'une seule devise : additionner pour
+          // trier reviendrait à additionner tout court.
+          .sort((a, b) => Math.min(...Object.values(a.net_pnl_par_devise)) - Math.min(...Object.values(b.net_pnl_par_devise)));
+        // La devise du journal entier : `stats.total` n'est pas un seau, on la
+        // relit donc directement sur les lignes.
+        const devisesVues = Array.from(new Set(avecDevise.map((t) => t.devise).filter(Boolean)));
+        const deviseGlobale = devisesVues.length === 1 ? devisesVues[0] : null;
         return {
           result: {
             dimension,
             total_trades: rows.length,
+            devise_unique: deviseGlobale,
             segments,
-            note: "Un segment sous 5 trades ne prouve rien : signale-le au trader au lieu d'en tirer une conclusion.",
+            note:
+              "Un segment sous 5 trades ne prouve rien : signale-le au trader au lieu d'en tirer une conclusion." +
+              (deviseGlobale
+                ? ""
+                : " ⚠️ Ce journal mêle plusieurs devises : chaque segment donne `net_pnl_par_devise` et n'a PAS de total unique. Ne les additionne jamais entre elles."),
           },
         };
       }
