@@ -193,6 +193,23 @@ export function tradeRejectReason(t: unknown): string | null {
   if (!toIso(o.open_time as string | number))
     return "heure d'ouverture nulle (deal d'ouverture introuvable dans l'historique chargé)";
   if (!toIso(o.close_time as string | number)) return "heure de clôture nulle ou invalide";
+  /**
+   * ⚠️⚠️ ET DANS CET ORDRE. Un trade dont la clôture précède l'ouverture
+   * rend une durée négative, un écart négatif pour la détection du revenge
+   * trading, et un journal dont l'ordre chronologique ment. Le cas existe déjà
+   * en base par la saisie manuelle (relevé le 2026-09-18), et un horodatage de
+   * courtier décalé peut le produire ici : voir le piège de l'heure serveur MQL.
+   *
+   * ⚠️ STRICTEMENT AVANT : un scalp peut durer moins d'une seconde et sortir
+   * du courtier avec deux horodatages identiques.
+   */
+  {
+    const debut = Date.parse(toIso(o.open_time as string | number) as string);
+    const fin = Date.parse(toIso(o.close_time as string | number) as string);
+    if (Number.isFinite(debut) && Number.isFinite(fin) && fin < debut) {
+      return `clôture avant l'ouverture (${String(o.open_time)} → ${String(o.close_time)})`;
+    }
+  }
 
   // ── Les champs d'argent ────────────────────────────────────────────────
   // Le résultat est la raison d'être du trade : un trade sans lui n'a rien à

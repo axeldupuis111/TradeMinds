@@ -197,9 +197,28 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     const openTime = form.open_hour
       ? `${form.open_date}T${form.open_hour}:00`
       : `${form.open_date}T00:00:00`;
-    const closeTime = form.close_date
+    /**
+     * ⚠️⚠️ UNE CLÔTURE SANS HEURE DEVENAIT MINUIT, DONC PARFOIS AVANT
+     * L'OUVERTURE. Relevé en base le 2026-09-18 : un trade ouvert à 10 h et
+     * « clôturé » à 00 h le même jour. Le trader avait donné la date de sortie
+     * sans l'heure, et minuit est le premier instant du jour, pas le dernier.
+     *
+     * Ce que ça casse : la durée du trade devient négative, la détection de
+     * revenge trading mesure un écart négatif depuis la clôture précédente, et
+     * l'ordre chronologique du journal ment.
+     *
+     * ⚠️ ON NE DEVINE PAS L'HEURE, on refuse seulement l'impossible : la
+     * clôture ne peut pas précéder l'ouverture. Sans heure saisie, le trade dure
+     * zéro, ce qui se lit comme « heure inconnue » et non comme un voyage dans
+     * le temps.
+     */
+    const closeBrut = form.close_date
       ? (form.close_hour ? `${form.close_date}T${form.close_hour}:00` : `${form.close_date}T00:00:00`)
       : null;
+    const closeTime =
+      closeBrut && new Date(closeBrut).getTime() < new Date(openTime).getTime()
+        ? openTime
+        : closeBrut;
 
     const checklistItems = stratTags.checklist;
     const checkedCount = checklistItems.filter((i) => checklist[i.key]).length;
