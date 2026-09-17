@@ -1,5 +1,6 @@
 "use client";
 
+import { libelleDeViolation } from "@/lib/libelle-de-violation";
 import { totalDeChecklist } from "@/lib/total-de-checklist";
 import { tradesConformes } from "@/lib/trades-conformes";
 import { langueCourante } from "@/lib/nombres";
@@ -251,22 +252,6 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
   );
 }
 
-const VIOLATION_TYPE_LABELS: Record<string, string> = {
-  wrong_pair: "violation_wrong_pair",
-  wrong_session: "violation_wrong_session",
-  low_rr: "violation_low_rr",
-  sl_too_wide: "violation_sl_too_wide",
-  max_trades_day: "violation_max_trades_day",
-  max_daily_loss: "violation_max_daily_loss",
-  consecutive_losses: "violation_consecutive_losses",
-  revenge_trading: "violation_revenge_trading",
-  overtrading: "violation_overtrading",
-  lot_increase_after_loss: "violation_lot_increase",
-  fomo: "violation_fomo",
-  missing_sl: "violation_missing_sl",
-  missing_tp: "violation_missing_tp",
-  missing_setup_tag: "violation_missing_setup",
-};
 
 function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: CategoryBreakdown[]; score: number; t: Traduire; className?: string }) {
   const [open, setOpen] = useState(false);
@@ -307,7 +292,7 @@ function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: Cat
                 </div>
                 {cat.penalties.map((p, i) => (
                   <div key={i} className="flex justify-between text-xs ml-3 text-muted">
-                    <span>{t(VIOLATION_TYPE_LABELS[p.type] || p.type)} {p.occurrences > 1 ? `×${p.occurrences}` : ""}</span>
+                    <span>{libelleDeViolation(p.type, t)} {p.occurrences > 1 ? `×${p.occurrences}` : ""}</span>
                     <span>-{p.points}</span>
                   </div>
                 ))}
@@ -983,7 +968,7 @@ export default function AnalysisPage() {
         violations: a.violations.map((v) =>
           "category" in v
             ? {
-                title: t(`violation_${(v as Violation).type}` as Parameters<typeof t>[0]),
+                title: libelleDeViolation((v as Violation).type, t),
                 explanation: v.explanation,
                 cost: (v as Violation).cost,
               }
@@ -1400,7 +1385,7 @@ export default function AnalysisPage() {
                                 {t(`violation_cat_${(v as Violation).category}` as Parameters<typeof t>[0])}
                               </span>
                               <span className="text-foreground text-sm font-medium">
-                                {t(`violation_${(v as Violation).type}` as Parameters<typeof t>[0])}
+                                {libelleDeViolation((v as Violation).type, t)}
                               </span>
                               {(v as Violation).occurrences > 1 && (
                                 <span className="text-muted text-xs">×{(v as Violation).occurrences}</span>
