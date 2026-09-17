@@ -271,9 +271,39 @@ export function demoStrategyRow(userId: string) {
     // du produit. Écrit « newyork », la règle « hors session » ne reconnaissait
     // que Londres et accusait 45 des 53 trades de démonstration.
     sessions: ["london", "new_york"],
+    /**
+     * ⚠️ RESTE À 2, ET C'EST VOULU. Les trades de démonstration ont un RR réel
+     * de 1,31 à 2,77, médiane 1,85 : la règle est exigeante mais ATTEIGNABLE,
+     * et l'écart qu'elle révèle est précisément ce que le produit vend.
+     */
     risk_reward: 2,
-    max_sl_pips: 25,
-    max_daily_loss: 150,
+    /**
+     * ⚠️⚠️ ÉTAIT À 25, CE QUI ÉTAIT IMPOSSIBLE À TENIR AVEC SES PROPRES TRADES.
+     * Mesuré le 2026-09-17 en rejouant les règles sur le jeu de démonstration :
+     * 51 violations « SL trop large » sur 53 trades, parce que le générateur
+     * produit des stops de 43 à 61 pips de médiane selon l'instrument. Et 25
+     * pips n'a aucun sens sur deux des quatre paires de cette même fiche :
+     * c'est 2,50 $ sur l'or et 25 points sur le NAS100.
+     *
+     * Une règle qu'aucune ligne ne respecte n'est pas une règle, c'est du
+     * bruit : la visite guidée affichait un mur rouge au lieu d'une leçon. À
+     * 70, quatorze trades sur cinquante-trois la dépassent, ce qui se lit
+     * comme une habitude à corriger.
+     */
+    max_sl_pips: 70,
+    /**
+     * ⚠️⚠️ ÉTAIT À 150, ET CE CHAMP EST UN POURCENTAGE du capital : la fiche de
+     * démonstration annonçait une perte journalière maximale de 150 %. Aucune
+     * journée ne peut l'atteindre, donc la règle ne se déclenchait jamais.
+     * C'est la même confusion que celle mesurée sur les vraies fiches (voir
+     * `app/api/parse-strategy`, où un plan écrit « je m'arrête à -200 € »
+     * faisait rendre 200 au modèle).
+     *
+     * À 2 % de 10 000 €, soit 200 €, une seule journée sur dix-huit dépasse.
+     * Et le chiffre se tient avec le reste de la fiche : 1 % de risque par
+     * trade et arrêt après deux pertes consécutives.
+     */
+    max_daily_loss: 2,
     max_trades_per_day: 3,
     max_consecutive_losses: 2,
     risk_per_trade_pct: 1,
