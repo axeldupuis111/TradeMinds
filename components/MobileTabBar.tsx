@@ -30,7 +30,7 @@ export default function MobileTabBar() {
     <nav
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/70 bg-card/85 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      aria-label="Navigation"
+      aria-label={t("a11y_nav")}
     >
       <div className="grid grid-cols-4">
         {TABS.map((tab) => {

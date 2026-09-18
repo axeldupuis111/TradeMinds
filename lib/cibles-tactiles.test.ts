@@ -45,8 +45,14 @@ function classeApres(src: string, marqueur: string): string {
 describe("les cibles tactiles", () => {
   it("le bouton de menu a une zone plus large que son icône", () => {
     const src = readFileSync(join(RACINE, "components/Header.tsx"), "utf8");
-    const i = src.indexOf('aria-label="Menu"');
-    expect(i, "le bouton de menu a changé de nom").toBeGreaterThan(0);
+    /**
+     * ⚠️ ON VISE LA CLÉ, PAS LE TEXTE. Ce test cherchait `aria-label="Menu"`
+     * et s'est cassé le jour où ce nom accessible a été TRADUIT — il épinglait
+     * donc la mise en œuvre, pas l'intention. Un garde qui oblige à laisser un
+     * défaut en place pour rester vert ne garde plus rien.
+     */
+    const i = src.indexOf('aria-label={t("a11y_menu")}');
+    expect(i, "le bouton de menu a changé de nom accessible").toBeGreaterThan(0);
     // La classe précède l'aria-label sur ce bouton : on remonte au <button>.
     const debut = src.lastIndexOf("<button", i);
     const balise = src.slice(debut, i);

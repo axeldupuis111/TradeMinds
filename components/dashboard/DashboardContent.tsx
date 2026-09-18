@@ -428,7 +428,7 @@ export default function DashboardContent({
             <button
               onClick={() => setUpsellDismissed(true)}
               className="text-foreground-muted hover:text-foreground transition-colors"
-              aria-label="Dismiss"
+              aria-label={t("a11y_dismiss")}
             >
               <X className="w-4 h-4" strokeWidth={1.5} />
             </button>

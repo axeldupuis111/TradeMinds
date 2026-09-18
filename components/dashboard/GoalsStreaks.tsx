@@ -320,7 +320,7 @@ export default function GoalsStreaks() {
             <button
               onClick={() => setCelebrating(null)}
               className="text-foreground-muted hover:text-foreground transition-colors text-xs"
-              aria-label="Fermer"
+              aria-label={t("a11y_close")}
             >
               ✕
             </button>

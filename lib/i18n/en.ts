@@ -4058,6 +4058,14 @@ const dict: Record<string, string> = {
   "a11y_account": "Account",
   "a11y_environment": "Environment",
   "a11y_month": "Month",
+  "a11y_toggle_password": "Show or hide the password",
+  "a11y_menu": "Menu",
+  "a11y_nav": "Main navigation",
+  "a11y_dismiss": "Dismiss",
+  "a11y_close": "Close",
+  "a11y_info": "Learn more",
+  "a11y_delete": "Delete",
+  "a11y_discipline_gauge": "Discipline score gauge",
 };
 
 export default dict;

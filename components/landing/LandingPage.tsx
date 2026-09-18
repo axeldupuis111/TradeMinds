@@ -1191,7 +1191,7 @@ function BentoDisciplineScore({ t }: { t: Traduire }) {
     <div className="h-full p-5 flex flex-col gap-4">
       <div className="flex items-center gap-5">
         <div className="relative w-20 h-20 shrink-0">
-          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80" aria-label="Discipline score 78%" role="img">
+          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80" aria-label={t("a11y_discipline_gauge")} role="img">
             <circle cx="40" cy="40" r={r} fill="none" stroke="rgb(var(--border))" strokeWidth="6" />
             <motion.circle
               cx="40" cy="40" r={r} fill="none"
@@ -2524,7 +2524,7 @@ function StickyMobileCTA() {
               onClick={() => setDismissed(true)}
               className="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl transition-colors"
               style={{ color: "rgb(var(--muted))" }}
-              aria-label="Fermer"
+              aria-label={t("a11y_close")}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
