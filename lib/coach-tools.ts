@@ -2725,7 +2725,7 @@ export async function executeCoachTool(
           (gels ?? []) as { day: string; created_at: string | null }[],
           earned.map((b) => b.badge_key),
           (defis ?? []) as { awarded_at: string | null }[],
-          localDateKeyFor(timezone).slice(0, 7),
+          timezone,
         );
         return {
           result: {

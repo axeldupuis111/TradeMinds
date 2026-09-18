@@ -6,6 +6,7 @@ import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { MIN_BILANS_POUR_CLASSEMENT, computeAllTimeStats } from "@/lib/leaderboard-extras";
 import { PODIUM_FLAIR, getCommunityChallenge, isoWeekKey, previousWeekKey } from "@/lib/community-challenges";
 import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
+import { cleDeSaison, debutDeSaison } from "@/lib/saison";
 
 export const dynamic = "force-dynamic";
 
@@ -84,11 +85,14 @@ export async function GET(req: NextRequest) {
   const now = new Date(nowMs);
   // Saison : fenêtre courante = mois en cours, précédente = mois d'avant
   // (le mouvement de rang compare à la saison passée).
+  // ⚠️ LA BORNE DE SAISON VIT DANS lib/saison, avec le titre et le compte à
+  // rebours que la page affiche : ils annonçaient deux mois différents parce
+  // qu'ils étaient calculés des deux côtés, sur deux horloges.
   const sinceCur = season
-    ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
+    ? debutDeSaison(now).toISOString()
     : new Date(nowMs - days * 86400000).toISOString();
   const sincePrev = season
-    ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString()
+    ? debutDeSaison(debutDeSaison(now).getTime() - 1).toISOString()
     : new Date(nowMs - 2 * days * 86400000).toISOString();
 
   // ── Métriques personnelles (TOUJOURS calculées, même non opt-in / non classé) ──
@@ -152,7 +156,7 @@ export async function GET(req: NextRequest) {
       const have = new Set((existing ?? []).map((r) => r.badge_key as string));
       const earned = computeBadges(stats).filter((b) => b.earned);
       const allowed = effectivePlan === "free" ? earned.filter((b) => b.key === FREE_BADGE_KEY) : earned;
-      const season = new Date().toISOString().slice(0, 7);
+      const season = cleDeSaison();
       const toInsert = allowed
         .filter((b) => !have.has(b.key))
         .map((b) => ({ user_id: user!.id, badge_key: b.key, meta: awardMeta(b.key, stats, season) }));

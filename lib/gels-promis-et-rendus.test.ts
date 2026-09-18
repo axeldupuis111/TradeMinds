@@ -38,9 +38,12 @@ function gel(day: string, created_at: string) {
   return { day, created_at };
 }
 
+/** Un instant quelconque du mois, pour ancrer « le mois en cours ». */
+const EN_SEPTEMBRE = new Date("2026-09-15T12:00:00Z");
+
 describe("le reste de gels", () => {
   it("part du quota de base quand rien n'a été dépensé", () => {
-    const e = etatDesGels([], [], [], "2026-09");
+    const e = etatDesGels([], [], [], "UTC", EN_SEPTEMBRE);
     expect(e.quota).toBe(2);
     expect(e.restants).toBe(2);
     expect(e.utilises).toBe(0);
@@ -48,43 +51,79 @@ describe("le reste de gels", () => {
 
   it("décompte les gels du mois, et seulement ceux-là", () => {
     const gels = [gel("2026-08-03", "2026-08-03T10:00:00Z"), gel("2026-09-02", "2026-09-02T10:00:00Z")];
-    expect(etatDesGels(gels, [], [], "2026-09").utilises).toBe(1);
-    expect(etatDesGels(gels, [], [], "2026-09").restants).toBe(1);
-    expect(etatDesGels(gels, [], [], "2026-08").utilises).toBe(1);
+    expect(etatDesGels(gels, [], [], "UTC", EN_SEPTEMBRE).utilises).toBe(1);
+    expect(etatDesGels(gels, [], [], "UTC", EN_SEPTEMBRE).restants).toBe(1);
+    expect(etatDesGels(gels, [], [], "UTC", new Date("2026-08-15T12:00:00Z")).utilises).toBe(1);
   });
 
   /**
-   * ⚠️ LE MOIS EST CELUI DU TRADER. Passé en UTC, le quota d'un trader à Sydney
+   * ⚠️ LE MOIS EST CELUI DU TRADER. Pris en UTC, le quota d'un trader à Sydney
    * changeait de mois dix heures trop tard : le 1er au matin il comptait encore
-   * les gels du mois précédent. Le mois arrive donc en paramètre, calculé par
-   * l'appelant dans le fuseau du trader.
+   * les gels du mois précédent.
    */
-  it("ne connaît pas d'autre mois que celui qu'on lui donne", () => {
+  it("suit le mois du trader, pas le nôtre", () => {
     const gels = [gel("2026-09-30", "2026-09-30T23:30:00Z")];
-    expect(etatDesGels(gels, [], [], "2026-09").utilises).toBe(1);
-    expect(etatDesGels(gels, [], [], "2026-10").utilises).toBe(0);
+    expect(etatDesGels(gels, [], [], "UTC", EN_SEPTEMBRE).utilises).toBe(1);
+    expect(etatDesGels(gels, [], [], "UTC", new Date("2026-10-15T12:00:00Z")).utilises).toBe(0);
+  });
+
+  /**
+   * ⚠⚠️ ET LA RÈGLE N'ÉTAIT APPLIQUÉE QU'À MOITIÉ : le mois de référence
+   * venait du trader, mais chaque LIGNE était rangée par un `slice(0, 7)` de son
+   * horodatage UTC. Un gel posé le 31 août à 18 h à Los Angeles (1er septembre
+   * 01 h UTC) était décompté du quota de SEPTEMBRE : le trader perdait un gel
+   * d'un mois qui n'avait pas commencé.
+   */
+  it("range un gel dans le mois où le trader l'a vécu", () => {
+    const le31AoutAuSoirLA = [gel("2026-08-30", "2026-09-01T01:00:00Z")];
+    const LA = "America/Los_Angeles";
+    expect(
+      etatDesGels(le31AoutAuSoirLA, [], [], LA, new Date("2026-08-31T20:00:00Z")).utilises,
+      "le gel du soir n'est compté nulle part dans le mois où il a été posé",
+    ).toBe(1);
+    expect(
+      etatDesGels(le31AoutAuSoirLA, [], [], LA, new Date("2026-09-10T12:00:00Z")).utilises,
+      "le mois de septembre commence en ayant déjà mangé un gel du mois d'août",
+    ).toBe(0);
+  });
+
+  /** ⚠️ Et l'autre bord : Sydney est déjà au mois suivant quand l'UTC y arrive. */
+  it("range un gel de début de mois à Sydney dans le bon mois", () => {
+    const le1erAuMatinSydney = [gel("2026-08-31", "2026-08-31T16:00:00Z")];
+    const SYDNEY = "Australia/Sydney";
+    expect(
+      etatDesGels(le1erAuMatinSydney, [], [], SYDNEY, new Date("2026-09-01T00:00:00Z")).utilises,
+    ).toBe(1);
   });
 
   it("ajoute les gels permanents gagnés par les badges", () => {
-    const sans = etatDesGels([], [], [], "2026-09").quota;
-    const avec = etatDesGels([], ["streak_7", "regular", "marathon", "discipline_gold"], [], "2026-09").quota;
+    const sans = etatDesGels([], [], [], "UTC", EN_SEPTEMBRE).quota;
+    const avec = etatDesGels([], ["streak_7", "regular", "marathon", "discipline_gold"], [], "UTC", EN_SEPTEMBRE).quota;
     expect(avec, "les badges n'offrent plus aucun gel : la récompense est vide").toBeGreaterThan(sans);
   });
 
   it("ajoute les défis réussis DU MOIS, plafonnés", () => {
     const defis = (n: number, mois: string) =>
       Array.from({ length: n }, () => ({ awarded_at: `${mois}-05T10:00:00Z` }));
-    expect(etatDesGels([], [], defis(3, "2026-09"), "2026-09").quota).toBe(5);
+    expect(etatDesGels([], [], defis(3, "2026-09"), "UTC", EN_SEPTEMBRE).quota).toBe(5);
     expect(
-      etatDesGels([], [], defis(12, "2026-09"), "2026-09").quota,
+      etatDesGels([], [], defis(12, "2026-09"), "UTC", EN_SEPTEMBRE).quota,
       "une grosse semaine rend la série incassable : le plafond a sauté",
     ).toBe(6);
-    expect(etatDesGels([], [], defis(3, "2026-08"), "2026-09").quota).toBe(2);
+    expect(etatDesGels([], [], defis(3, "2026-08"), "UTC", EN_SEPTEMBRE).quota).toBe(2);
+  });
+
+  /** ⚠️ Un bonus de défi se range dans le mois du trader lui aussi. */
+  it("compte un défi gagné en fin de mois local dans ce mois-là", () => {
+    const LA = "America/Los_Angeles";
+    const defi = [{ awarded_at: "2026-09-01T01:00:00Z" }];
+    expect(etatDesGels([], [], defi, LA, new Date("2026-08-31T20:00:00Z")).quota).toBe(3);
+    expect(etatDesGels([], [], defi, LA, new Date("2026-09-10T12:00:00Z")).quota).toBe(2);
   });
 
   it("ne descend jamais sous zéro", () => {
     const gels = Array.from({ length: 9 }, (_, i) => gel(`2026-09-0${i + 1}`, `2026-09-0${i + 1}T10:00:00Z`));
-    expect(etatDesGels(gels, [], [], "2026-09").restants).toBe(0);
+    expect(etatDesGels(gels, [], [], "UTC", EN_SEPTEMBRE).restants).toBe(0);
   });
 });
 

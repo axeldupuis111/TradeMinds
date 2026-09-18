@@ -6,6 +6,7 @@ import { usePlan } from "@/lib/PlanContext";
 import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
 import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
 import { MIN_BILANS_POUR_CLASSEMENT } from "@/lib/leaderboard-extras";
+import { joursRestantsDeSaison, moisDeSaison } from "@/lib/saison";
 import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Gem, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket, FileDown, Gift, Snowflake } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -61,12 +62,6 @@ const MODES: { id: Mode; icon: typeof Gauge }[] = [
 const PERIODS: Period[] = [7, 30, 90, "season"];
 
 // Jours restants avant la fin du mois (fin de la saison en cours).
-function seasonDaysLeft(): number {
-  const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  return lastDay - now.getDate();
-}
-
 function scoreColor(s: number): string {
   if (s >= 85) return "text-profit";
   if (s >= 70) return "text-green-400";
@@ -212,10 +207,10 @@ export default function LeaderboardPage() {
     };
   })() : null;
 
-  const seasonMonth = new Date().toLocaleDateString(
-    lang === "fr" ? "fr-FR" : lang === "de" ? "de-DE" : lang === "es" ? "es-ES" : "en-US",
-    { month: "long" },
-  );
+  // ⚠️ LA SAISON SE LIT EN UTC, comme la fenêtre que le serveur calcule :
+  // à 21 h à New York le 31, la page annonçait le mois que le classement
+  // venait de quitter. Voir lib/saison.
+  const seasonMonth = moisDeSaison(lang);
 
   // Petite célébration la première fois qu'on se voit sur le podium.
   useEffect(() => {
@@ -586,7 +581,7 @@ export default function LeaderboardPage() {
             🏆 {t("leaderboard_season_title").replace("{month}", seasonMonth)}
           </p>
           <p className="text-xs text-muted">
-            {t("leaderboard_season_left", { n: String(seasonDaysLeft()) })} · {t("leaderboard_season_reset")}
+            {t("leaderboard_season_left", { n: String(joursRestantsDeSaison()) })} · {t("leaderboard_season_reset")}
           </p>
         </div>
       )}

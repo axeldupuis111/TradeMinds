@@ -1,5 +1,6 @@
 import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
 import { challengeFreezeBonus } from "@/lib/community-challenges";
+import { localDateKey } from "@/lib/timezone";
 
 /**
  * COMBIEN DE GELS DE SÉRIE IL RESTE, CALCULÉ UNE SEULE FOIS.
@@ -45,27 +46,50 @@ export interface EtatDesGels {
 }
 
 /**
- * @param gels      tous les gels du trader, pas seulement ceux du mois
- * @param badges    clés des badges acquis (bonus permanent)
- * @param defis     dates d'octroi des défis réussis, pour le bonus du mois
- * @param moisLocal mois du TRADER au format « YYYY-MM »
+ * @param gels   tous les gels du trader, pas seulement ceux du mois
+ * @param badges clés des badges acquis (bonus permanent)
+ * @param defis  dates d'octroi des défis réussis, pour le bonus du mois
+ * @param fuseau fuseau du TRADER (IANA), qui définit son mois
  *
  * ⚠️ LE MOIS EST CELUI DU TRADER, PAS LE NÔTRE : en UTC, le quota d'un trader
  * à Sydney changeait de mois dix heures trop tard, donc le 1er au matin il
  * comptait encore les gels du mois précédent.
+ *
+ * ⚠️⚠️ ET CETTE RÈGLE N'ÉTAIT APPLIQUÉE QU'À MOITIÉ : le mois de référence
+ * venait bien du trader, mais chaque ligne était rangée dans un mois par un
+ * `slice(0, 7)` de son horodatage UTC. Les deux bords du mois tombaient donc
+ * dans le mauvais seau. À Los Angeles, un gel posé le 31 août à 18 h (1er
+ * septembre 01 h UTC) était décompté du quota de SEPTEMBRE : le trader perdait
+ * un gel d'un mois qui n'avait pas commencé. Comparer deux clés de mois ne
+ * suffit pas si elles ne sont pas lues sur la même horloge.
  */
 export function etatDesGels(
   gels: GelDepense[],
   badges: string[],
   defis: { awarded_at?: string | null }[],
-  moisLocal: string,
+  fuseau: string | null | undefined,
+  maintenant: Date = new Date(),
 ): EtatDesGels {
+  const moisLocal = moisDuTrader(fuseau, maintenant);
   const bonus =
     freezeBonusFor(badges) +
-    challengeFreezeBonus(defis.filter((d) => (d.awarded_at || "").slice(0, 7) === moisLocal).length);
+    challengeFreezeBonus(defis.filter((d) => moisDeLaLigne(d.awarded_at, fuseau) === moisLocal).length);
   const quota = BASE_FREEZE_QUOTA + bonus;
-  const utilises = gels.filter((g) => (g.created_at || "").slice(0, 7) === moisLocal).length;
+  const utilises = gels.filter((g) => moisDeLaLigne(g.created_at, fuseau) === moisLocal).length;
   return { restants: Math.max(0, quota - utilises), quota, bonus, utilises };
+}
+
+/** Le mois « YYYY-MM » du trader à cet instant. */
+export function moisDuTrader(fuseau: string | null | undefined, maintenant: Date = new Date()): string {
+  return localDateKey(fuseau, maintenant).slice(0, 7);
+}
+
+/** Le mois où tombe un horodatage, vu DU TRADER. */
+function moisDeLaLigne(horodatage: string | null | undefined, fuseau: string | null | undefined): string {
+  if (!horodatage) return "";
+  const d = new Date(horodatage);
+  if (Number.isNaN(d.getTime())) return "";
+  return localDateKey(fuseau, d).slice(0, 7);
 }
 
 /**

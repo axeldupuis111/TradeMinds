@@ -11,7 +11,7 @@ import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import LectureRatee from "@/components/LectureRatee";
 import { joursEmotionnels, serieDepuisLesTrades } from "@/lib/discipline-streak-source";
-import { weekStartLocalKey, browserTimezone, localDateKey } from "@/lib/timezone";
+import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
 import { BASE_FREEZE_QUOTA } from "@/lib/badges";
 import { etatDesGels, jourAGeler } from "@/lib/gels-de-serie";
 
@@ -162,7 +162,7 @@ export default function GoalsStreaks() {
     // ⚠️ Le mois DU TRADER : en UTC, le quota de gels d'un trader à Sydney
     // changeait de mois dix heures trop tard, donc le 1er au matin il
     // comptait encore les gels du mois précédent.
-    const monthPrefix = localDateKey(browserTimezone()).slice(0, 7); // YYYY-MM
+
     // ⚠️ LA FORMULE EST PARTAGÉE (lib/gels-de-serie.ts) : le coach annonce le
     // même reste, et il vivait ici, dans un composant client que le serveur ne
     // pouvait pas lire.
@@ -170,7 +170,7 @@ export default function GoalsStreaks() {
       (freezes || []) as { day: string; created_at: string | null }[],
       (badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key),
       (challengeAwards || []) as { awarded_at: string | null }[],
-      monthPrefix,
+      browserTimezone(),
     );
     setFreezeBonus(gels.bonus);
     setFreezeRemaining(gels.restants);
