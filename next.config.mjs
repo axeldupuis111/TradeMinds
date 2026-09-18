@@ -46,7 +46,30 @@ export const EN_TETES_DE_SECURITE = [
 const nextConfig = {
   ...(buildCpus ? { experimental: { cpus: buildCpus } } : {}),
   async headers() {
-    return [{ source: "/:path*", headers: EN_TETES_DE_SECURITE }];
+    return [
+      { source: "/:path*", headers: EN_TETES_DE_SECURITE },
+      /**
+       * UNE RÉPONSE QUI DÉPEND D'UNE SESSION N'EST PAS « PUBLIC ».
+       *
+       * ⚠️⚠️ MESURÉ EN PRODUCTION LE 2026-09-18 : les routes d'API répondent
+       * avec `cache-control: public, max-age=0, must-revalidate` — le défaut de
+       * Next pour une route dynamique — et SANS `Vary: Cookie`, alors que leur
+       * contenu dépend entièrement du cookie de session. Les PAGES, elles, sont
+       * déjà servies en `private, no-cache, no-store`.
+       *
+       * ⚠️ AUCUNE FUITE N'EST DÉMONTRÉE, et je le dis plutôt que de le laisser
+       * croire : `max-age=0, must-revalidate` oblige déjà tout cache partagé à
+       * revalider avant de resservir, et Vercel ne met pas ces routes en cache
+       * (`x-vercel-cache: MISS`). Ce qu'on corrige est la DÉCLARATION : telle
+       * quelle, elle autorise un intermédiaire — proxy d'entreprise, cache
+       * d'opérateur — à stocker le journal de trading d'un abonné. On ne s'en
+       * remet pas à la correction d'un cache qu'on ne contrôle pas.
+       */
+      {
+        source: "/api/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+    ];
   },
   images: {
     remotePatterns: [

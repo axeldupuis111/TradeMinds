@@ -25,9 +25,35 @@ describe("les en-têtes de sécurité", () => {
 
   it("couvre toutes les adresses du site", async () => {
     const regles = await nextConfig.headers!();
-    expect(regles).toHaveLength(1);
-    expect(regles[0].source).toBe("/:path*");
-    expect(regles[0].headers).toBe(EN_TETES_DE_SECURITE);
+    const partout = regles.find((r: { source: string }) => r.source === "/:path*");
+    expect(partout, "les en-têtes de sécurité ne couvrent plus tout le site").toBeTruthy();
+    expect(partout!.headers).toBe(EN_TETES_DE_SECURITE);
+  });
+
+  /**
+   * ⚠️⚠️ UNE RÉPONSE QUI DÉPEND D'UNE SESSION N'EST PAS « PUBLIC ». Mesuré en
+   * production le 2026-09-18 : les routes d'API répondaient
+   * `cache-control: public, max-age=0, must-revalidate` — le défaut de Next
+   * pour une route dynamique — et sans `Vary: Cookie`, alors que leur contenu
+   * dépend entièrement du cookie. Les pages, elles, étaient déjà en
+   * `private, no-cache, no-store`.
+   *
+   * ⚠️ AUCUNE FUITE N'ÉTAIT DÉMONTRÉE : `must-revalidate` oblige un cache
+   * partagé à revalider, et Vercel ne met pas ces routes en cache. C'est la
+   * DÉCLARATION qu'on corrige — telle quelle, elle autorisait un proxy
+   * d'entreprise à stocker le journal de trading d'un abonné.
+   */
+  it("ne laisse aucun cache partagé stocker une réponse d'API", async () => {
+    const regles = await nextConfig.headers!();
+    const api = regles.find((r: { source: string }) => r.source === "/api/:path*");
+    expect(api, "les réponses d'API repartent avec le défaut de Next, « public »").toBeTruthy();
+    const cache = (api!.headers as { key: string; value: string }[]).find(
+      (h) => h.key.toLowerCase() === "cache-control",
+    );
+    expect(cache, "aucune consigne de cache sur /api").toBeTruthy();
+    expect(cache!.value, "une réponse de session ne se partage pas").toContain("private");
+    expect(cache!.value, "un intermédiaire peut encore la stocker").toContain("no-store");
+    expect(cache!.value, "« public » est revenu").not.toContain("public");
   });
 
   it("interdit l'encadrement par un autre site", () => {
