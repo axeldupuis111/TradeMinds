@@ -672,7 +672,7 @@ const dict: Record<string, string> = {
   "trades_col_tp": "TP",
   "trades_col_pnl": "Netto-P&L",
   "trades_confirm_delete": "Diesen Trade löschen?",
-  "trades_selected": "Trades ausgewählt",
+  "trades_selected": "{n} {n|Trade ausgewählt|Trades ausgewählt}",
   "trades_delete_selection": "Auswahl löschen",
   "trades_deselect_all": "Alle abwählen",
   "trades_attach_label": "Einer Methode zuordnen",

@@ -194,6 +194,23 @@ describe("les écrans du rattachement", () => {
     );
   });
 
+  /**
+   * ⚠️⚠️ « 1 TRADES SÉLECTIONNÉS », relevé à l'écran en production en
+   * vérifiant la barre de rattachement. Le nombre était collé devant un libellé
+   * figé au pluriel, alors que le produit a une syntaxe d'accord employée
+   * partout ailleurs (`{n|singulier|pluriel}`, voir lib/remplir).
+   */
+  it("le compteur de sélection s'accorde", () => {
+    for (const langue of ["fr", "en", "de", "es"]) {
+      const dict = readFileSync(join(RACINE, `lib/i18n/${langue}.ts`), "utf8");
+      const ligne = dict.split("\n").find((l) => l.includes('"trades_selected"')) ?? "";
+      expect(ligne, `« 1 trades sélectionnés » en ${langue}`).toContain("{n|");
+    }
+    expect(nu("components/trades/TradeList.tsx"), "le nombre est encore collé devant le libellé").toContain(
+      't("trades_selected", { n:',
+    );
+  });
+
   it("les messages existent dans les quatre langues", () => {
     for (const langue of ["fr", "en", "de", "es"]) {
       const dict = readFileSync(join(RACINE, `lib/i18n/${langue}.ts`), "utf8");

@@ -1260,8 +1260,12 @@ export default function TradeList({ refreshKey, onTradeUpdated, strategies = [] 
       {someSelected && (
         <div className="mb-3 p-3 bg-surface border border-border rounded-lg">
           <div className="flex items-center gap-3 flex-wrap">
+            {/* ⚠️⚠️ « 1 trades sélectionnés », relevé en production le 2026-09-18.
+                Le nombre était collé devant un libellé figé au pluriel, alors que
+                le produit a une syntaxe d'accord (`{n|singulier|pluriel}`, voir
+                lib/remplir) utilisée partout ailleurs. */}
             <span className="text-sm text-foreground font-medium">
-              {selectAllMatching ? total : selectedIds.size} {t("trades_selected")}
+              {t("trades_selected", { n: String(selectAllMatching ? total : selectedIds.size) })}
             </span>
             <button
               onClick={handleBulkDelete}
