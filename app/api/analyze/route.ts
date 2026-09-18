@@ -24,6 +24,7 @@ import { calculatePips, getTradeResult } from "@/lib/pips";
 import { prixConnu, prixDeSortieConnu } from "@/lib/prix-connu";
 import { risqueEnPips, stopVisiblementDeplace } from "@/lib/risque-du-trade";
 import type { FicheDuTrader } from "@/lib/regles-du-trader";
+import { avertissementDeMethodes, repartirParMethode } from "@/lib/plusieurs-methodes";
 import { localDateKey } from "@/lib/timezone";
 import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -330,6 +331,26 @@ export async function POST(request: Request) {
     const selectedIdx = new Set(selection.indices);
     const mechanicalBlock = renderMechanicalBlock(mechanicalViolations, recentTrades.length);
 
+    /**
+     * ⚠️⚠️ LE MODÈLE JUGE SUR LA PROSE D'UNE SEULE FICHE. Le moteur mécanique
+     * sait maintenant rattacher chaque trade à sa méthode (voir
+     * lib/analysis-selection), mais le modèle, lui, lit le texte libre de la
+     * fiche analysée et parle de « ta méthode » au singulier. Sur un journal qui
+     * mélange plusieurs méthodes, il reproche donc en PROSE ce que le comptage
+     * a cessé de reprocher en CHIFFRES.
+     *
+     * ⚠️ On ne lui envoie pas les autres fiches (leur texte libre pèse jusqu'à
+     * 4 000 caractères chacune, et cette route est la plus chère du produit) :
+     * on lui dit COMBIEN de trades relèvent d'une autre méthode et combien ne
+     * sont rattachés à rien. C'est tout ce qu'il faut pour qu'il n'accuse pas.
+     */
+    const repartition = repartirParMethode(
+      recentTrades as { strategy_id?: string | null }[],
+      (strategy as { id?: string }).id ?? null,
+      autresFiches.map((f) => f.id),
+    );
+    const blocDesMethodes = avertissementDeMethodes(autresFiches.length + 1, repartition);
+
     const sessionsText = strategy.sessions
       .map(libelleDeSession)
       .join(", ");
@@ -452,7 +473,8 @@ export async function POST(request: Request) {
     const prompt = `LANGUAGE RULE (ABSOLUTE, NON-NEGOTIABLE): Every single text value in your JSON response MUST be written in ${langName}. This includes all "explanation", "description", "strengths", and "recommendations" fields. Do NOT use any other language regardless of the language of the input data or labels below.
 
 ${regleDevise}
-${periodInfo}STRATÉGIE DU TRADER :
+${periodInfo}${blocDesMethodes}
+STRATÉGIE DU TRADER :
 - Nom : ${sanitizeUserInput(strategy.name) || "Non définie"}
 - Paires autorisées : ${strategy.pairs.length > 0 ? strategy.pairs.join(", ") : "Toutes"}
 - Sessions autorisées : ${sessionsText || "Toutes"}
