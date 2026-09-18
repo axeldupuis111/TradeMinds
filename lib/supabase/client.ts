@@ -62,6 +62,54 @@ let dernier: { a: number; reponse: UserResponse } | null = null;
 let aVuQuelquun = false;
 let dejaSignale = false;
 
+/**
+ * UN 401 DE NOTRE PROPRE API EST AUSSI UNE EXPIRATION DE SESSION.
+ *
+ * ⚠️⚠️ LE SIGNAL NE PARTAIT QUE DES LECTURES SUPABASE. Cinquante appels
+ * `fetch("/api/...")` vivent dans ce dépôt — analyse, coach, objectifs,
+ * synchro, Stripe — et aucun ne prévenait : à session expirée, ils échouaient
+ * chacun à sa façon, avec le message générique de leur écran. Le produit savait
+ * dire « ta session a expiré » et ne le disait que sur une porte des deux.
+ *
+ * ⚠️ ON N'INTERCEPTE QUE POUR OBSERVER : la réponse est rendue telle quelle,
+ * aucun appelant ne change de comportement. Et seulement pour NOS routes de
+ * même origine : les appels de Supabase partent vers supabase.co, les charges
+ * internes de Next vers la page elle-même.
+ *
+ * ⚠️ MÊME RÈGLE QUE POUR `getUser` : rien ne part tant qu'on n'a vu personne
+ * (sur la page de connexion, un 401 est la situation normale).
+ */
+function surveillerLesAppelsApi(): void {
+  if (typeof window === "undefined") return;
+  const marque = "__tdFetchSurveille" as const;
+  const w = window as unknown as Record<string, unknown>;
+  if (w[marque]) return;
+  w[marque] = true;
+
+  const origine = window.fetch.bind(window);
+  window.fetch = async (entree: RequestInfo | URL, init?: RequestInit) => {
+    const reponse = await origine(entree, init);
+    try {
+      if (reponse.status === 401) {
+        const url =
+          typeof entree === "string"
+            ? entree
+            : entree instanceof URL
+              ? entree.pathname
+              : entree.url;
+        const chemin = url.startsWith("http") ? new URL(url).pathname : url;
+        if (chemin.startsWith("/api/") && aVuQuelquun && !dejaSignale) {
+          dejaSignale = true;
+          window.dispatchEvent(new CustomEvent(EVENEMENT_SESSION_EXPIREE));
+        }
+      }
+    } catch {
+      // Une URL illisible ne doit jamais faire échouer l'appel qu'on observe.
+    }
+    return reponse;
+  };
+}
+
 function examiner(reponse: UserResponse): void {
   if (reponse.data?.user) {
     aVuQuelquun = true;
@@ -82,6 +130,8 @@ export function createClient(): SupabaseClient {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
+
+  surveillerLesAppelsApi();
 
   const origine = client.auth.getUser.bind(client.auth);
 

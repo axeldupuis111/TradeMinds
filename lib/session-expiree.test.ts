@@ -48,6 +48,44 @@ describe("l'expiration de session", () => {
     expect(src).toContain('if (evenement === "SIGNED_OUT")');
   });
 
+  /**
+   * ⚠️⚠️ ET UN 401 DE NOTRE PROPRE API COMPTE AUSSI. Le signal ne partait que
+   * des lectures Supabase. Cinquante appels `fetch("/api/...")` vivent dans ce
+   * dépôt — analyse, coach, objectifs, synchro, Stripe — et aucun ne
+   * prévenait : à session expirée, ils échouaient chacun à leur façon, avec le
+   * message générique de leur écran. Le produit savait dire « ta session a
+   * expiré » et ne le disait que sur une porte des deux.
+   *
+   * ⚠️ Le défaut était invisible tant que le middleware REDIRIGEAIT ces routes
+   * vers `/login` : elles rendaient du HTML en 307, jamais un 401. Les deux
+   * moitiés se cachaient l'une l'autre.
+   */
+  it("est signalée aussi par un 401 de notre API", () => {
+    const src = lire("lib/supabase/client.ts");
+    /**
+     * ⚠️ LA SURVEILLANCE EST APPELÉE, PAS SEULEMENT DÉFINIE. Première version
+     * de ce garde : `toContain("surveillerLesAppelsApi")` — vert alors que
+     * j'avais retiré l'appel, puisque la définition porte son propre nom. Une
+     * fonction définie et jamais appelée ne protège personne, et ce dépôt a
+     * déjà vu un garde certifier un filtre aveugle pour la même raison.
+     */
+    const creation = src.slice(src.indexOf("export function createClient"));
+    expect(creation, "la surveillance des appels API n'est jamais installée").toContain(
+      "surveillerLesAppelsApi();",
+    );
+    const i = src.indexOf("function surveillerLesAppelsApi");
+    expect(i, "la surveillance a disparu").toBeGreaterThan(0);
+    const corps = src.slice(i, src.indexOf("\nfunction ", i + 10));
+    expect(corps, "un 401 ne déclenche rien").toContain("reponse.status === 401");
+    expect(corps, "le signal ne part pas").toContain("EVENEMENT_SESSION_EXPIREE");
+    // ⚠️ Nos routes seulement : Supabase parle à supabase.co, Next à la page.
+    expect(corps, "le produit signalerait un 401 venu de n'importe où").toContain('"/api/"');
+    // ⚠️ Et jamais sur la page de connexion, où un 401 est la normale.
+    expect(corps, "une fausse alerte s'apprend à ignorer").toContain("aVuQuelquun");
+    // ⚠️ On observe, on ne modifie pas : la réponse repart telle quelle.
+    expect(corps, "la réponse observée n'est plus rendue à l'appelant").toContain("return reponse;");
+  });
+
   it("est dite à l'écran, avant tout le reste", () => {
     const composant = lire("components/SessionExpiree.tsx");
     expect(composant).toContain('role="alert"');
