@@ -11,6 +11,7 @@ import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { messageDErreurSupabase } from "@/lib/erreurs-de-base";
+import { tradesConformes } from "@/lib/trades-conformes";
 import { useCallback, useEffect, useState } from "react";
 import { nombre, langueCourante } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
@@ -609,7 +610,25 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         user_id: userId,
         discipline_score: data.discipline_score,
         total_trades: data.total_trades,
-        conforming_trades: data.total_trades - (data.violations?.length || 0),
+        /**
+         * ⚠️⚠️ LE MÊME DÉFAUT QUE « −1/2 TRADES », CORRIGÉ LE 2026-09-11 SUR
+         * L'AUTRE PORTE SEULEMENT. `total_trades - violations.length` compte UNE
+         * violation pour UN trade, alors qu'un même trade peut en cumuler
+         * plusieurs (hors session ET sans stop ET au-delà du risque) : sur deux
+         * trades et trois violations, le compte passe SOUS ZÉRO.
+         *
+         * ⚠️ LA LIGNE EXISTE EN BASE : le bilan d'un abonné, le 2026-07-09, porte
+         * `conforming_trades = -1` pour deux trades et trois violations. Le
+         * commit qui a corrigé la page d'analyse n'a jamais touché cet import,
+         * et son commentaire disait pourtant « même persistance que l'analyse
+         * manuelle ».
+         *
+         * Une seule formule : lib/trades-conformes.
+         */
+        conforming_trades: tradesConformes(
+          data.total_trades,
+          data.violations as { trade_ids?: number[] }[] | undefined,
+        ),
         analysis: data,
         score_breakdown: data.score_breakdown || null,
         period: "last_30_days",

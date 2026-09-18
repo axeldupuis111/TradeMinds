@@ -54,6 +54,65 @@ describe("tradesConformes", () => {
   });
 
   /**
+   * ⚠️⚠️ CE GARDE NE PROTÉGEAIT QU'UNE PORTE SUR DEUX, PENDANT UNE SEMAINE.
+   *
+   * Le « −1/2 trades » a été trouvé et corrigé le 2026-09-11 — sur la page
+   * d'analyse uniquement. L'IMPORT CSV, qui enregistre lui aussi un bilan (son
+   * commentaire dit mot pour mot « même persistance que l'analyse manuelle »),
+   * a gardé `total_trades - violations.length` jusqu'au 2026-09-18.
+   *
+   * Et le test, lui, ne regardait que `app/dashboard/analysis/page.tsx` : une
+   * règle écrite, un garde écrit, tous deux appliqués à la moitié de ce qu'ils
+   * visent. Il cherche désormais la mauvaise formule PARTOUT, et exige la
+   * bonne de tout fichier qui écrit la colonne.
+   */
+  const SOURCES = [
+    "app/dashboard/analysis/page.tsx",
+    "components/trades/CsvImport.tsx",
+    "lib/demo-fixtures.ts",
+  ];
+
+  it("aucune source ne recompte une violation pour un trade", () => {
+    const fautives: string[] = [];
+    for (const f of SOURCES) {
+      const src = readFileSync(join(process.cwd(), f), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/[^\n]*/g, "");
+      // « total_trades - … violations … .length » sous n'importe quelle forme.
+      if (/total_trades\s*-\s*\(?[^;\n]*violations[^;\n]*\.length/.test(src)) fautives.push(f);
+    }
+    expect(
+      fautives,
+      "un compte de trades conformes repart sur le nombre de VIOLATIONS : " +
+        "deux trades et trois violations donneront « −1 »",
+    ).toEqual([]);
+  });
+
+  it("tout écran qui enregistre la colonne passe par la formule", () => {
+    const sansFormule: string[] = [];
+    for (const f of SOURCES) {
+      const src = readFileSync(join(process.cwd(), f), "utf8");
+      // Une ÉCRITURE, pas une déclaration de type (`conforming_trades?: number`).
+      const ecrit = /conforming_trades:\s*(?!number)/.test(
+        src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""),
+      );
+      if (!ecrit) continue;
+      /**
+       * ⚠️ `lib/demo-fixtures` est exempté et c'est délibéré : il ne compte pas
+       * des violations, il construit l'ENSEMBLE des index fautifs et retranche
+       * sa taille — c'est la même arithmétique que `tradesConformes`, sur des
+       * données inventées où les index sont connus d'avance.
+       */
+      if (f === "lib/demo-fixtures.ts") continue;
+      if (!src.includes("tradesConformes(")) sansFormule.push(f);
+    }
+    expect(
+      sansFormule,
+      "ces écrans enregistrent « trades conformes » sans passer par la formule partagée",
+    ).toEqual([]);
+  });
+
+  /**
    * ⚠️ ET L'AFFICHAGE BORNE AUSSI : deux analyses déjà enregistrées portent un
    * `-1` en base. Réparer le calcul ne les corrige pas, et on ne réécrit pas
    * l'historique d'un trader pour faire plaisir à un compteur.
