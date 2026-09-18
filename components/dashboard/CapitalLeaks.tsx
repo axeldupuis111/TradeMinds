@@ -21,6 +21,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { browserTimezone } from "@/lib/timezone";
+import { reglesEcritesDuTrader, type FicheDuTrader } from "@/lib/regles-du-trader";
 import { AlertTriangle, Clock, Flame, Gauge, HeartPulse, PiggyBank, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -102,15 +103,20 @@ export default function CapitalLeaks({
       // ⚠️ Le même périmètre que le reste de l'écran, sinon les deux chiffres
       // se contredisent et celui-ci mélange les devises.
       if (selectedAccountId) requeteTrades.eq("challenge_id", selectedAccountId);
-      const [{ data: rows }, { data: strat }] = await Promise.all([
+      const [{ data: rows }, { data: fiches }] = await Promise.all([
         requeteTrades.order("open_time", { ascending: false }).limit(300),
+        /**
+         * ⚠️⚠️ TOUTES SES FICHES. La fuite « surtrading » se mesurait contre
+         * la limite de la fiche la plus ancienne : un trader qui écrit une
+         * méthode scalping à dix trades par jour et une méthode swing à deux
+         * voyait ses journées de scalping comptées comme des fuites. On retient
+         * la limite la plus permissive, et on ne juge pas si une fiche n'en
+         * écrit aucune. Voir lib/regles-du-trader.
+         */
         supabase
           .from("strategies")
           .select("max_trades_per_day")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle(),
+          .eq("user_id", user.id),
       ]);
       if (cancelled) return;
 
@@ -121,7 +127,7 @@ export default function CapitalLeaks({
       const useAll = recent.length < MIN_TRADES;
       setWholeHistory(useAll);
       setTrades(useAll ? all : recent);
-      setMaxTradesPerDay(strat?.max_trades_per_day ?? null);
+      setMaxTradesPerDay(reglesEcritesDuTrader((fiches ?? []) as FicheDuTrader[]).max_trades_per_day);
     }
     load();
     return () => { cancelled = true; };

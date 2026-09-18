@@ -63,11 +63,41 @@ function list(values: (string | null | undefined)[] | null | undefined): string 
 export function renderStrategyContext(
   strategy: StrategyRow | null,
   tags: StrategyTagRow[] = [],
+  /**
+   * LES AUTRES MÉTHODES ÉCRITES PAR CE TRADER.
+   *
+   * ⚠️⚠️ LE COACH NE VOYAIT QU'UNE FICHE, la plus ancienne, et la
+   * présentait comme LA méthode du trader. Il reprochait donc un instrument ou
+   * un horaire que le trader avait écrit noir sur blanc dans une AUTRE de ses
+   * fiches. Mesuré en base le 2026-09-18 : un abonné à trois fiches, dont une
+   * « trendline nas100 », a 92 de ses 157 trades hors de la fiche retenue.
+   *
+   * ⚠️ ON N'ENVOIE QUE LEUR EN-TÊTE, pas leur texte libre : celui-ci pèse
+   * jusqu'à 4 000 caractères par fiche, et le prompt du coach est budgété.
+   * Savoir qu'elles existent suffit à ne pas accuser à tort ; si le trader
+   * veut parler de l'une d'elles, il la nommera.
+   */
+  autresFiches: StrategyRow[] = [],
 ): string {
   if (!strategy) return "";
 
   const lines: string[] = [];
   if (strategy.name) lines.push(`Nom : ${strategy.name}`);
+
+  const autres = autresFiches
+    .map((f) => {
+      const nom = f.name?.trim() || "sans nom";
+      const instruments = list(f.pairs) ?? "tous instruments";
+      const horaires = list(f.sessions);
+      return `« ${nom} » (${instruments}${horaires ? ` — ${horaires}` : ""})`;
+    })
+    .slice(0, 6);
+  if (autres.length > 0) {
+    lines.push(
+      `⚠️ Ce trader a aussi ${autres.length} autre${autres.length > 1 ? "s" : ""} méthode${autres.length > 1 ? "s" : ""} écrite${autres.length > 1 ? "s" : ""} : ${autres.join(", ")}. ` +
+        "Un trade hors des instruments ou des horaires ci-dessous peut relever de l'une d'elles : ne le compte pas comme une entorse, demande plutôt de quelle méthode il s'agissait.",
+    );
+  }
 
   const pairs = list(strategy.pairs);
   if (pairs) lines.push(`Instruments : ${pairs}`);

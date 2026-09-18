@@ -82,21 +82,19 @@ describe("le tableau de bord", () => {
     ).not.toContain("limit(1)");
   });
 
-  it("compose le périmètre à partir de l'union", () => {
-    expect(src, "le périmètre n'est plus l'union des fiches").toContain("pairesAutorisees");
-    expect(src, "une fiche sans liste de paires doit tout ouvrir").toContain("uneFicheOuvreTout");
-  });
-
   /**
-   * ⚠️ ET LA LIMITE DE TRADES PAR JOUR SUIT LA MÊME RÈGLE : la plus permissive,
-   * et rien du tout si une fiche n'écrit pas de limite.
+   * ⚠️ LE GARDE ÉPINGLE L'INTENTION, PAS UNE IMPLÉMENTATION. Sa première
+   * version exigeait les noms de variables du calcul écrit sur place
+   * (`uneFicheOuvreTout`, `max_trades_per_day == null`) : il a cassé le jour
+   * où ce calcul est parti dans un module partagé, c'est-à-dire le jour où le
+   * code s'est amélioré. Ce dépôt a déjà relâché trois gardes pour cette
+   * raison. Le comportement, lui, est tenu par lib/regles-du-trader.test.
    */
-  it("retient la limite de trades par jour la plus permissive", () => {
-    expect(src).toContain("maxTradesParJour");
-    const i = src.indexOf("const maxTradesParJour");
-    const bloc = src.slice(i, src.indexOf(";", src.indexOf("Math.max", i)));
-    expect(bloc, "une fiche sans limite écrite doit rendre la règle injugeable").toContain(
-      "max_trades_per_day == null",
+  it("compose le périmètre avec la règle partagée", () => {
+    expect(src, "le tableau de bord recalcule le périmètre dans son coin").toContain(
+      "reglesEcritesDuTrader(",
     );
+    expect(src).toContain("pairesAutorisees");
+    expect(src).toContain("maxTradesParJour");
   });
 });

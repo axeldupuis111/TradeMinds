@@ -211,13 +211,21 @@ export async function POST(request: Request) {
      */
     let checklistTotal: number | null = null;
     try {
-      const { data: strategyRow, error: strategyError } = await sb
+      /**
+       * ⚠️⚠️ TOUTES SES FICHES, PAS LA PREMIÈRE. Le coach ne voyait que la
+       * plus ancienne et la présentait comme LA méthode du trader : il
+       * reprochait donc un instrument écrit noir sur blanc dans une AUTRE de
+       * ses fiches. La première reste détaillée (texte libre et vocabulaire) ;
+       * des autres, il ne reçoit que l'en-tête, pour ne pas gonfler un prompt
+       * budgété. Voir lib/coach-strategy-context.
+       */
+      const { data: fichesDuTrader, error: strategyError } = await sb
         .from("strategies")
         .select("name, raw_text, pairs, sessions, risk_reward, max_sl_pips, max_trades_per_day, max_consecutive_losses, max_session_minutes, risk_per_trade_pct, setup_rules, id")
         .eq("user_id", userId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
+      const strategyRow = fichesDuTrader?.[0] ?? null;
+      const autresFiches = (fichesDuTrader ?? []).slice(1);
       if (strategyRow) {
         // Table optionnelle : son absence ne doit pas priver le coach du reste.
         //
@@ -243,7 +251,11 @@ export async function POST(request: Request) {
         } catch {
           // pas de vocabulaire personnalisé — les champs suffisent
         }
-        strategyBlock = renderStrategyContext(strategyRow as StrategyRow, tagRows);
+        strategyBlock = renderStrategyContext(
+          strategyRow as StrategyRow,
+          tagRows,
+          autresFiches as StrategyRow[],
+        );
         /**
          * ⚠️⚠️ LE DÉNOMINATEUR EST CELUI DE LA CHECKLIST, PAS DES RÈGLES
          * D'ENTRÉE. Ce sont deux listes différentes de la même fiche : le score

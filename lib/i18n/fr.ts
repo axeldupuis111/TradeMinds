@@ -841,6 +841,7 @@ const dict: Record<string, string> = {
   "sizer_balance_hint": "Pré-rempli depuis ton compte actif",
   "sizer_risk_label": "Risque par trade",
   "sizer_risk_hint": "Pré-rempli depuis ta stratégie",
+  "sizer_risk_hint_named": "Pré-rempli depuis « {name} »",
   "sizer_units_label": "Unités",
   "sizer_funds_at_risk": "Fonds à risque",
   "sizer_contract_size": "Taille du contrat",

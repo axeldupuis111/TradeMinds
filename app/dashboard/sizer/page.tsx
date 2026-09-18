@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
 interface SizerStrategy {
+  name?: string | null;
   risk_per_trade_pct: number | null;
   max_sl_pips: number | null;
 }
@@ -23,21 +24,28 @@ export default function SizerPage() {
   ).trim();
   const supabase = createClient();
   const [strategy, setStrategy] = useState<SizerStrategy | null>(null);
+  const [plusieursFiches, setPlusieursFiches] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
-      // Stratégie principale (la plus ancienne) — pré-remplit risque % et SL max.
-      const { data } = await supabase
+      /**
+       * Stratégie principale (la plus ancienne) — pré-remplit risque % et SL max.
+       *
+       * ⚠️ ON LIT TOUTES LES FICHES POUR SAVOIR S'IL Y EN A PLUSIEURS : dans ce
+       * cas le pré-remplissage doit NOMMER celle dont il vient. Pré-remplir le
+       * risque d'une méthode pour dimensionner un trade d'une autre se voit
+       * dans la taille de position, pas dans un message.
+       */
+      const { data: fiches } = await supabase
         .from("strategies")
-        .select("risk_per_trade_pct, max_sl_pips")
+        .select("name, risk_per_trade_pct, max_sl_pips")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      setStrategy(data ?? null);
+        .order("created_at", { ascending: true });
+      setStrategy(fiches?.[0] ?? null);
+      setPlusieursFiches((fiches?.length ?? 0) > 1);
       setLoading(false);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -49,7 +57,7 @@ export default function SizerPage() {
 
       <div className="mt-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
         <div className="lg:col-span-2">
-          {loading ? <div className="skeleton h-64 rounded-xl" /> : <PositionSizer strategy={strategy} />}
+          {loading ? <div className="skeleton h-64 rounded-xl" /> : <PositionSizer strategy={strategy} plusieursFiches={plusieursFiches} />}
         </div>
 
         {/* Aide / méthode */}

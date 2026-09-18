@@ -13,7 +13,6 @@ import {
 } from "@/lib/analysis-insights";
 import {
   computeMechanicalViolations,
-  type FicheDuTrader,
   renderMechanicalBlock,
   selectSignificantTrades,
   type SelectionStrategy,
@@ -24,6 +23,7 @@ import { CATEGORIE_DE_VIOLATION, computeDisciplineScore, type Violation } from "
 import { calculatePips, getTradeResult } from "@/lib/pips";
 import { prixConnu, prixDeSortieConnu } from "@/lib/prix-connu";
 import { risqueEnPips, stopVisiblementDeplace } from "@/lib/risque-du-trade";
+import type { FicheDuTrader } from "@/lib/regles-du-trader";
 import { localDateKey } from "@/lib/timezone";
 import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";

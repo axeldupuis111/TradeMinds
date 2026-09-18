@@ -30,9 +30,21 @@ import { nombre, pourcent, langueCourante } from "@/lib/nombres";
 
 interface Props {
   strategy: {
+    /**
+     * ⚠️⚠️ LE NOM DE LA FICHE, quand le trader en a plusieurs. Le sizer
+     * pré-remplit le risque et le stop depuis la fiche la plus ANCIENNE, et
+     * annonçait « pré-rempli depuis ta stratégie » sans dire laquelle. Un
+     * trader qui écrit une méthode scalping à 0,5 % et une méthode swing à 2 %
+     * dimensionnait donc ses positions avec le pourcentage de l'autre méthode,
+     * sans rien voir. On ne devine pas à sa place : on NOMME la fiche, et il
+     * corrige en un clic si ce n'est pas la bonne.
+     */
+    name?: string | null;
     risk_per_trade_pct: number | null;
     max_sl_pips: number | null;
   } | null;
+  /** Vrai quand le trader a plusieurs fiches : le nom devient nécessaire. */
+  plusieursFiches?: boolean;
 }
 
 const inputClass =
@@ -46,7 +58,7 @@ const CFD_PRESETS = [
 ];
 const CUSTOM_INSTRUMENT = "__custom__";
 
-export default function PositionSizer({ strategy }: Props) {
+export default function PositionSizer({ strategy, plusieursFiches = false }: Props) {
   const { t } = useLanguage();
   const { plan, loading: planLoading } = usePlan();
   const supabase = createClient();
@@ -390,7 +402,11 @@ export default function PositionSizer({ strategy }: Props) {
             </div>
           </div>
           {strategy?.risk_per_trade_pct != null && (
-            <p className="text-xs text-muted mt-1">{t("sizer_risk_hint")}</p>
+            <p className="text-xs text-muted mt-1">
+              {plusieursFiches && strategy.name?.trim()
+                ? t("sizer_risk_hint_named", { name: strategy.name.trim() })
+                : t("sizer_risk_hint")}
+            </p>
           )}
         </div>
       </div>

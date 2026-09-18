@@ -6,6 +6,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { accountCurrency } from "@/lib/account-currency";
 import { checkTradeGuard, type GuardStrategy, type GuardWarning } from "@/lib/trade-guard";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
+import { reglesEcritesDuTrader, type FicheDuTrader } from "@/lib/regles-du-trader";
 
 /**
  * Loads the active strategy's rules + today's trades, and exposes runGuard(pair)
@@ -34,14 +35,33 @@ export function useTradeGuard(strategyId: string | null | undefined) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      /**
+       * ⚠️⚠️ L'AVERTISSEMENT DIT « TES PAIRES AUTORISÉES » : IL DOIT DONC LES
+       * CONNAÎTRE TOUTES. Il ne lisait que la fiche sélectionnée pour la
+       * séance, et reprochait à un trader multi-méthodes un instrument qu'une
+       * AUTRE de ses fiches autorise noir sur blanc. Mesuré en base le
+       * 2026-09-18 : un abonné à trois fiches, dont une « trendline nas100 »,
+       * a 92 de ses 157 trades hors de sa fiche la plus ancienne.
+       *
+       * ⚠️ La fiche de la séance reste lue : c'est elle qui décide si la règle
+       * est vérifiable du tout (sans fiche, l'avertissement se tait, comme
+       * avant). Ce sont les CHIFFRES et le PÉRIMÈTRE qui viennent de l'ensemble.
+       */
       let strat: GuardStrategy | null = null;
       if (strategyId) {
-        const { data } = await supabase
+        const { data: fiches } = await supabase
           .from("strategies")
-          .select("pairs, max_trades_per_day, max_consecutive_losses")
-          .eq("id", strategyId)
-          .maybeSingle();
-        if (data) strat = data as GuardStrategy;
+          .select("id, pairs, max_trades_per_day, max_consecutive_losses")
+          .eq("user_id", user.id);
+        const toutes = (fiches ?? []) as FicheDuTrader[];
+        if (toutes.length > 0 && (fiches ?? []).some((f) => f.id === strategyId)) {
+          const regles = reglesEcritesDuTrader(toutes);
+          strat = {
+            pairs: regles.pairs ?? [],
+            max_trades_per_day: regles.max_trades_per_day,
+            max_consecutive_losses: regles.max_consecutive_losses,
+          } as GuardStrategy;
+        }
       }
 
       // Trader's local-day start (not UTC midnight), from the browser timezone.

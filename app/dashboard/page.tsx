@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { reglesEcritesDuTrader, type FicheDuTrader } from "@/lib/regles-du-trader";
 import { localDateKey, startOfDateKeyUtc, startOfLocalDayUtc, weekStartLocalKey } from "@/lib/timezone";
 
 /** Colonnes de la courbe d'équité (voir la lecture paginée plus bas). */
@@ -139,14 +140,9 @@ export default async function DashboardPage() {
    * de trades par jour la plus permissive. Une fiche sans liste de paires ne
    * restreint rien : elle ouvre tout. Même règle que lib/analysis-selection.
    */
-  const fiches = fichesDuTrader ?? [];
-  const uneFicheOuvreTout = fiches.some((f) => ((f.pairs as string[]) ?? []).filter(Boolean).length === 0);
-  const pairesAutorisees = fiches.length === 0 || uneFicheOuvreTout
-    ? null
-    : Array.from(new Set(fiches.flatMap((f) => ((f.pairs as string[]) ?? []).filter(Boolean))));
-  const maxTradesParJour = fiches.some((f) => f.max_trades_per_day == null)
-    ? null
-    : Math.max(...fiches.map((f) => f.max_trades_per_day as number), 0) || null;
+  const reglesEcrites = reglesEcritesDuTrader((fichesDuTrader ?? []) as FicheDuTrader[]);
+  const pairesAutorisees = reglesEcrites.pairs;
+  const maxTradesParJour = reglesEcrites.max_trades_per_day;
 
   const onboarding = {
     hasAccount: (activeAccounts?.length ?? 0) > 0,

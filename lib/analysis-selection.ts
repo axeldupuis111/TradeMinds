@@ -24,6 +24,11 @@ import { fenetreDeSession } from "@/lib/sessions-de-marche";
 import { prixConnu } from "@/lib/prix-connu";
 import { calculatePips, getTradeResult } from "@/lib/pips";
 import { risqueEnPips } from "@/lib/risque-du-trade";
+import {
+  chiffreLePlusPermissif,
+  perimetreEcrit,
+  type FicheDuTrader,
+} from "@/lib/regles-du-trader";
 
 export interface SelectionTrade {
   open_time: string;
@@ -138,42 +143,6 @@ function utcDay(iso: string): string {
  * Une règle non définie dans la stratégie n'est jamais vérifiée : c'est la même
  * convention que le prompt (« valeur Non défini → NE PAS vérifier cette règle »).
  */
-/**
- * Ce qu'une autre fiche du trader apporte au jugement : son périmètre écrit et
- * ses chiffres. Tout est optionnel — une fiche peut ne rien déclarer.
- */
-export interface FicheDuTrader {
-  pairs: string[];
-  sessions: string[];
-  risk_reward?: number | null;
-  max_sl_pips?: number | null;
-  max_trades_per_day?: number | null;
-  max_consecutive_losses?: number | null;
-  max_daily_loss?: number | null;
-}
-
-/**
- * LE CHIFFRE LE PLUS PERMISSIF DE TOUTES LES FICHES DU TRADER.
- *
- * ⚠️⚠️ MÊME RAISON QUE POUR LES INSTRUMENTS : on ignore quelle fiche gouvernait
- * un trade donné, donc on ne peut lui reprocher que ce qu'AUCUNE de ses fiches
- * n'autorise. Si une seule fiche ne déclare pas la règle (`null`), le trader
- * n'a pas écrit de limite pour cette méthode-là : la règle n'est pas jugeable.
- *
- * `sens` dit dans quel sens va la permissivité : un plafond (stop maximum,
- * trades par jour) est d'autant plus permissif qu'il est HAUT, un plancher
- * (ratio minimum) d'autant plus permissif qu'il est BAS.
- */
-function chiffreLePlusPermissif(
-  valeurs: (number | null | undefined)[],
-  sens: "plafond" | "plancher",
-): number | null {
-  if (valeurs.some((v) => v == null)) return null;
-  const nombres = valeurs as number[];
-  if (nombres.length === 0) return null;
-  return sens === "plafond" ? Math.max(...nombres) : Math.min(...nombres);
-}
-
 export function computeMechanicalViolations(
   trades: SelectionTrade[],
   strategy: SelectionStrategy,
@@ -214,13 +183,8 @@ export function computeMechanicalViolations(
    * Le périmètre d'instruments écrit par le trader : l'union de ses fiches.
    * Une fiche sans liste de paires ne restreint rien, donc elle ouvre tout.
    */
-  const fichesDInstruments = [strategy, ...autresFiches];
-  const uneFicheNeRestreintPas = fichesDInstruments.some(
-    (f) => f.pairs.map(normPair).filter(Boolean).length === 0,
-  );
-  const allowedPairs = uneFicheNeRestreintPas
-    ? []
-    : Array.from(new Set(fichesDInstruments.flatMap((f) => f.pairs.map(normPair).filter(Boolean))));
+  const fichesDInstruments: FicheDuTrader[] = [strategy, ...autresFiches];
+  const allowedPairs = perimetreEcrit(fichesDInstruments) ?? [];
   /**
    * ⚠️⚠️ UNE SESSION NON RECONNUE FAISAIT JUGER SUR LA MOITIÉ DE LA RÈGLE. Le
    * `.filter(Boolean)` laissait tomber en silence les identifiants inconnus :
@@ -255,9 +219,9 @@ export function computeMechanicalViolations(
     max_daily_loss: chiffreLePlusPermissif(toutes.map((f) => f.max_daily_loss), "plafond"),
   };
 
-  const fenetresDeclarees = fichesDInstruments.flatMap((f) => f.sessions.map(fenetreDeSession));
+  const fenetresDeclarees = fichesDInstruments.flatMap((f) => (f.sessions ?? []).map(fenetreDeSession));
   // ⚠️ Une fiche sans plage horaire n'interdit aucune heure : l'union non plus.
-  const uneFicheSansHoraire = fichesDInstruments.some((f) => f.sessions.length === 0);
+  const uneFicheSansHoraire = fichesDInstruments.some((f) => (f.sessions ?? []).length === 0);
   const toutesReconnues = fenetresDeclarees.every(Boolean);
   const windows: [number, number][] = toutesReconnues && !uneFicheSansHoraire
     ? fenetresDeclarees.filter((f): f is [number, number] => f !== undefined)
