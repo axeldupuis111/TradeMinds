@@ -1,3 +1,5 @@
+import { sensDuTradeImporte, type IndicesDeSens } from "@/lib/sens-du-trade";
+
 export interface ParsedTrade {
   open_time: string;
   close_time: string;
@@ -51,10 +53,16 @@ function parseNumber(val: string | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
-function mapDirection(val: string): "long" | "short" {
-  const v = val.trim().toLowerCase();
-  if (v === "buy" || v === "long" || v === "buy/long" || v.includes("long")) return "long";
-  return "short";
+/**
+ * ⚠️⚠️ CETTE FONCTION RENDAIT « short » POUR TOUT CE QU'ELLE NE RECONNAISSAIT
+ * PAS. Les exports de MetaTrader, cTrader et NinjaTrader sont LOCALISÉS :
+ * « Kauf », « Achat », « Compra », « B », une cellule vide ou le code
+ * numérique de MT4 (0 = achat) devenaient tous des VENTES. Un journal
+ * entièrement inversé, toutes les statistiques fausses, et aucun message
+ * d'erreur. Voir `lib/sens-du-trade.ts` pour la mesure et la règle.
+ */
+function mapDirection(val: string, indices: IndicesDeSens = {}): "long" | "short" {
+  return sensDuTradeImporte(val, indices);
 }
 
 /** Strip everything except lowercase alphanumeric — used for fuzzy header matching */
@@ -112,7 +120,7 @@ function tryParseMT5(lines: string[]): ParsedTrade[] {
       open_time: (cols[COL.OPEN_TIME] || "").trim(),
       close_time: (cols[COL.CLOSE_TIME] || "").trim(),
       pair: (cols[COL.SYMBOL] || "").trim().toUpperCase(),
-      direction: mapDirection(typeVal),
+      direction: mapDirection(typeVal, { entry_price: entryPrice, exit_price: exitPrice, pnl }),
       lot_size: lotSize,
       entry_price: entryPrice,
       exit_price: exitPrice,
@@ -311,7 +319,7 @@ function tryParsecTrader(headers: string[], rows: Record<string, string>[]): Par
       open_time: ouverture,
       close_time: cm.close_time !== -1 ? (row[headers[cm.close_time]] || "") : "",
       pair: (row[headers[cm.pair]] || "").toUpperCase(),
-      direction: mapDirection(dir),
+      direction: mapDirection(dir, { entry_price: entry, exit_price: exit, pnl }),
       lot_size: lot ?? 0,
       entry_price: entry ?? 0,
       exit_price: exit,
@@ -417,7 +425,11 @@ function parseWithColumnMap(
       open_time: ouverture,
       close_time: cm.close_time !== -1 ? (row[headers[cm.close_time]] || "") : "",
       pair: pairRaw.trim().toUpperCase().replace("/", ""),
-      direction: mapDirection(dirRaw),
+      direction: mapDirection(dirRaw, {
+        entry_price: cm.entry_price !== -1 ? parseNumber(row[headers[cm.entry_price]]) : null,
+        exit_price: cm.exit_price !== -1 ? parseNumber(row[headers[cm.exit_price]]) : null,
+        pnl,
+      }),
       lot_size: cm.lot_size !== -1 ? (parseNumber(row[headers[cm.lot_size]]) ?? 0) : 0,
       entry_price: cm.entry_price !== -1 ? (parseNumber(row[headers[cm.entry_price]]) ?? 0) : 0,
       exit_price: cm.exit_price !== -1 ? parseNumber(row[headers[cm.exit_price]]) : null,
@@ -443,7 +455,11 @@ function parseMTRow(row: Record<string, string>): ParsedTrade | null {
     open_time: row["open_time"] || "",
     close_time: row["close_time"] || "",
     pair: (row["symbol"] || "").toUpperCase(),
-    direction: mapDirection(typeVal),
+    direction: mapDirection(typeVal, {
+      entry_price: parseNumber(row["price"] || row["open_price"]),
+      exit_price: parseNumber(row["close_price"]),
+      pnl,
+    }),
     lot_size: parseNumber(row["size"] || row["volume"]) ?? 0,
     entry_price: parseNumber(row["price"] || row["open_price"]) ?? 0,
     exit_price: parseNumber(row["close_price"]),
@@ -462,7 +478,11 @@ function parseSimpleRow(row: Record<string, string>): ParsedTrade | null {
     open_time: row["date"] || "",
     close_time: row["date"] || "",
     pair: (row["pair"] || row["symbol"] || "").toUpperCase(),
-    direction: mapDirection(row["direction"] || "long"),
+    direction: mapDirection(row["direction"] || "", {
+      entry_price: parseNumber(row["entry"]),
+      exit_price: parseNumber(row["exit"]),
+      pnl,
+    }),
     lot_size: parseNumber(row["lot"] || row["size"]) ?? 0,
     entry_price: parseNumber(row["entry"]) ?? 0,
     exit_price: parseNumber(row["exit"]),

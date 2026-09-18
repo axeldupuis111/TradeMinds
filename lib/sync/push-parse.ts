@@ -1,3 +1,5 @@
+import { sensReconnu } from "@/lib/sens-du-trade";
+
 // Pure parsing/validation for the push sync rail — no I/O, no framework
 // imports, so it's trivially unit-testable and shared by the route handler.
 // This is the contract every client (MetaTrader EA, cTrader cBot, NinjaTrader
@@ -55,11 +57,19 @@ export function mapSource(val: unknown): PushSource {
   return "mt5";
 }
 
+/**
+ * ⚠️ LE VOCABULAIRE EST PARTAGÉ AVEC L'IMPORT DE FICHIER
+ * (`lib/sens-du-trade.ts`), mais PAS le comportement : ici, une valeur
+ * illisible rend `null` et la ligne est REJETÉE. C'est le bon choix pour un
+ * rail automatique — l'EA renverra la ligne au prochain passage, alors qu'un
+ * fichier importé, lui, ne repassera pas.
+ *
+ * ⚠️ CE RAIL RECONNAISSAIT DÉJÀ moins de mots que les exports n'en écrivent
+ * (« 0 »/« 1 » de MT4, les libellés localisés) : il les refusait, donc sans
+ * jamais se tromper, mais en perdant des trades en silence.
+ */
 export function mapDirection(val: string): "long" | "short" | null {
-  const v = val.trim().toLowerCase();
-  if (v === "buy" || v === "long") return "long";
-  if (v === "sell" || v === "short") return "short";
-  return null;
+  return sensReconnu(val);
 }
 
 /** Offset maximal plausible entre une heure serveur et l'UTC (UTC+14 / UTC-12). */
