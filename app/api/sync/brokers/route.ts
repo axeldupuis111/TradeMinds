@@ -7,6 +7,7 @@ import {
 } from "@/lib/sync/broker-sync";
 import { checkDailyLossAlert, checkDrawdownAlert } from "@/lib/alerts/daily-loss";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { synchroAutorisee } from "@/lib/sync/plan-de-synchro";
 
 export const maxDuration = 300;
 
@@ -48,14 +49,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erreur interne." }, { status: 500 });
   }
 
+  const all = (connections ?? []) as unknown as BrokerConnectionRow[];
+
+  /**
+   * ⚠️⚠️ CE CRON SYNCHRONISAIT SANS JAMAIS REGARDER LE PLAN. La synchro
+   * automatique se paie, et le rail PUSH le vérifie à chaque envoi ; ce rail-ci
+   * gardait seulement la CRÉATION de la connexion, puis la rejouait toutes les
+   * heures pour toujours. Rien ne ferme une connexion quand l'abonnement
+   * s'arrête : ni le webhook Stripe, ni le changement de plan. Un compte passé
+   * de Premium à gratuit gardait donc la fonctionnalité la plus chère du
+   * produit, à vie. Voir lib/sync/plan-de-synchro.
+   *
+   * Une seule lecture pour tout le monde : ce cron tourne toutes les heures, il
+   * n'a pas à payer un aller-retour par connexion.
+   */
+  const proprietaires = Array.from(new Set(all.map((c) => c.user_id)));
+  const { data: profils, error: profilsError } = proprietaires.length
+    ? await admin.from("profiles").select("id, plan").in("id", proprietaires)
+    : { data: [], error: null };
+  if (profilsError) {
+    console.error("[Broker Cron] lecture des plans impossible :", profilsError.message);
+    await alertCronFailure("sync/brokers", `Could not read owner plans: ${profilsError.message}`);
+    return NextResponse.json({ error: "Erreur interne." }, { status: 500 });
+  }
+  const planDe = new Map((profils ?? []).map((p) => [p.id as string, (p.plan as string) || "free"]));
+
   let totalSynced = 0;
   let failed = 0;
   let processed = 0;
+  /** Connexions ignorées faute d'abonnement : comptées, pas silencieuses. */
+  let sansAbonnement = 0;
   /** Les motifs d'échec de ce passage, pour distinguer une panne d'un cas isolé. */
   const motifs: string[] = [];
 
   const startedAt = Date.now();
-  const all = (connections ?? []) as unknown as BrokerConnectionRow[];
 
   for (const conn of all) {
     if (Date.now() - startedAt > TIME_BUDGET_MS) {
@@ -63,6 +90,13 @@ export async function POST(req: Request) {
         `[Broker Cron] budget de temps atteint, ${all.length - processed} connexion(s) reportée(s) au passage suivant.`,
       );
       break;
+    }
+    // ⚠️ On ne touche pas au statut de la connexion : l'abonné qui revient
+    // retrouve son rail sans rien refaire, et une connexion « en erreur »
+    // mentirait sur la cause.
+    if (!synchroAutorisee(planDe.get(conn.user_id))) {
+      sansAbonnement++;
+      continue;
     }
     processed++;
     try {
@@ -121,7 +155,11 @@ export async function POST(req: Request) {
   return NextResponse.json({
     connections: all.length,
     processed,
-    deferred: all.length - processed,
+    // ⚠️ « Reporté » veut dire « repris au prochain passage ». Une connexion
+    // sans abonnement, elle, ne sera reprise que si l'abonnement revient : les
+    // mélanger ferait lire un retard là où il n'y en a pas.
+    deferred: all.length - processed - sansAbonnement,
+    withoutPlan: sansAbonnement,
     synced: totalSynced,
     failed,
   });

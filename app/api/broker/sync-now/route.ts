@@ -8,6 +8,7 @@ import {
   type BrokerConnectionRow,
 } from "@/lib/sync/broker-sync";
 import { manualSyncWaitMs, waitSeconds } from "@/lib/sync/sync-cooldown";
+import { synchroAutorisee } from "@/lib/sync/plan-de-synchro";
 
 /**
  * Synchro à la demande de TOUTES les connexions actives du trader.
@@ -32,6 +33,13 @@ const TIME_BUDGET_MS = 45_000;
 export async function POST() {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  // ⚠️⚠️ MÊME PORTE QUE LA CRÉATION DE CONNEXION. Elle manquait ici : une
+  // connexion ouverte du temps de l'abonnement continuait de se rejouer à la
+  // demande après le passage à un plan inférieur. Voir lib/sync/plan-de-synchro.
+  if (!synchroAutorisee(auth.plan)) {
+    return NextResponse.json({ code: "api_error_forbidden" }, { status: 403 });
+  }
 
   const supabase = createClient();
   // Lecture sous RLS : on ne voit que ses propres connexions, la propriété est

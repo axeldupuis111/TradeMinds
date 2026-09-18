@@ -14,6 +14,7 @@ import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId, getC
 import { checkTiltInsight } from "@/lib/alerts/tilt-insight";
 import { applyAccountSnapshot } from "./account-snapshot";
 import { challengeRattache } from "./rattachement";
+import { synchroAutorisee } from "./plan-de-synchro";
 import {
   mapSource,
   mapDirection,
@@ -99,7 +100,9 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     return NextResponse.json({ error: "Token invalide." }, { status: 401 });
   }
 
-  if (profile.plan !== "premium") {
+  // ⚠️ LE MÊME PRÉDICAT QUE LE RAIL PULL, qui ne l'appliquait pas du tout :
+  // voir lib/sync/plan-de-synchro.
+  if (!synchroAutorisee(profile.plan as string | null)) {
     return NextResponse.json({ error: "Premium plan required for auto-sync." }, { status: 403 });
   }
 
