@@ -262,10 +262,33 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Page PRIVÉE sans session → redirect vers /login (en respectant la locale).
-  // Une adresse inconnue, elle, continue son chemin et reçoit le 404 de Next :
-  // voir `estPrivee`.
+  /**
+   * Page PRIVÉE sans session → redirect vers /login (en respectant la locale).
+   * Une adresse inconnue, elle, continue son chemin et reçoit le 404 de Next :
+   * voir `estPrivee`.
+   *
+   * ⚠️⚠️ MAIS UNE ROUTE D'API RÉPOND 401, ELLE NE REDIRIGE PAS. Mesuré en
+   * production le 2026-09-18 en appelant les 53 routes en anonyme : trente-sept
+   * rendaient un 307 vers `/login`, c'est-à-dire une PAGE HTML. Un `fetch()`
+   * suit la redirection, reçoit du HTML, et `res.json()` lève
+   * « Unexpected token '<' » : quand la session d'un trader expire en cours
+   * d'usage — ce qui arrive à tout le monde — l'écran ne lui dit pas de se
+   * reconnecter, il lui montre une erreur de syntaxe déguisée.
+   *
+   * ⚠️ ET LE `requireAuth()` DE CHAQUE ROUTE N'ÉTAIT JAMAIS ATTEINT : son 401
+   * propre était du code mort dans cinquante routes. Le refus se décidait ici,
+   * dans le mauvais format.
+   *
+   * ⚠️ LE MÊME MÉCANISME A DÉJÀ MORDU : la désinscription « un clic » de Gmail
+   * suivait cette redirection et recevait 200, donc le fournisseur croyait la
+   * demande honorée pendant que les e-mails continuaient de partir (voir
+   * l'exception `/api/unsubscribe` plus haut). C'est la règle générale de ce
+   * cas particulier.
+   */
   if (!user && !isPublicPath(pathname) && estPrivee(pathname)) {
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     // Préserve la locale courante dans la redirection
     const localeMatch = pathname.match(/^\/(fr|de|es)(\/|$)/);
