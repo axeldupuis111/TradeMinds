@@ -810,7 +810,9 @@ export default function AnalysisPage() {
         fetchAllRows<AnalysisTradeRow>((from, to) =>
           supabase
             .from("trades")
-            .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap, emotion, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, vision_review")
+            // ⚠️ `strategy_id` : la méthode qui a produit le trade, pour le juger sur SES
+            // règles plutôt que sur l'union des fiches (lib/regles-du-trader).
+            .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap, emotion, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, vision_review, strategy_id")
             .eq("user_id", user.id)
             .order("id", { ascending: true })
             .range(from, to),

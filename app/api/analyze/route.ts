@@ -301,6 +301,9 @@ export async function POST(request: Request) {
       autresFiches = (fiches ?? [])
         .filter((f) => f.id !== (strategy as { id?: string }).id)
         .map((f) => ({
+          // ⚠️ L'id voyage : il permet de juger un trade RATTACHÉ sur sa propre
+          // fiche plutôt que sur l'union. Voir lib/regles-du-trader.
+          id: f.id as string,
           pairs: (f.pairs as string[]) ?? [],
           sessions: (f.sessions as string[]) ?? [],
           risk_reward: f.risk_reward as number | null,

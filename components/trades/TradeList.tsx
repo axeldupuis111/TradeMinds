@@ -13,6 +13,7 @@ import {
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
+import { rattacherLesTrades } from "@/lib/rattachement-de-methode";
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Camera, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useMemo, useEffect, useRef, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
@@ -257,6 +258,14 @@ interface AccountOption {
 interface Props {
   refreshKey: number;
   onTradeUpdated?: () => void;
+  /**
+   * ⚠️ LES FICHES DU TRADER, pour rattacher une sélection à la méthode qui
+   * l'a produite. `trades.strategy_id` existe depuis toujours et n'est quasi
+   * jamais rempli : zéro trade rattaché sur 157 chez un abonné à trois fiches,
+   * mesuré en base le 2026-09-18. Sans lui, aucune règle de fiche n'est
+   * attribuable à un trade. Voir lib/rattachement-de-methode.
+   */
+  strategies?: { id: string; name: string | null }[];
 }
 
 /**
@@ -297,7 +306,7 @@ function normalizeDirection(dir: string): "long" | "short" {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
+export default function TradeList({ refreshKey, onTradeUpdated, strategies = [] }: Props) {
   const { t } = useLanguage();
   const supabase = createClient();
   const [checklistMap, setChecklistMap] = useState<Record<string, ChecklistItem[]>>({});
@@ -327,6 +336,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
    */
   const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [ficheARattacher, setFicheARattacher] = useState<string>("");
+  const [rattachementEnCours, setRattachementEnCours] = useState(false);
+  const [messageDeRattachement, setMessageDeRattachement] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   /**
    * ⚠️⚠️ LA SUPPRESSION D'UN SEUL TRADE NE DISAIT RIEN QUAND ELLE ÉCHOUAIT.
@@ -837,6 +849,61 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     return paths;
   }
 
+  /**
+   * Rattache la sélection à une fiche stratégie.
+   *
+   * ⚠️⚠️ LE NOMBRE ANNONCÉ EST CELUI QUE LA BASE A TOUCHÉ, pas celui qu'on a
+   * demandé : `rattacherLesTrades` relit ce qu'elle a écrit. Une mise à jour
+   * qui ne trouve aucune ligne n'est PAS une erreur pour PostgREST, et ce
+   * dépôt a déjà affiché seize fois « c'est fait » sur une écriture qui
+   * n'avait rien fait.
+   */
+  async function handleRattachement() {
+    const count = selectAllMatching ? total : selectedIds.size;
+    if (count === 0 || !ficheARattacher) return;
+
+    setRattachementEnCours(true);
+    setMessageDeRattachement(null);
+    setBulkError(null);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setRattachementEnCours(false); return; }
+
+    // Même lecture que la suppression en lot : les ids sont relus MAINTENANT,
+    // pas au moment où le trader a coché « tout sélectionner ».
+    let ids: string[];
+    if (selectAllMatching) {
+      const rows = await fetchMatchingRows(user.id);
+      if (rows === null) {
+        setBulkError(t("trades_attach_failed"));
+        setRattachementEnCours(false);
+        return;
+      }
+      ids = rows.map((r) => r.id);
+    } else {
+      ids = Array.from(selectedIds);
+    }
+
+    const resultat = await rattacherLesTrades(supabase, ids, ficheARattacher);
+    setRattachementEnCours(false);
+
+    if (resultat.erreur) {
+      console.error("[trades] rattachement refusé :", resultat.erreur);
+      setBulkError(
+        t("trades_attach_partial", {
+          done: String(resultat.rattaches),
+          total: String(resultat.demandes),
+        }),
+      );
+      return;
+    }
+    setMessageDeRattachement(t("trades_attach_done", { n: String(resultat.rattaches) }));
+    setSelectedIds(new Set());
+    setSelectAllMatching(false);
+    loadTrades();
+    onTradeUpdated?.();
+  }
+
   async function handleBulkDelete() {
     const count = selectAllMatching ? total : selectedIds.size;
     if (count === 0) return;
@@ -1203,6 +1270,39 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             >
               {bulkDeleting ? "..." : t("trades_delete_selection")}
             </button>
+            {/* ⚠️⚠️ RATTACHER À UNE MÉTHODE. `trades.strategy_id` existe depuis
+                toujours et n'était quasi jamais rempli : zéro trade rattaché sur
+                157 chez un abonné à trois fiches. Sans lui, aucune règle de
+                fiche n'est attribuable à un trade, et toutes les surfaces qui
+                jugent doivent se rabattre sur l'union des fiches, c'est-à-dire
+                sur le refus d'accuser. La sélection est déjà là, elle sert
+                déjà à supprimer en lot : elle sert maintenant à rattacher. */}
+            {strategies.length > 0 && (
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label={t("trades_attach_label")}
+                  value={ficheARattacher}
+                  onChange={(e) => setFicheARattacher(e.target.value)}
+                  className="px-2 py-1.5 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  {/* ⚠️ UN CHAMP NE SE NOMME PAS PAR LE TEXTE D'UNE DE SES
+                      OPTIONS : un lecteur d'écran lirait deux fois la même
+                      chaîne et l'étiquette n'apprendrait rien. Un garde du dépôt
+                      l'a refusé sur-le-champ (lib/controles-nommes). */}
+                  <option value="">{t("trades_attach_choose")}</option>
+                  {strategies.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name || t("stratcmp_unnamed")}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleRattachement}
+                  disabled={rattachementEnCours || !ficheARattacher}
+                  className="px-3 py-1.5 text-sm bg-accent/10 text-accent border border-accent/30 rounded-lg font-medium hover:bg-accent/20 transition-colors disabled:opacity-50"
+                >
+                  {rattachementEnCours ? "..." : t("trades_attach_action")}
+                </button>
+              </div>
+            )}
             <button
               onClick={() => { setSelectedIds(new Set()); setSelectAllMatching(false); }}
               className="px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors"
@@ -1240,6 +1340,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           )}
 
           {bulkError && <p role="alert" className="text-sm text-loss mt-2">{bulkError}</p>}
+          {messageDeRattachement && (
+            <p role="status" className="text-sm text-profit mt-2">{messageDeRattachement}</p>
+          )}
         </div>
       )}
 

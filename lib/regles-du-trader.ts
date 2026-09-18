@@ -29,6 +29,12 @@
 
 /** Ce qu'une fiche stratégie apporte au jugement. Tout est optionnel. */
 export interface FicheDuTrader {
+  /**
+   * ⚠️ L'IDENTIFIANT SERT À RECONNAÎTRE LA FICHE D'UN TRADE. `trades.strategy_id`
+   * dit quelle méthode a produit un trade ; sans cet `id`, on ne peut que se
+   * rabattre sur l'union, c'est-à-dire refuser d'accuser.
+   */
+  id?: string | null;
   pairs?: string[] | null;
   sessions?: string[] | null;
   risk_reward?: number | null;

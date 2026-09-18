@@ -43,6 +43,7 @@ export default function TradesPage() {
   const [showModal, setShowModal] = useState(false);
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [showMtBanner, setShowMtBanner] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [recap, setRecap] = useState<Recap | null>(null);
@@ -172,8 +173,18 @@ export default function TradesPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
 
+      /**
+       * ⚠️⚠️ LA FICHE QUI ESTAMPILLE LES NOUVEAUX TRADES SE CHOISIT. Elle
+       * était prise d'office — la plus ancienne — et c'est elle qui part dans
+       * `trades.strategy_id` à l'import et à la saisie manuelle. Un trader à
+       * plusieurs méthodes rattachait donc tout à la mauvaise, ou à rien. La
+       * page Séance propose ce sélecteur depuis toujours.
+       */
+      setStrategies(data ?? []);
       if (data && data.length > 0) {
-        setSelectedStrategy(data[0]);
+        setSelectedStrategy((actuelle) =>
+          actuelle && data.some((f) => f.id === actuelle.id) ? actuelle : data[0],
+        );
       }
     }
     loadStrategies();
@@ -229,6 +240,24 @@ export default function TradesPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* ⚠️⚠️ LA MÉTHODE QUI ESTAMPILLE LES NOUVEAUX TRADES. Elle était
+              prise d'office (la plus ancienne) et partait telle quelle dans
+              `trades.strategy_id` à l'import comme à la saisie : un trader à
+              plusieurs méthodes rattachait tout à la mauvaise. */}
+          {strategies.length > 1 && (
+            <select
+              aria-label={t("strategy_select")}
+              value={selectedStrategy?.id ?? ""}
+              onChange={(e) =>
+                setSelectedStrategy(strategies.find((f) => f.id === e.target.value) ?? null)
+              }
+              className="px-3 py-2 rounded-md border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              {strategies.map((f) => (
+                <option key={f.id} value={f.id}>{f.name || t("stratcmp_unnamed")}</option>
+              ))}
+            </select>
+          )}
           <button
             onClick={syncNow}
             disabled={syncing}
@@ -321,6 +350,7 @@ export default function TradesPage() {
       <TradeList
         refreshKey={refreshKey}
         onTradeUpdated={loadRecap}
+        strategies={strategies.map((s) => ({ id: s.id, name: s.name }))}
       />
 
       {showModal && (

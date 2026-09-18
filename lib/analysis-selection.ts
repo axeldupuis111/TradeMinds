@@ -27,7 +27,9 @@ import { risqueEnPips } from "@/lib/risque-du-trade";
 import {
   chiffreLePlusPermissif,
   perimetreEcrit,
+  reglesEcritesDuTrader,
   type FicheDuTrader,
+  type ReglesEcrites,
 } from "@/lib/regles-du-trader";
 
 export interface SelectionTrade {
@@ -42,6 +44,11 @@ export interface SelectionTrade {
   tp: number | null;
   sl_initial?: number | null;
   tp_initial?: number | null;
+  /**
+   * ⚠️ LA MÉTHODE QUI A PRODUIT CE TRADE, quand le trader l'a rattaché. Elle
+   * permet de le juger sur SES règles plutôt que sur l'union de ses fiches.
+   */
+  strategy_id?: string | null;
   pnl: number;
   commission: number | null;
   swap: number | null;
@@ -219,24 +226,58 @@ export function computeMechanicalViolations(
     max_daily_loss: chiffreLePlusPermissif(toutes.map((f) => f.max_daily_loss), "plafond"),
   };
 
-  const fenetresDeclarees = fichesDInstruments.flatMap((f) => (f.sessions ?? []).map(fenetreDeSession));
-  // ⚠️ Une fiche sans plage horaire n'interdit aucune heure : l'union non plus.
-  const uneFicheSansHoraire = fichesDInstruments.some((f) => (f.sessions ?? []).length === 0);
-  const toutesReconnues = fenetresDeclarees.every(Boolean);
-  const windows: [number, number][] = toutesReconnues && !uneFicheSansHoraire
-    ? fenetresDeclarees.filter((f): f is [number, number] => f !== undefined)
-    : [];
+  /** Les heures permises par un ensemble de fiches. Vide = on ne juge pas. */
+  function fenetresDe(fiches: FicheDuTrader[]): [number, number][] {
+    const declarees = fiches.flatMap((f) => (f.sessions ?? []).map(fenetreDeSession));
+    // ⚠️ Une fiche sans plage horaire n'interdit aucune heure : l'union non plus.
+    const uneSansHoraire = fiches.some((f) => (f.sessions ?? []).length === 0);
+    if (uneSansHoraire || !declarees.every(Boolean)) return [];
+    return declarees.filter((f): f is [number, number] => f !== undefined);
+  }
+  const windows = fenetresDe(fichesDInstruments);
+
+  /**
+   * ⚠️⚠️ QUAND ON SAIT QUELLE MÉTHODE A PRODUIT UN TRADE, ON LE JUGE SUR
+   * ELLE. `trades.strategy_id` porte cette information ; tant qu'elle manquait
+   * (zéro trade rattaché sur 157 chez un abonné à trois fiches, mesuré le
+   * 2026-09-18), la seule conduite honnête était de se rabattre sur l'union,
+   * c'est-à-dire sur le refus d'accuser. C'était juste et grossier : un trader
+   * qui respecte sa méthode swing et massacre sa méthode scalping obtenait le
+   * même verdict que celui qui fait l'inverse.
+   *
+   * Précision là où on sait, silence là où on ne sait pas.
+   */
+  const ficheParId = new Map<string, FicheDuTrader>();
+  for (const f of fichesDInstruments) if (f.id) ficheParId.set(f.id, f);
+
+  const cacheDesRegles = new Map<string, { regles: ReglesEcrites; windows: [number, number][] }>();
+  function reglesDuTrade(t: SelectionTrade) {
+    const id = t.strategy_id;
+    const fiche = id ? ficheParId.get(id) : undefined;
+    if (!fiche || !id) return { regles: regleDuTrader as ReglesEcrites, windows };
+    const connu = cacheDesRegles.get(id);
+    if (connu) return connu;
+    const propres = { regles: reglesEcritesDuTrader([fiche]), windows: fenetresDe([fiche]) };
+    cacheDesRegles.set(id, propres);
+    return propres;
+  }
 
   trades.forEach((t, idx) => {
+    const propres = reglesDuTrade(t);
+    const perimetreDuTrade = t.strategy_id && ficheParId.has(t.strategy_id)
+      ? (propres.regles.pairs ?? [])
+      : allowedPairs;
+    const fenetresDuTrade = propres.windows;
+
     // Paire hors périmètre (seulement si le trader a listé ses paires).
-    if (allowedPairs.length > 0 && !allowedPairs.includes(normPair(t.pair))) {
+    if (perimetreDuTrade.length > 0 && !perimetreDuTrade.includes(normPair(t.pair))) {
       add("wrong_pair", idx);
     }
 
     // Hors session (seulement si des sessions sont définies et reconnues).
-    if (windows.length > 0) {
+    if (fenetresDuTrade.length > 0) {
       const h = utcHour(t.open_time);
-      if (h >= 0 && !windows.some(([start, end]) => h >= start && h < end)) {
+      if (h >= 0 && !fenetresDuTrade.some(([start, end]) => h >= start && h < end)) {
         add("wrong_session", idx);
       }
     }
