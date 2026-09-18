@@ -176,19 +176,47 @@ export default function PushNotificationsCard() {
       )}
       {error && <p role="alert" className="text-loss text-sm mt-2">{error}</p>}
 
-      {/* Préférences par type de notification */}
+      {/**
+        * Préférences par type de notification.
+        *
+        * ⚠️⚠️ QUATRE CASES COCHÉES SOUS UN INTERRUPTEUR ÉTEINT. Elles
+        * s'affichaient dès que le navigateur SAIT recevoir des notifications,
+        * sans regarder si ce navigateur en reçoit. Le trader lisait donc
+        * « Alertes de perte journalière ✓ » juste sous « Notifications
+        * désactivées », et croyait qu'on le préviendrait.
+        *
+        * ⚠️ MESURÉ EN BASE LE 2026-09-18 : les 54 profils ont les quatre
+        * préférences à vrai (c'est le défaut), et UN SEUL a un abonnement push.
+        * Cinquante-trois comptes voyaient donc quatre promesses cochées que
+        * rien ne pouvait tenir — dont l'alerte « arrête-toi », celle qui
+        * compte.
+        *
+        * ⚠️ ON NE LES CACHE PAS : pouvoir choisir d'avance est légitime. On dit
+        * ce qu'elles valent tant que l'appareil n'est pas abonné.
+        */}
       {supported && (
         <div className="mt-4 pt-4 border-t border-border space-y-3">
           <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t("push_prefs_title")}</p>
+          {!enabled && (
+            <p id="push-prefs-inactives" role="note" className="text-xs text-warning">
+              {t("push_prefs_inactives")}
+            </p>
+          )}
           {PREF_KEYS.map((key) => (
-            <label key={key} className="flex items-center gap-3 cursor-pointer">
+            <label
+              key={key}
+              className={`flex items-center gap-3 cursor-pointer${enabled ? "" : " text-muted"}`}
+              aria-describedby={enabled ? undefined : "push-prefs-inactives"}
+            >
               <input
                 type="checkbox"
                 checked={prefs[key]}
                 onChange={(e) => setPref(key, e.target.checked)}
                 className="accent-accent w-4 h-4"
               />
-              <span className="text-sm text-foreground">{t(`push_pref_${key}`)}</span>
+              <span className={`text-sm ${enabled ? "text-foreground" : "text-muted"}`}>
+                {t(`push_pref_${key}`)}
+              </span>
             </label>
           ))}
         </div>

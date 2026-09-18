@@ -2106,6 +2106,7 @@ const dict: Record<string, string> = {
   "push_denied": "You blocked notifications. Allow them in your browser.",
   "push_error": "Couldn't enable notifications. Please try again.",
   "push_prefs_title": "What to receive via push",
+  "push_prefs_inactives": "These choices only take effect once notifications are enabled on this device: for now, nothing can be sent to you.",
   "push_pref_push_notif_session": "Daily session reminder",
   "push_pref_push_notif_weekly": "Weekly report",
   "push_pref_push_notif_alerts": "Daily loss alerts",

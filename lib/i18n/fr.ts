@@ -2106,6 +2106,7 @@ const dict: Record<string, string> = {
   "push_denied": "Tu as refusé les notifications. Autorise-les dans ton navigateur.",
   "push_error": "Impossible d'activer les notifications. Réessaie.",
   "push_prefs_title": "Que recevoir en push",
+  "push_prefs_inactives": "Ces choix ne s’appliqueront qu’une fois les notifications activées sur cet appareil : pour l’instant, rien ne peut t’être envoyé.",
   "push_pref_push_notif_session": "Rappel de session quotidien",
   "push_pref_push_notif_weekly": "Rapport hebdomadaire",
   "push_pref_push_notif_alerts": "Alertes de perte journalière",
