@@ -82,31 +82,68 @@ export interface AiCallLog {
  */
 export async function logAiCost(
   supabase: SupabaseClient,
-  userId: string,
+  /**
+   * ⚠️ `null` POUR UN APPEL SYSTÈME (cron). Le brief macro n'appartient à
+   * personne : il est généré une fois et servi à tous les abonnés. L'attribuer
+   * à un profil fausserait ses statistiques d'usage.
+   *
+   * ⚠️⚠️ ET CETTE ÉCRITURE ÉCHOUERA tant que la migration
+   * `20260918_product_events_systeme.sql` n'est pas appliquée : `user_id` est
+   * NOT NULL en production (vérifié le 2026-09-18 dans la définition OpenAPI de
+   * PostgREST, `required: ["id","user_id","event","created_at"]`). Elle
+   * échouera BRUYAMMENT dans les journaux, plus en silence, et se mettra à
+   * marcher toute seule le jour où la migration passe.
+   */
+  userId: string | null,
   log: AiCallLog,
 ): Promise<void> {
-  {
-    try {
-      const cost = costEur(log.model, log.usage);
-      await supabase.from("product_events").insert({
-        user_id: userId,
-        event: "ai_call",
-        meta: {
-          route: log.route,
-          model: log.model,
-          plan: log.plan,
-          cost_eur: cost,
-          input: log.usage.input_tokens ?? 0,
-          output: log.usage.output_tokens ?? 0,
-          cache_read: log.usage.cache_read_input_tokens ?? 0,
-          cache_write: log.usage.cache_creation_input_tokens ?? 0,
-          rounds: log.rounds ?? 1,
-          ...log.extra,
-        },
-      });
-    } catch {
-      // la mesure ne casse jamais la fonctionnalité mesurée
+  try {
+    const cost = costEur(log.model, log.usage);
+    /**
+     * ⚠️⚠️ L'ÉCRITURE EST VÉRIFIÉE, ET ELLE NE L'ÉTAIT PAS. Ce `try/catch`
+     * était seul : or LE CLIENT SUPABASE NE JETTE PAS. Un `insert` refusé —
+     * policy RLS, contrainte NOT NULL, colonne absente — rend `{ error }` et
+     * repart normalement ; le `catch` ne se déclenchait jamais et cette
+     * fonction rapportait un succès. C'est la panne qui a coûté seize
+     * annulations silencieuses au coach en août, et elle se trouvait ici, dans
+     * le module dont le rôle est précisément de voir venir une dérive avant la
+     * facture.
+     *
+     * ⚠️ ON NE JETTE TOUJOURS PAS : mesurer ne doit pas casser ce qu'on mesure.
+     * Mais un silence n'est plus un succès.
+     */
+    const { error } = await supabase.from("product_events").insert({
+      user_id: userId,
+      event: "ai_call",
+      meta: {
+        route: log.route,
+        model: log.model,
+        plan: log.plan,
+        cost_eur: cost,
+        input: log.usage.input_tokens ?? 0,
+        output: log.usage.output_tokens ?? 0,
+        cache_read: log.usage.cache_read_input_tokens ?? 0,
+        cache_write: log.usage.cache_creation_input_tokens ?? 0,
+        rounds: log.rounds ?? 1,
+        ...log.extra,
+      },
+    });
+    if (error) {
+      console.error(
+        /**
+         * ⚠️ PAS DE SYMBOLE DE DEVISE ICI, ET CE N'EST PAS DU PURISME : un
+         * garde du dépôt interdit d'écrire un montant à la main hors de
+         * `money()`, parce que c'est ainsi que des prix sont sortis sans
+         * devise à l'écran. Un journal serveur n'a pas de locale ; on nomme
+         * l'unité en toutes lettres plutôt que d'ouvrir une exception.
+         */
+        `[Coût IA] appel ${log.route} (${log.model}, ${cost.toFixed(6)} euros) NON ` +
+          `journalisé : ${error.message}. Ce coût manquera au tableau de bord.`,
+      );
     }
+  } catch (err) {
+    // la mesure ne casse jamais la fonctionnalité mesurée — mais elle le dit.
+    console.error("[Coût IA] journalisation impossible:", err);
   }
 }
 
