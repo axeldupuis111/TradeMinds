@@ -25,7 +25,13 @@ export function SubscriptionBanner() {
       const data = await res.json();
 
       if (!res.ok || !data.url) {
-        throw new Error(data.error || "Failed to open portal");
+        /**
+         * ⚠️ LE CODE EST TRADUISIBLE, LE MESSAGE BRUT NE L'EST PAS. Ici, le
+         * repli reste la redirection vers la page d'abonnement : ce bandeau
+         * n'a pas de place pour afficher un texte, et l'utilisateur y trouvera
+         * le refus traduit en toutes lettres.
+         */
+        throw new Error(data.code || data.error || "Failed to open portal");
       }
 
       window.location.href = data.url;

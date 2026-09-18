@@ -169,7 +169,14 @@ export default function UpgradePage() {
       headers: { "Content-Type": "application/json" },
     });
     const data = await res.json();
-    if (!res.ok || !data.url) throw new Error(data.error || "Portal error");
+    /**
+     * ⚠️⚠️ LE MESSAGE BRUT REPARTAIT À L'ÉCRAN, EN ANGLAIS, et c'est le refus
+     * le plus fréquent du produit : dix des treize comptes payants n'ont aucun
+     * client Stripe (accès ouvert à la main) et lisaient donc « No Stripe
+     * customer found. Please subscribe to a plan first. » — on leur demandait
+     * de payer une deuxième fois ce qu'ils ont déjà.
+     */
+    if (!res.ok || !data.url) throw new Error(messageDeRefus(data, "portal_err_server"));
     window.location.href = data.url;
   }
 
@@ -188,14 +195,18 @@ export default function UpgradePage() {
    * traduire ni inventer, et qui reste la seule information utile pour
    * comprendre un refus inattendu.
    */
-  function planChangeErrorMessage(data: { error?: string; code?: string }): string {
+  function messageDeRefus(data: { error?: string; code?: string }, repli: string): string {
     if (data.code === "subscription_canceling") return t("planchange_error_canceling");
     if (data.code) {
       const traduit = t(data.code);
       // `t()` rend la CLÉ quand elle manque : on ne montre jamais une clé.
       if (traduit && traduit !== data.code) return traduit;
     }
-    return t("planchange_error");
+    return t(repli);
+  }
+
+  function planChangeErrorMessage(data: { error?: string; code?: string }): string {
+    return messageDeRefus(data, "planchange_error");
   }
 
   // Ouvre la modale de changement de plan et récupère l'aperçu (montant prorata).
@@ -276,7 +287,14 @@ export default function UpgradePage() {
       await openBillingPortal();
     } catch (err) {
       console.error("[Manage subscription] Error:", err);
-      setPortalError(t("upgrade_checkout_error"));
+      /**
+       * ⚠️⚠️ LE MESSAGE UTILE ÉTAIT JETÉ ET REMPLACÉ PAR « Une erreur est
+       * survenue. Veuillez réessayer. » — un texte qui invite à recommencer une
+       * action qui ne peut PAS aboutir. Dix des treize comptes payants n'ont
+       * aucun abonnement en ligne : ils cliquaient, lisaient « réessaie », et
+       * recommençaient. Traduire le refus ne sert à rien si l'écran l'efface.
+       */
+      setPortalError(err instanceof Error ? err.message : t("upgrade_checkout_error"));
       setIsPortalLoading(false);
     }
   }
@@ -289,7 +307,7 @@ export default function UpgradePage() {
     } catch (err) {
       console.error("[Downgrade] Error:", err);
       setShowDowngradeModal(false);
-      setPortalError(t("upgrade_checkout_error"));
+      setPortalError(err instanceof Error ? err.message : t("upgrade_checkout_error"));
       setDowngrading(false);
     }
   }

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json(
-        { error: "Not authenticated" },
+        { code: "portal_err_auth", error: "Not authenticated" },
         { status: 401 }
       );
     }
@@ -27,15 +27,31 @@ export async function POST(req: NextRequest) {
 
     if (profileError || !profile) {
       return NextResponse.json(
-        { error: "Profile not found" },
+        { code: "portal_err_profile", error: "Profile not found" },
         { status: 404 }
       );
     }
 
-    // 3. Vérification que l'user a bien un Stripe customer
+    /**
+     * ⚠️⚠️ CE REFUS EST LE PLUS FRÉQUENT DU PRODUIT, ET IL S'AFFICHAIT EN
+     * ANGLAIS. Mesuré en base le 2026-09-18 : DIX des treize comptes payants
+     * n'ont aucun client Stripe, leur accès ayant été ouvert à la main. Ce sont
+     * donc dix abonnés premium à qui « Gérer mon abonnement » répond
+     * « No Stripe customer found. Please subscribe to a plan first. » — un
+     * message anglais, qui leur demande de souscrire alors qu'ils ont déjà
+     * tout, et qui les envoie payer une deuxième fois.
+     *
+     * ⚠️ LA RÈGLE AVAIT ÉTÉ APPLIQUÉE À LA ROUTE JUMELLE LE MATIN MÊME
+     * (`change-plan`, sept refus passés en codes traduisibles) et pas à
+     * celle-ci : `code` = ce que le PRODUIT a écrit, donc traduisible ;
+     * `error` = le message brut du prestataire, gardé pour les journaux.
+     */
     if (!profile.stripe_customer_id) {
       return NextResponse.json(
-        { error: "No Stripe customer found. Please subscribe to a plan first." },
+        {
+          code: "portal_err_no_customer",
+          error: "No Stripe customer found. Please subscribe to a plan first.",
+        },
         { status: 400 }
       );
     }
@@ -54,7 +70,7 @@ export async function POST(req: NextRequest) {
     if (!session.url) {
       console.error("[Stripe Portal] No URL returned from Stripe session");
       return NextResponse.json(
-        { error: "Failed to create portal session" },
+        { code: "portal_err_server", error: "Failed to create portal session" },
         { status: 500 }
       );
     }
@@ -63,7 +79,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("[Stripe Portal] Error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { code: "portal_err_server", error: "Internal server error" },
       { status: 500 }
     );
   }

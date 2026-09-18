@@ -27,20 +27,64 @@ import { describe, expect, it } from "vitest";
 const RACINE = process.cwd();
 const lire = (f: string) => readFileSync(join(RACINE, f), "utf8");
 
-/** Les codes que la route pose sur ses refus. */
+/**
+ * Les routes de facturation que ce garde surveille.
+ *
+ * ⚠️⚠️ IL N'EN SURVEILLAIT QU'UNE, ET LA JUMELLE PORTAIT LE MÊME DÉFAUT. Écrit
+ * le 2026-09-18 au matin pour `change-plan`, il ignorait `portal` — dont le
+ * refus « No Stripe customer found. Please subscribe to a plan first. » est en
+ * réalité LE PLUS FRÉQUENT du produit : dix des treize comptes payants n'ont
+ * aucun client Stripe, leur accès ayant été ouvert à la main. Une règle écrite,
+ * appliquée à une surface sur deux : c'est la forme dominante des défauts de ce
+ * dépôt, et ce garde en était lui-même un exemple.
+ */
+const ROUTES = [
+  "app/api/stripe/change-plan/route.ts",
+  "app/api/stripe/portal/route.ts",
+] as const;
+
+/** Les codes que les routes posent sur leurs refus. */
 function codesDeLaRoute(): string[] {
-  const src = lire("app/api/stripe/change-plan/route.ts");
-  return Array.from(new Set(Array.from(src.matchAll(/code:\s*'([a-z_]+)'/g), (m) => m[1])));
+  const codes = ROUTES.flatMap((f) =>
+    Array.from(lire(f).matchAll(/code:\s*['"]([a-z_]+)['"]/g), (m) => m[1]),
+  );
+  return Array.from(new Set(codes));
 }
 
-describe("les refus du changement de plan", () => {
-  it("portent tous un code, pas seulement un", () => {
-    const src = lire("app/api/stripe/change-plan/route.ts");
-    const refus = Array.from(src.matchAll(/NextResponse\.json\(\{([^}]*)\}/g), (m) => m[1]);
-    const sansCode = refus.filter((r) => /error:/.test(r) && !/code:/.test(r));
+describe("les refus de facturation", () => {
+  /**
+   * ⚠️⚠️ CE GARDE A MENTI, ET VOICI COMMENT. Sa première version cherchait
+   * `NextResponse.json({` avec l'accolade COLLÉE à la parenthèse. Or un refus
+   * de `change-plan` met son objet à la ligne :
+   *
+   *     return NextResponse.json(
+   *       { error: 'No paid subscription to change. Subscribe first.' },
+   *
+   * Il est donc resté VERT sur un refus sans code, le jour même où il a été
+   * écrit pour les attraper tous. ⚠️ UNE FENÊTRE DE CARACTÈRES N'EST JAMAIS UNE
+   * FRONTIÈRE — la leçon est écrite trois fois dans ce dépôt. On lit désormais
+   * chaque appel jusqu'à sa parenthèse fermante, quelle que soit sa mise en
+   * forme.
+   */
+  it("portent tous un code, sur les deux routes", () => {
+    const sansCode: string[] = [];
+    for (const f of ROUTES) {
+      const src = lire(f);
+      // Chaque `NextResponse.json(` et tout ce qui suit jusqu'au `status`.
+      const appels = Array.from(
+        src.matchAll(/NextResponse\.json\(([\s\S]{0,400}?)\{\s*status:/g),
+        (m) => m[1],
+      );
+      for (const corps of appels) {
+        if (/error:/.test(corps) && !/code:/.test(corps)) {
+          sansCode.push(`${f} : ${corps.replace(/\s+/g, " ").trim().slice(0, 70)}`);
+        }
+      }
+    }
     expect(
-      sansCode.map((r) => r.trim().slice(0, 60)),
-      "ces refus s'afficheront en anglais chez un lecteur francophone",
+      sansCode,
+      "ces refus s'afficheront en anglais chez un lecteur francophone :\n  " +
+        sansCode.join("\n  "),
     ).toEqual([]);
   });
 
@@ -69,13 +113,40 @@ describe("les refus du changement de plan", () => {
    */
   it("ne laissent jamais passer une clé de traduction à l'écran", () => {
     const src = lire("app/dashboard/upgrade/page.tsx");
-    const i = src.indexOf("function planChangeErrorMessage");
+    const i = src.indexOf("function messageDeRefus");
     expect(i, "la fonction de message a changé de nom").toBeGreaterThan(0);
     const corps = src.slice(i, src.indexOf("\n  }", i));
     expect(corps, "le message brut du serveur repart tel quel à l'écran").not.toContain(
       "return data.error",
     );
     expect(corps, "une clé absente s'afficherait telle quelle").toContain("!== data.code");
+  });
+
+  /**
+   * ⚠️⚠️ ET L'ÉCRAN NE JETTE PLUS LE MESSAGE TRADUIT. `handleManagePortal`
+   * attrapait l'erreur et affichait « Une erreur est survenue. Veuillez
+   * réessayer. » — un texte qui invite à recommencer une action qui ne PEUT
+   * pas aboutir. Traduire un refus ne sert à rien si l'écran l'efface.
+   */
+  it("montrent le refus au lieu d'un texte générique", () => {
+    const src = lire("app/dashboard/upgrade/page.tsx");
+    const i = src.indexOf("function handleManagePortal");
+    expect(i, "le gestionnaire du portail a changé de nom").toBeGreaterThan(0);
+    const corps = src.slice(i, src.indexOf("\n  }", i));
+    expect(corps, "le message du refus est remplacé par un texte générique").toContain(
+      "err.message",
+    );
+  });
+
+  /** ⚠️ Et le portail traduit bien ses propres refus, pas seulement change-plan. */
+  it("le portail passe par le même traducteur", () => {
+    const src = lire("app/dashboard/upgrade/page.tsx");
+    const i = src.indexOf("function openBillingPortal");
+    const corps = src.slice(i, src.indexOf("\n  }", i));
+    expect(corps, "le portail renvoie encore le message brut du serveur").not.toMatch(
+      /new Error\(data\.error/,
+    );
+    expect(corps).toContain("messageDeRefus(data");
   });
 
   /**

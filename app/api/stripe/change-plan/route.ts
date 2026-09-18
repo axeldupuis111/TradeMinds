@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { hasPendingCancellation } from '@/lib/stripe-subscription'
+import { retrouverLAbonnement } from '@/lib/stripe-abonnement-retrouve'
 
 // Rang des plans payants : sert à déterminer si un changement est un upgrade ou un downgrade.
 const PLAN_RANK: Record<'plus' | 'premium', number> = { plus: 1, premium: 2 }
@@ -59,8 +60,15 @@ export async function POST(req: NextRequest) {
 
     const currentPlan = profile.plan as string
     if (currentPlan !== 'plus' && currentPlan !== 'premium') {
+      /**
+       * ⚠️ CE REFUS N'AVAIT PAS DE CODE, ET LE GARDE NE L'AVAIT PAS VU : il
+       * cherchait `NextResponse.json({` avec l'accolade COLLÉE à la
+       * parenthèse, et celui-ci met l'objet à la ligne. Une fenêtre de
+       * caractères n'est jamais une frontière — la leçon est écrite dans ce
+       * dépôt, trois gardes s'y étaient déjà trompés.
+       */
       return NextResponse.json(
-        { error: 'No paid subscription to change. Subscribe first.' },
+        { code: 'planchange_err_not_paid', error: 'No paid subscription to change. Subscribe first.' },
         { status: 400 }
       )
     }
@@ -93,11 +101,31 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle()
 
-    if (!subRow?.stripe_subscription_id) {
+    /**
+     * ⚠️⚠️ NOTRE BASE PEUT AVOIR PERDU LA LIGNE, ET DEUX CLIENTS QUI PAIENT
+     * SONT DANS CE CAS. Mesuré le 2026-09-18 : treize comptes payants, UNE
+     * seule ligne `subscriptions`. Dix n'ont aucun client Stripe (accès ouvert
+     * à la main, c'est normal) — mais DEUX en ont un, tous deux inscrits avant
+     * la rotation de tarifs du 2026-07-20, c'est-à-dire la signature exacte de
+     * l'incident de juillet : le webhook sortait en silence et la ligne n'a
+     * jamais été écrite. Ils ne pouvaient donc pas changer de plan, et lisaient
+     * « aucun abonnement actif » en payant tous les mois.
+     *
+     * Quand la base ne sait pas, on DEMANDE À STRIPE, qui est la source de
+     * vérité, et on réécrit la ligne au passage. L'appel ne part que sur ce
+     * chemin-là, celui qui allait échouer : aucun coût récurrent.
+     */
+    const abonnement = await retrouverLAbonnement(
+      user.id,
+      subRow?.stripe_subscription_id,
+      profile.stripe_customer_id as string | null,
+    )
+
+    if (!abonnement) {
       return NextResponse.json({ code: 'planchange_err_no_subscription', error: 'No active subscription found' }, { status: 400 })
     }
 
-    const subscription = await stripe.subscriptions.retrieve(subRow.stripe_subscription_id)
+    const subscription = await stripe.subscriptions.retrieve(abonnement.stripe_subscription_id)
     const item = subscription.items.data[0]
     if (!item) {
       return NextResponse.json({ code: 'planchange_err_server', error: 'Subscription has no item' }, { status: 500 })
