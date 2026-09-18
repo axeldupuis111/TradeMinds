@@ -162,14 +162,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/legal/privacy", request.url), 301);
   }
 
-  // Pages légales mono-langue : /fr/legal/terms → /legal/terms etc.
-  const legalMonoLangPaths = ["/legal/terms", "/legal/privacy", "/mentions-legales"];
-  for (const legalPath of legalMonoLangPaths) {
-    for (const loc of ["fr", "de", "es"] as const) {
-      if (pathname === `/${loc}${legalPath}`) {
-        return NextResponse.redirect(new URL(legalPath, request.url), 301);
-      }
-    }
+  /**
+   * PAGES MONO-LANGUE : /fr/legal/terms → /legal/terms, etc.
+   *
+   * ⚠️⚠️ LA LISTE EN OUBLIAIT DEUX, ET ELLES RENDAIENT 404. Mesuré en
+   * production le 2026-09-18, en appelant les 12 pages publiques dans les 4
+   * langues : `/fr/legal/cgv`, `/de/legal/cgv`, `/es/legal/cgv` et les trois
+   * `/…/partner/join` répondaient 404, pendant que leurs voisines immédiates
+   * (`/fr/legal/terms`, `/fr/legal/privacy`) redirigeaient correctement.
+   *
+   * Les CGV sont les conditions de VENTE, celles qu'on lit avant de payer ; et
+   * `/partner/join` est la page d'inscription des apporteurs, celle qu'un
+   * commercial partage sur le terrain.
+   *
+   * ⚠️ ON COMPARE DES PRÉFIXES, PAS DES CHEMINS EXACTS : `/legal/` couvre toute
+   * page légale future, et `/partner/` couvre `stats/<jeton>` dont le dernier
+   * segment change à chaque partenaire. Une liste de chemins exacts est ce qui
+   * a laissé passer les CGV.
+   */
+  const prefixesMonoLangue = ["/legal/", "/mentions-legales", "/partner/"];
+  for (const loc of ["fr", "de", "es"] as const) {
+    if (!pathname.startsWith(`/${loc}/`)) continue;
+    const sansLocale = pathname.slice(`/${loc}`.length);
+    if (!prefixesMonoLangue.some((pre) => sansLocale.startsWith(pre))) continue;
+    /**
+     * ⚠️⚠️ LA CHAÎNE DE REQUÊTE SURVIT. Un lien d'apporteur porte son code
+     * (`/partner/join?code=XANALYSE`), et `new URL(chemin, request.url)` la
+     * laisse tomber : la redirection aurait effacé l'attribution, donc la
+     * commission. Les codes d'apporteur sont des lignes en base, pas des
+     * objets Stripe : rien ne les retrouve après coup.
+     */
+    const cible = new URL(sansLocale, request.url);
+    cible.search = request.nextUrl.search;
+    return NextResponse.redirect(cible, 301);
   }
 
   // ────────────────────────────────────────────────────────────────
