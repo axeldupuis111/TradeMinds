@@ -13,6 +13,7 @@ import {
 } from "@/lib/analysis-insights";
 import {
   computeMechanicalViolations,
+  type FicheDuTrader,
   renderMechanicalBlock,
   selectSignificantTrades,
   type SelectionStrategy,
@@ -282,12 +283,12 @@ export async function POST(request: Request) {
      * fiche retenue parlait d'or. La lecture se fait ICI, avec l'identité
      * vérifiée : la page ne peut pas se déclarer un périmètre qu'elle n'a pas.
      */
-    let autresFiches: { pairs: string[]; sessions: string[] }[] = [];
+    let autresFiches: FicheDuTrader[] = [];
     try {
       const sb = createSupabaseServer();
       const { data: fiches, error: erreurFiches } = await sb
         .from("strategies")
-        .select("id, pairs, sessions")
+        .select("id, pairs, sessions, risk_reward, max_sl_pips, max_trades_per_day, max_consecutive_losses, max_daily_loss")
         .eq("user_id", userId);
       if (erreurFiches) {
         // ⚠️ Sans la liste, on juge comme avant : plus sévère, jamais faux
@@ -302,6 +303,11 @@ export async function POST(request: Request) {
         .map((f) => ({
           pairs: (f.pairs as string[]) ?? [],
           sessions: (f.sessions as string[]) ?? [],
+          risk_reward: f.risk_reward as number | null,
+          max_sl_pips: f.max_sl_pips as number | null,
+          max_trades_per_day: f.max_trades_per_day as number | null,
+          max_consecutive_losses: f.max_consecutive_losses as number | null,
+          max_daily_loss: f.max_daily_loss as number | null,
         }));
     } catch {
       // lecture indisponible — non bloquant

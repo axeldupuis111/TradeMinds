@@ -127,6 +127,67 @@ describe("l'horaire d'un trade", () => {
   });
 });
 
+/**
+ * ⚠️⚠️ ET LES CHIFFRES SUIVENT LA MÊME RÈGLE. La fiche analysée est choisie
+ * arbitrairement : juger un trade sur SON ratio minimum ou SON stop maximum,
+ * c'est lui appliquer une règle que le trader n'a peut-être pas écrite pour ce
+ * trade-là. On retient le chiffre le plus permissif de ses fiches, et on se
+ * tait dès qu'une fiche ne déclare pas la règle.
+ */
+describe("les chiffres d'une règle", () => {
+  const trade20pips = (): SelectionTrade => ({
+    ...trade("XAUUSD"),
+    entry_price: 4000,
+    sl: 3980, // 20 points, soit 200 pips sur XAUUSD
+    tp: 4020,
+    exit_price: 4020,
+  });
+
+  it("retient le stop le plus large des fiches", () => {
+    const serre: SelectionStrategy = { ...FICHE_OR, max_sl_pips: 10 };
+    expect(
+      computeMechanicalViolations([trade20pips()], serre).map((x) => x.type),
+    ).toContain("sl_too_wide");
+    expect(
+      computeMechanicalViolations([trade20pips()], serre, null, [
+        { pairs: ["XAUUSD"], sessions: [], max_sl_pips: 300 },
+      ]).map((x) => x.type),
+      "un stop autorisé par une autre fiche est encore compté trop large",
+    ).not.toContain("sl_too_wide");
+  });
+
+  it("retient le ratio le plus bas des fiches", () => {
+    const exigeante: SelectionStrategy = { ...FICHE_OR, risk_reward: 3 };
+    expect(
+      computeMechanicalViolations([trade20pips()], exigeante).map((x) => x.type),
+    ).toContain("low_rr");
+    expect(
+      computeMechanicalViolations([trade20pips()], exigeante, null, [
+        { pairs: ["XAUUSD"], sessions: [], risk_reward: 1 },
+      ]).map((x) => x.type),
+    ).not.toContain("low_rr");
+  });
+
+  /** ⚠️ Et une fiche qui n'écrit pas la règle rend la règle injugeable. */
+  it("se tait quand une fiche ne déclare pas la règle", () => {
+    const exigeante: SelectionStrategy = { ...FICHE_OR, max_sl_pips: 10 };
+    expect(
+      computeMechanicalViolations([trade20pips()], exigeante, null, [
+        { pairs: ["XAUUSD"], sessions: [], max_sl_pips: null },
+      ]).map((x) => x.type),
+      "une règle qu'une des méthodes n'écrit pas est quand même reprochée",
+    ).not.toContain("sl_too_wide");
+  });
+
+  /** ⚠️ Sans autre fiche, le jugement est exactement celui d'avant. */
+  it("ne change rien pour un trader à une seule fiche", () => {
+    const serre: SelectionStrategy = { ...FICHE_OR, max_sl_pips: 10, risk_reward: 3 };
+    const types = computeMechanicalViolations([trade20pips()], serre).map((x) => x.type);
+    expect(types).toContain("sl_too_wide");
+    expect(types).toContain("low_rr");
+  });
+});
+
 describe("la route d'analyse", () => {
   // ⚠️ Les commentaires DÉCRIVENT le défaut : les laisser ferait passer le
   // garde sur du code cassé. Ce dépôt a déjà payé ce piège trois fois.

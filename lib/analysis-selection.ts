@@ -138,6 +138,42 @@ function utcDay(iso: string): string {
  * Une règle non définie dans la stratégie n'est jamais vérifiée : c'est la même
  * convention que le prompt (« valeur Non défini → NE PAS vérifier cette règle »).
  */
+/**
+ * Ce qu'une autre fiche du trader apporte au jugement : son périmètre écrit et
+ * ses chiffres. Tout est optionnel — une fiche peut ne rien déclarer.
+ */
+export interface FicheDuTrader {
+  pairs: string[];
+  sessions: string[];
+  risk_reward?: number | null;
+  max_sl_pips?: number | null;
+  max_trades_per_day?: number | null;
+  max_consecutive_losses?: number | null;
+  max_daily_loss?: number | null;
+}
+
+/**
+ * LE CHIFFRE LE PLUS PERMISSIF DE TOUTES LES FICHES DU TRADER.
+ *
+ * ⚠️⚠️ MÊME RAISON QUE POUR LES INSTRUMENTS : on ignore quelle fiche gouvernait
+ * un trade donné, donc on ne peut lui reprocher que ce qu'AUCUNE de ses fiches
+ * n'autorise. Si une seule fiche ne déclare pas la règle (`null`), le trader
+ * n'a pas écrit de limite pour cette méthode-là : la règle n'est pas jugeable.
+ *
+ * `sens` dit dans quel sens va la permissivité : un plafond (stop maximum,
+ * trades par jour) est d'autant plus permissif qu'il est HAUT, un plancher
+ * (ratio minimum) d'autant plus permissif qu'il est BAS.
+ */
+function chiffreLePlusPermissif(
+  valeurs: (number | null | undefined)[],
+  sens: "plafond" | "plancher",
+): number | null {
+  if (valeurs.some((v) => v == null)) return null;
+  const nombres = valeurs as number[];
+  if (nombres.length === 0) return null;
+  return sens === "plafond" ? Math.max(...nombres) : Math.min(...nombres);
+}
+
 export function computeMechanicalViolations(
   trades: SelectionTrade[],
   strategy: SelectionStrategy,
@@ -167,7 +203,7 @@ export function computeMechanicalViolations(
    * a écrit. C'est la règle déjà posée deux lignes plus bas : « on se tait
    * plutôt que de juger à moitié ».
    */
-  autresFiches: { pairs: string[]; sessions: string[] }[] = [],
+  autresFiches: FicheDuTrader[] = [],
 ): MechanicalViolation[] {
   const hits: Record<string, number[]> = {};
   const add = (type: MechanicalViolationType, idx: number) => {
@@ -203,6 +239,22 @@ export function computeMechanicalViolations(
    * peut rien reprocher. C'est déjà ce que faisait le code quand AUCUNE
    * session n'était reconnue ; il manquait le cas intermédiaire.
    */
+  /**
+   * ⚠️ LES CHIFFRES AUSSI SONT CEUX DE TOUTES SES FICHES. La fiche analysée
+   * est choisie arbitrairement ; juger un trade sur SON ratio minimum ou SON
+   * stop maximum, c'est lui appliquer une règle qu'il n'a peut-être pas écrite
+   * pour ce trade-là. On retient donc le chiffre le plus permissif, et on se
+   * tait dès qu'une fiche ne déclare pas la règle.
+   */
+  const toutes = fichesDInstruments;
+  const regleDuTrader = {
+    risk_reward: chiffreLePlusPermissif(toutes.map((f) => f.risk_reward), "plancher"),
+    max_sl_pips: chiffreLePlusPermissif(toutes.map((f) => f.max_sl_pips), "plafond"),
+    max_trades_per_day: chiffreLePlusPermissif(toutes.map((f) => f.max_trades_per_day), "plafond"),
+    max_consecutive_losses: chiffreLePlusPermissif(toutes.map((f) => f.max_consecutive_losses), "plafond"),
+    max_daily_loss: chiffreLePlusPermissif(toutes.map((f) => f.max_daily_loss), "plafond"),
+  };
+
   const fenetresDeclarees = fichesDInstruments.flatMap((f) => f.sessions.map(fenetreDeSession));
   // ⚠️ Une fiche sans plage horaire n'interdit aucune heure : l'union non plus.
   const uneFicheSansHoraire = fichesDInstruments.some((f) => f.sessions.length === 0);
@@ -256,12 +308,12 @@ export function computeMechanicalViolations(
      */
     const riskPips = risqueEnPips(t.pair, t.direction, t.entry_price, sl);
     if (riskPips != null) {
-      if (strategy.max_sl_pips != null && riskPips > strategy.max_sl_pips) {
+      if (regleDuTrader.max_sl_pips != null && riskPips > regleDuTrader.max_sl_pips) {
         add("sl_too_wide", idx);
       }
-      if (strategy.risk_reward != null && tp != null) {
+      if (regleDuTrader.risk_reward != null && tp != null) {
         const rewardPips = calculatePips(t.pair, t.entry_price, tp);
-        if (rewardPips > 0 && rewardPips / riskPips < strategy.risk_reward) {
+        if (rewardPips > 0 && rewardPips / riskPips < regleDuTrader.risk_reward) {
           add("low_rr", idx);
         }
       }
@@ -279,7 +331,7 @@ export function computeMechanicalViolations(
   }
 
   // ── Règles par jour / par série ───────────────────────────────────────────
-  if (strategy.max_trades_per_day != null && strategy.max_trades_per_day > 0) {
+  if (regleDuTrader.max_trades_per_day != null && regleDuTrader.max_trades_per_day > 0) {
     const perDay = new Map<string, number[]>();
     trades.forEach((t, idx) => {
       const d = utcDay(t.open_time);
@@ -290,9 +342,9 @@ export function computeMechanicalViolations(
     const offendingDays: number[] = [];
     let days = 0;
     for (const idxs of Array.from(perDay.values())) {
-      if (idxs.length > strategy.max_trades_per_day) {
+      if (idxs.length > regleDuTrader.max_trades_per_day) {
         days++;
-        offendingDays.push(...idxs.slice(strategy.max_trades_per_day));
+        offendingDays.push(...idxs.slice(regleDuTrader.max_trades_per_day));
       }
     }
     if (days > 0) {
@@ -319,12 +371,12 @@ export function computeMechanicalViolations(
    * deux seuils pour la même règle.
    */
   if (
-    strategy.max_daily_loss != null &&
-    strategy.max_daily_loss > 0 &&
+    regleDuTrader.max_daily_loss != null &&
+    regleDuTrader.max_daily_loss > 0 &&
     accountSize != null &&
     accountSize > 0
   ) {
-    const limite = (accountSize * strategy.max_daily_loss) / 100;
+    const limite = (accountSize * regleDuTrader.max_daily_loss) / 100;
     const parJour = new Map<string, number[]>();
     trades.forEach((t, idx) => {
       const d = utcDay(t.open_time);
@@ -346,7 +398,7 @@ export function computeMechanicalViolations(
     }
   }
 
-  if (strategy.max_consecutive_losses != null && strategy.max_consecutive_losses > 0) {
+  if (regleDuTrader.max_consecutive_losses != null && regleDuTrader.max_consecutive_losses > 0) {
     const chrono = trades
       .map((t, idx) => ({ idx, at: new Date(t.open_time).getTime(), net: netPnl(t) }))
       .sort((a, b) => a.at - b.at);
@@ -359,7 +411,7 @@ export function computeMechanicalViolations(
       if (getTradeResult(t.net) === "loss") {
         streak++;
         // Chaque trade pris AU-DELÀ du seuil est une continuation fautive.
-        if (streak > strategy.max_consecutive_losses) {
+        if (streak > regleDuTrader.max_consecutive_losses) {
           events++;
           offenders.push(t.idx);
         }
