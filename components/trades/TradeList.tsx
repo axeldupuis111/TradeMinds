@@ -8,7 +8,6 @@ import { getEmotionDisplay } from "@/lib/emotions";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 import { detectKillzone } from "@/lib/ict-constants";
 import {
-  KILLZONE_LABELS,
 } from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +16,7 @@ import { rattacherLesTrades } from "@/lib/rattachement-de-methode";
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Camera, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useMemo, useEffect, useRef, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
+import { nomDeKillzone } from "@/lib/ict-constants";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,8 +82,16 @@ const KILLZONE_STYLES: Record<string, string> = {
 };
 
 function KillzonePill({ kz }: { kz: string }) {
-  const { t } = useLanguage();
-  const label = KILLZONE_LABELS[kz] ? t(`da_kz_${kz}`) : kz;
+  const { lang } = useLanguage();
+  /**
+   * ⚠️⚠️ C ÉTAIT `KILLZONE_LABELS[kz] ? t(...) : kz` : une valeur absente de
+   * cette table s affichait TELLE QUELLE. Or la table ignore `london_close`,
+   * que le formulaire de saisie manuelle propose — un trader qui le choisit
+   * lisait « london_close » dans sa liste. Et la table disait encore
+   * « Hors session », que le correctif du jour avait remplacé par
+   * « Hors killzone » dans l autre table seulement.
+   */
+  const label = nomDeKillzone(kz, lang);
   const style = KILLZONE_STYLES[kz] ?? "bg-muted/10 text-foreground-muted border-border";
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-md text-xs border whitespace-nowrap ${style}`}>

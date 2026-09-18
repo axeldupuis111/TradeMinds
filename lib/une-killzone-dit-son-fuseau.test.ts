@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   FUSEAU_DES_KILLZONES,
   ICT_KILLZONES,
   KILLZONE_WINDOWS,
   detectKillzone,
+  nomDeKillzone,
 } from "./ict-constants";
 import { SESSIONS } from "./sessions-de-marche";
 
@@ -129,5 +132,53 @@ describe("l'ancre des killzones", () => {
     expect(ICT_KILLZONES.some((k) => k.value === "london_close")).toBe(true);
     // 16 h 30 à Paris tombe dans les deux : le code choisit celle qui décide.
     expect(detectKillzone("2026-06-26T14:30:00Z")).toBe("ny_pm");
+  });
+});
+
+describe("le nom court d une killzone", () => {
+  /**
+   * ⚠️⚠️ MON PROPRE CORRECTIF N AVAIT TOUCHÉ QU UNE TABLE SUR DEUX. Le soir du
+   * 2026-09-18, `ICT_KILLZONES` est passé à « Hors killzone » — parce que
+   * « Hors session » contredisait la règle de discipline sur vingt-quatre
+   * trades — pendant que TROIS écrans continuaient d afficher « Hors session » :
+   * la pastille de la liste des trades, le bloc de performance par timing et le
+   * tiroir de détail d un trade. Ils lisaient une autre table.
+   */
+  it("dit « hors killzone » partout, pas seulement dans le menu", () => {
+    for (const langue of ["fr", "en", "de", "es"] as const) {
+      const court = nomDeKillzone("off_session", langue);
+      expect(court.toLowerCase(), `« ${court} » parle encore de session en ${langue}`).not.toMatch(
+        /session|sitzung|sesión/,
+      );
+      expect(court.toLowerCase()).toContain("killzone");
+    }
+  });
+
+  /** ⚠️ Le nom court est le libellé long SANS ses heures : une seule source. */
+  it("est le libellé long débarrassé de ses heures", () => {
+    for (const { value, label } of ICT_KILLZONES) {
+      for (const langue of ["fr", "en", "de", "es"] as const) {
+        expect(label[langue], `${value} en ${langue}`).toContain(nomDeKillzone(value, langue));
+      }
+    }
+  });
+
+  /**
+   * ⚠️⚠️ ET `london_close` A UN NOM. L ancienne table l ignorait alors que le
+   * formulaire de saisie manuelle le PROPOSE : un trader qui le choisissait
+   * lisait « london_close » dans sa liste, une valeur brute à l écran.
+   */
+  it("nomme toutes les valeurs que le formulaire propose", () => {
+    for (const { value } of ICT_KILLZONES) {
+      const court = nomDeKillzone(value, "fr");
+      expect(court, `${value} s affiche tel quel`).not.toBe(value);
+    }
+  });
+
+  /** ⚠️ Et la table morte ne revient pas. */
+  it("plus aucune autre table de libellés de killzone", () => {
+    const derive = readFileSync(join(process.cwd(), "lib/strategy/derive.ts"), "utf8");
+    expect(derive, "KILLZONE_LABELS est revenu").not.toMatch(/export const KILLZONE_LABELS/);
+    expect(derive, "killzoneLabel est revenu").not.toMatch(/export function killzoneLabel/);
   });
 });

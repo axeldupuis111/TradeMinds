@@ -16,13 +16,12 @@ import {
 } from "recharts";
 import {
   computeConfluenceScore,
-  deriveTradeDuration,
-  KILLZONE_LABELS,
-} from "@/lib/strategy/derive";
+  deriveTradeDuration,} from "@/lib/strategy/derive";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 import { nombre, pourcent } from "@/lib/nombres";
+import { nomDeKillzone } from "@/lib/ict-constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -236,7 +235,7 @@ const KZ_ORDER = ["london_open", "ny_am", "ny_pm", "asia", "off_session"];
 
 function ZoneC({ trades, currency }: { trades: TradeRow[]; currency: string }) {
   const c = useChartColors();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const data = useMemo(() => {
     const map: Record<string, { pnl: number; count: number; wins: number }> = {};
@@ -255,12 +254,12 @@ function ZoneC({ trades, currency }: { trades: TradeRow[]; currency: string }) {
       .filter((kz) => map[kz].count > 0)
       .map((kz) => ({
         kz,
-        label: t(`da_kz_${kz}`) || KILLZONE_LABELS[kz] || kz,
+        label: nomDeKillzone(kz, lang),
         pnl: Number(map[kz].pnl.toFixed(2)),
         count: map[kz].count,
         winrate: Math.round((map[kz].wins / map[kz].count) * 100),
       }));
-  }, [trades, t]);
+  }, [trades, lang]);
 
   const tooltipStyle: React.CSSProperties = {
     backgroundColor: c.tooltipBg || "rgb(var(--card))",

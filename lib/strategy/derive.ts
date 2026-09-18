@@ -100,22 +100,13 @@ export function computeConfluenceScore(
   return Object.values(checklistState).filter(Boolean).length;
 }
 
-// ─── Killzone label (FR default, no translation key exists yet) ──────────────
-
-/**
- * Maps detectKillzone() return values to human-readable labels.
- * NOTE: No translation keys exist yet for these. A future pass should add
- * t("killzone_asia") etc. to translations.ts and use them in the UI.
- */
-export const KILLZONE_LABELS: Record<string, string> = {
-  asia: "Asie",
-  london_open: "London Open",
-  ny_am: "NY AM",
-  ny_pm: "NY PM",
-  off_session: "Hors session",
-};
-
-export function killzoneLabel(openTime: string): string {
-  const kz = detectKillzone(openTime);
-  return KILLZONE_LABELS[kz] || "—";
-}
+// ─── Libellé d une killzone ───────────────────────────────────────────────────
+//
+// ⚠️⚠️ `KILLZONE_LABELS` et `killzoneLabel` ONT ÉTÉ SUPPRIMÉS. C était une
+// TROISIÈME table de libellés, en français pour tout le monde, avec en
+// commentaire l aveu « No translation keys exist yet ». Elle ignorait aussi
+// `london_close`, que le formulaire de saisie manuelle propose : un trader qui
+// le choisissait lisait « london_close » dans sa liste.
+//
+// Le nom d une killzone se demande à `nomDeKillzone(valeur, langue)`
+// (`lib/ict-constants.ts`), qui le tire de la MÊME table que le libellé long.

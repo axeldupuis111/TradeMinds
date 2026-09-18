@@ -98,6 +98,32 @@ export const KILLZONE_WINDOWS: Record<string, [number, number]> = {
  */
 const KILLZONE_LONDON_CLOSE: [number, number] = [16, 17];
 
+/**
+ * LE NOM COURT D'UNE KILLZONE, dans la langue du lecteur.
+ *
+ * ⚠️⚠️ IL EXISTAIT EN DEUX AUTRES EXEMPLAIRES, et mon propre correctif du
+ * 2026-09-18 n'en a touché qu'un. `ICT_KILLZONES` est passé à « Hors killzone »
+ * — parce que « Hors session » contredisait la règle de discipline sur
+ * vingt-quatre trades de production — pendant que DEUX écrans continuaient
+ * d'afficher « Hors session » : la pastille de la liste des trades et le bloc
+ * de performance par timing. Ils lisaient `KILLZONE_LABELS`
+ * (`lib/strategy/derive.ts`, français pour tout le monde, avec en commentaire
+ * « No translation keys exist yet ») et les clés `da_kz_*`.
+ *
+ * ⚠️ ET CETTE TROISIÈME TABLE MENTAIT AUSSI PAR OMISSION : elle ignore
+ * `london_close`, que le formulaire de saisie manuelle PROPOSE. Un trader qui
+ * le choisit voyait `london_close` en toutes lettres dans sa liste — une valeur
+ * brute à l'écran, le défaut que ce dépôt traque depuis des semaines. Aucune
+ * ligne de production n'en portait, mais l'option était offerte.
+ *
+ * ⚠️ LE NOM COURT ET LE LIBELLÉ LONG VIENNENT DE LA MÊME SOURCE : l'un est
+ * l'autre sans ses heures. Ils ne peuvent plus se contredire.
+ */
+export function nomDeKillzone(valeur: string, langue: Lang): string {
+  if (valeur === "off_session") return HORS_KILLZONE[langue];
+  return NOMS_DE_KILLZONE[valeur]?.[langue] ?? valeur;
+}
+
 const NOMS_DE_KILLZONE: Record<string, LabelMap> = {
   asia: { fr: "Asia", en: "Asia", de: "Asien", es: "Asia" },
   london_open: { fr: "London Open", en: "London Open", de: "London Open", es: "London Open" },

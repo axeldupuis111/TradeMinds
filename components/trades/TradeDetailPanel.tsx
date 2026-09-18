@@ -29,6 +29,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { pourcent } from "@/lib/nombres";
 import { enDate } from "@/lib/dates";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
+import { nomDeKillzone } from "@/lib/ict-constants";
 
 export interface TradeDetail {
   id: string;
@@ -515,7 +516,12 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
       ? (stratTags.setups.find((s) => s.value === derivedSetupValue)?.label[lang as Lang] ?? derivedSetupValue)
       : null;
   const derivedKzKey = trade.open_time ? detectKillzone(trade.open_time) : "";
-  const derivedKillzone = derivedKzKey ? t(`da_kz_${derivedKzKey}`) : "—";
+  /**
+   * ⚠️ TROISIÈME SURFACE à lire les clés `da_kz_*`, qui disaient encore
+   * « Hors session » après la correction du 2026-09-18. Un seul nom, une
+   * seule source.
+   */
+  const derivedKillzone = derivedKzKey ? nomDeKillzone(derivedKzKey, lang as Lang) : "—";
   const { category: durationCategory, minutes: durationMinutes } = trade.open_time && trade.close_time
     ? deriveTradeDuration(trade.open_time, trade.close_time)
     : { category: "scalp" as const, minutes: 0 };
