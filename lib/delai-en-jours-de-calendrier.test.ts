@@ -86,12 +86,26 @@ describe("le délai du calendrier économique se compte en jours calendaires", (
    * ⚠️ ET LA PAGE S'EN SERT VRAIMENT. Un calcul juste que l'écran n'appelle pas
    * ne corrige rien : c'est la moitié de défaut que ce dépôt collectionne.
    */
-  it("le calendrier appelle bien le calcul en jours calendaires", () => {
-    const src = readFileSync(join(process.cwd(), "app/dashboard/calendar/page.tsx"), "utf8");
-    expect(src, "la page ne compte plus en jours de calendrier").toContain("joursEntreCles(");
-    expect(
-      src,
-      "la division du temps écoulé est revenue",
-    ).not.toMatch(/cal_in_days[^]{0,120}Math\.round\(mins/);
+  /**
+   * ⚠️ CE TEST VISAIT `joursEntreCles(` AVEC SA PARENTHÈSE, donc l'APPEL, donc
+   * une mise en œuvre précise. Le jour où le calcul a rejoint le module partagé
+   * du calendrier — la page le lui FOURNIT désormais (`joursEntre:
+   * joursEntreCles`) au lieu de l'appeler — il est tombé sur du code correct.
+   * C'est le quatrième garde de la journée à épingler la mise en œuvre plutôt
+   * que l'intention. On vérifie maintenant que les DEUX surfaces fournissent
+   * bien ce calcul, et que la division du temps écoulé n'est revenue nulle part.
+   */
+  it("les deux surfaces du calendrier comptent en jours calendaires", () => {
+    for (const f of [
+      "app/dashboard/calendar/page.tsx",
+      "components/session/EconomicCalendarCard.tsx",
+    ]) {
+      const src = readFileSync(join(process.cwd(), f), "utf8");
+      expect(src, `${f} ne compte plus en jours de calendrier`).toContain("joursEntreCles");
+    }
+    const partage = readFileSync(join(process.cwd(), "lib/economic-calendar.ts"), "utf8");
+    expect(partage, "la division du temps écoulé est revenue").not.toMatch(
+      /cal_in_days[^]{0,120}Math\.round\(mins/,
+    );
   });
 });

@@ -10,34 +10,28 @@
  * or the migration isn't applied yet.
  */
 
-import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import { useLanguage } from "@/lib/LanguageContext";
 import { langueCourante } from "@/lib/nombres";
 import { createClient } from "@/lib/supabase/client";
 import { loadTodayNews } from "@/lib/economic-calendar-client";
-import { impactEmoji, minutesUntil, type EconomicEvent, type Impact } from "@/lib/economic-calendar";
+import { delaiRelatif, impactEmoji, styleDImpact, type EconomicEvent } from "@/lib/economic-calendar";
+import { browserTimezone, joursEntreCles, localDateKey } from "@/lib/timezone";
 import { displayEventTitle } from "@/lib/economic-event-labels";
 import type { GlossaryLang } from "@/lib/economic-glossary";
 import { CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
 
-/** Yellow / orange / red styling by importance (low / medium / high). */
-function impactStyle(impact: Impact): { row: string; badge: string } {
-  switch (impact) {
-    case "high":   return { row: "border-red-500/30 bg-red-500/5",       badge: "bg-red-500/15 text-red-500" };
-    case "medium": return { row: "border-orange-500/30 bg-orange-500/5", badge: "bg-orange-500/15 text-orange-500" };
-    default:       return { row: "border-yellow-500/25 bg-yellow-500/5", badge: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-500" };
-  }
-}
+/**
+ * ⚠️ LES DEUX SURFACES DU CALENDRIER PARTAGENT CE CALCUL. Elles en portaient
+ * chacune une copie, et l'une des deux avait DÉJÀ divergé : le correctif du
+ * délai « en jours de calendrier » (2026-09-16) n'avait été appliqué qu'ici.
+ */
+const outilsDeDate = () => ({
+  fuseau: browserTimezone(),
+  cleDuJour: localDateKey,
+  joursEntre: joursEntreCles,
+});
 
-function relativeLabel(ev: EconomicEvent, t: Traduire): string {
-  const mins = minutesUntil(ev.event_time);
-  if (mins < -5) return t("news_passed");
-  if (Math.abs(mins) <= 5) return t("news_now");
-  if (mins < 60) return t("news_in_minutes").replace("{n}", String(mins));
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return t("news_in_hours").replace("{h}", String(h)).replace("{m}", String(m).padStart(2, "0"));
-}
 
 export default function EconomicCalendarCard() {
   const { t, lang } = useLanguage();
@@ -71,7 +65,7 @@ export default function EconomicCalendarCard() {
             hour: "2-digit",
             minute: "2-digit",
           });
-          const style = impactStyle(ev.impact);
+          const style = styleDImpact(ev.impact);
           return (
             <li
               key={`${ev.event_time}-${ev.currency}-${i}`}
@@ -83,7 +77,7 @@ export default function EconomicCalendarCard() {
                 {ev.currency}
               </span>
               <span className="text-sm text-foreground flex-1 min-w-0 truncate">{displayEventTitle(ev.title, lang as GlossaryLang)}</span>
-              <span className="text-[11px] text-muted shrink-0 tabular-nums">{relativeLabel(ev, t)}</span>
+              <span className="text-[11px] text-muted shrink-0 tabular-nums">{delaiRelatif(ev, t, outilsDeDate())}</span>
             </li>
           );
         })}

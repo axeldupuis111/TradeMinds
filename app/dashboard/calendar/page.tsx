@@ -8,15 +8,17 @@
  * isn't there yet. Filters persist across reloads (localStorage).
  */
 
-import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import { useLanguage } from "@/lib/LanguageContext";
 import { langueCourante } from "@/lib/nombres";
 import LectureRatee from "@/components/LectureRatee";
 import { createClient } from "@/lib/supabase/client";
 import { usePersistentState } from "@/lib/hooks/usePersistentState";
 import {
   currenciesForPairs,
+  delaiRelatif,
   impactEmoji,
   minutesUntil,
+  styleDImpact,
   type EconomicEvent,
   type Impact,
 } from "@/lib/economic-calendar";
@@ -51,42 +53,17 @@ const parseYmd = (s: string) => { const [y, m, d] = s.split("-").map(Number); re
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
-/** Yellow / orange / red styling by importance (mirrors EconomicCalendarCard). */
-function impactStyle(impact: Impact): { row: string; badge: string } {
-  switch (impact) {
-    case "high":   return { row: "border-red-500/30 bg-red-500/5",       badge: "bg-red-500/15 text-red-500" };
-    case "medium": return { row: "border-orange-500/30 bg-orange-500/5", badge: "bg-orange-500/15 text-orange-500" };
-    default:       return { row: "border-yellow-500/25 bg-yellow-500/5", badge: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-500" };
-  }
-}
+/**
+ * ⚠️ LES DEUX SURFACES DU CALENDRIER PARTAGENT CE CALCUL. Elles en portaient
+ * chacune une copie, et l'une des deux avait DÉJÀ divergé : le correctif du
+ * délai « en jours de calendrier » (2026-09-16) n'avait été appliqué qu'ici.
+ */
+const outilsDeDate = () => ({
+  fuseau: browserTimezone(),
+  cleDuJour: localDateKey,
+  joursEntre: joursEntreCles,
+});
 
-function relativeLabel(ev: EconomicEvent, t: Traduire): string {
-  const mins = minutesUntil(ev.event_time);
-  if (mins < -5) return t("news_passed");
-  if (Math.abs(mins) <= 5) return t("news_now");
-  if (mins < 60) return t("news_in_minutes").replace("{n}", String(mins));
-  if (mins < 60 * 24) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return t("news_in_hours").replace("{h}", String(h)).replace("{m}", String(m).padStart(2, "0"));
-  }
-  /**
-   * ⚠️⚠️ DES JOURS DE CALENDRIER, PAS DES TRANCHES DE VINGT-QUATRE HEURES.
-   * La version précédente divisait le temps écoulé et arrondissait, ce qui
-   * annonçait DEUX délais différents pour le même jour. Relevé le 2026-09-16 à
-   * 23 h, sous un seul titre « VENDREDI 18 SEPTEMBRE » : « dans 1 j » pour
-   * l'annonce de 01:30 (26 h) et « dans 2 j » pour celle de 12:30 (37 h).
-   *
-   * Le lecteur compte en jours du calendrier, et le titre du jour est juste
-   * au-dessus : c'est lui que le délai doit confirmer, pas contredire.
-   */
-  const fuseau = browserTimezone();
-  const jours = joursEntreCles(
-    localDateKey(fuseau),
-    localDateKey(fuseau, new Date(ev.event_time)),
-  );
-  return t("cal_in_days").replace("{n}", String(jours));
-}
 
 /** Parse a feed numeric string like "3.2%", "-1.4", "210K", "1.2M". */
 function parseNumeric(v: string | null | undefined): number | null {
@@ -191,7 +168,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
   const time = new Date(ev.event_time).toLocaleString(langueCourante(), {
     weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
   });
-  const style = impactStyle(ev.impact);
+  const style = styleDImpact(ev.impact);
   const dir = surprise(ev);
   const clearTitle = displayEventTitle(ev.title, glossaryLang);
 
@@ -225,7 +202,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
             {clearTitle !== ev.title && (
               <p className="text-[11px] text-foreground-subtle mt-0.5">{t("cal_feed_name")} : {ev.title}</p>
             )}
-            <p className="text-xs text-foreground-muted mt-0.5">{time} · {relativeLabel(ev, t)}</p>
+            <p className="text-xs text-foreground-muted mt-0.5">{time} · {delaiRelatif(ev, t, outilsDeDate())}</p>
           </div>
           <button onClick={onClose} aria-label={t("annotate_close")} className="p-1 rounded hover:bg-border/40 transition-colors shrink-0">
             <X className="w-4 h-4 text-foreground-muted" />
@@ -564,7 +541,7 @@ export default function CalendarPage() {
             <p className="text-sm font-bold tabular-nums text-foreground">
               {new Date(nextHigh.event_time).toLocaleString(langueCourante(), { weekday: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
-            <p className="text-[11px] text-red-400 tabular-nums font-medium">{relativeLabel(nextHigh, t)}</p>
+            <p className="text-[11px] text-red-400 tabular-nums font-medium">{delaiRelatif(nextHigh, t, outilsDeDate())}</p>
           </div>
         </button>
       )}
@@ -599,7 +576,7 @@ export default function CalendarPage() {
               <ul className="space-y-1.5 mt-2">
                 {g.events.map((ev, idx) => {
                   const time = new Date(ev.event_time).toLocaleTimeString(langueCourante(), { hour: "2-digit", minute: "2-digit" });
-                  const style = impactStyle(ev.impact);
+                  const style = styleDImpact(ev.impact);
                   const dir = surprise(ev);
                   const passed = minutesUntil(ev.event_time) < -5;
                   return (
@@ -626,7 +603,7 @@ export default function CalendarPage() {
                             </span>
                           )}
                           {!ev.actual && (
-                            <span className="text-[11px] text-foreground-muted shrink-0 tabular-nums">{relativeLabel(ev, t)}</span>
+                            <span className="text-[11px] text-foreground-muted shrink-0 tabular-nums">{delaiRelatif(ev, t, outilsDeDate())}</span>
                           )}
                         </button>
                       </li>

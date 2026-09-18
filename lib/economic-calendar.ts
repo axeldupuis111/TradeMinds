@@ -124,6 +124,93 @@ export function impactEmoji(impact: Impact): string {
   }
 }
 
+// ─── Comment une annonce s'affiche ────────────────────────────────────────────
+
+/**
+ * LES DEUX SURFACES DU CALENDRIER DISENT LA MÊME CHOSE DE LA MÊME ANNONCE.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ `relativeLabel` ÉTAIT RECOPIÉ DANS LES DEUX SURFACES ET AVAIT DIVERGÉ.
+ * La page Calendrier et la carte de la page Séance portaient chacune sa copie ;
+ * le 2026-09-16, un défaut a été corrigé dans UNE des deux — celui du délai
+ * annoncé en tranches de vingt-quatre heures, qui donnait « dans 1 j » et
+ * « dans 2 j » pour deux annonces du MÊME jour, sous un seul titre « vendredi
+ * 18 septembre ». La correction, commentaire compris, n'a jamais été reportée
+ * sur l'autre copie.
+ *
+ * ⚠️ AUCUN TRADER N'A VU LA DIFFÉRENCE, ET C'EST DIT HONNÊTEMENT : la carte de
+ * la page Séance ne montre que la journée en cours (`loadTodayNews` borne la
+ * lecture au jour local), donc la branche « en jours » ne pouvait pas s'y
+ * déclencher. Le défaut était dans le code, pas à l'écran — mais il y attendait
+ * le jour où cette carte montrerait deux jours.
+ *
+ * ⚠️ `impactStyle`, LUI, ÉTAIT IDENTIQUE AU CARACTÈRE PRÈS. Deux copies
+ * d'accord aujourd'hui, ce n'est pas un défaut ; deux copies dont l'une a déjà
+ * dérivé, c'est la preuve que la suivante dérivera.
+ */
+
+/** Les classes Tailwind d'une ligne d'annonce, par importance. */
+export function styleDImpact(impact: Impact): { row: string; badge: string } {
+  switch (impact) {
+    case "high":
+      return { row: "border-red-500/30 bg-red-500/5", badge: "bg-red-500/15 text-red-500" };
+    case "medium":
+      return {
+        row: "border-orange-500/30 bg-orange-500/5",
+        badge: "bg-orange-500/15 text-orange-500",
+      };
+    default:
+      return {
+        row: "border-yellow-500/25 bg-yellow-500/5",
+        badge: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-500",
+      };
+  }
+}
+
+/**
+ * Le délai avant une annonce, dans la langue du lecteur.
+ *
+ * ⚠️ LES OUTILS DE DATE ARRIVENT PAR PARAMÈTRE. Ce module est lu par le cron
+ * ET par deux écrans : `browserTimezone()` n'a de sens que côté navigateur, et
+ * l'appeler ici ferait dépendre une fonction serveur d'un `Intl` de client.
+ */
+export function delaiRelatif(
+  ev: Pick<EconomicEvent, "event_time">,
+  t: (cle: string) => string,
+  outils: {
+    fuseau: string;
+    cleDuJour: (fuseau: string, at?: Date) => string;
+    joursEntre: (depuis: string, jusqua: string) => number;
+  },
+  now: Date = new Date(),
+): string {
+  const mins = minutesUntil(ev.event_time, now);
+  if (mins < -5) return t("news_passed");
+  if (Math.abs(mins) <= 5) return t("news_now");
+  if (mins < 60) return t("news_in_minutes").replace("{n}", String(mins));
+  if (mins < 60 * 24) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return t("news_in_hours").replace("{h}", String(h)).replace("{m}", String(m).padStart(2, "0"));
+  }
+  /**
+   * ⚠️⚠️ DES JOURS DE CALENDRIER, PAS DES TRANCHES DE VINGT-QUATRE HEURES.
+   * La version d'origine divisait le temps écoulé et arrondissait, ce qui
+   * annonçait DEUX délais différents pour le même jour. Relevé le 2026-09-16 à
+   * 23 h, sous un seul titre « VENDREDI 18 SEPTEMBRE » : « dans 1 j » pour
+   * l'annonce de 01:30 (26 h) et « dans 2 j » pour celle de 12:30 (37 h).
+   *
+   * Le lecteur compte en jours du calendrier, et le titre du jour est juste
+   * au-dessus : c'est lui que le délai doit confirmer, pas contredire.
+   */
+  const jours = outils.joursEntre(
+    outils.cleDuJour(outils.fuseau, now),
+    outils.cleDuJour(outils.fuseau, new Date(ev.event_time)),
+  );
+  return t("cal_in_days").replace("{n}", String(jours));
+}
+
 // ─── Reconciling re-scheduled events ───────────────────────────────────────────
 
 /** Minimal shape of an `economic_events` row needed to reconcile against the feed. */
