@@ -7,6 +7,7 @@ import { MIN_BILANS_POUR_CLASSEMENT, computeAllTimeStats } from "@/lib/leaderboa
 import { PODIUM_FLAIR, getCommunityChallenge, isoWeekKey, previousWeekKey } from "@/lib/community-challenges";
 import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
 import { cleDeSaison, debutDeSaison } from "@/lib/saison";
+import { cleDeJourDuTrader } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,24 @@ interface ReviewRow { user_id: string; discipline_score: number | null; created_
 
 interface UserMetrics { avgScore: number; sessions: number; streak: number }
 
-// Calcule les métriques d'un utilisateur sur un sous-ensemble de reviews.
-function computeMetrics(reviews: ReviewRow[]): UserMetrics {
+/**
+ * Calcule les métriques d'un utilisateur sur un sous-ensemble de reviews.
+ *
+ * ⚠️⚠️ LA SÉRIE SE COMPTAIT EN JOURS DE GREENWICH, à dix lignes de l'appel qui
+ * la compte en jours du TRADER. `computeAllTimeStats`, juste en dessous
+ * (ligne 110), reçoit le fuseau et bucketise avec `localDateKey` ; celle-ci
+ * découpait `created_at.slice(0, 10)`. Deux définitions du même « jour », pour
+ * la même série de jours consécutifs au-dessus de 70.
+ *
+ * ⚠️ CE QUE ÇA COÛTE : à Los Angeles, une séance du lundi 18 h et une du mardi
+ * 9 h tombent le MÊME jour UTC (mardi). La série ne compte qu'un jour au lieu
+ * de deux, et les deux scores sont MOYENNÉS — ce qui peut faire passer la
+ * journée sous 70 et casser la série entière. Les profils du produit couvrent
+ * vingt-deux fuseaux, de Chicago à Sydney, et cette série décide des badges
+ * `streak_7`, `streak_30` et `streak_90`, qui donnent gels, certificats et
+ * emblèmes.
+ */
+function computeMetrics(reviews: ReviewRow[], fuseau?: string | null): UserMetrics {
   const scored = reviews.filter((r) => r.discipline_score != null);
   const sessions = scored.length;
   const avgScore = sessions ? Math.round(scored.reduce((s, r) => s + (r.discipline_score as number), 0) / sessions) : 0;
@@ -34,7 +51,7 @@ function computeMetrics(reviews: ReviewRow[]): UserMetrics {
   // Série : plus longue suite de jours calendaires consécutifs avec score moyen >= 70.
   const byDay = new Map<string, { sum: number; n: number }>();
   for (const r of scored) {
-    const d = r.created_at.slice(0, 10);
+    const d = cleDeJourDuTrader(r.created_at, fuseau);
     const a = byDay.get(d) ?? { sum: 0, n: 0 };
     a.sum += r.discipline_score as number; a.n += 1; byDay.set(d, a);
   }
@@ -100,7 +117,7 @@ export async function GET(req: NextRequest) {
     .from("profiles").select("leaderboard_opt_in, username, timezone, plan, plan_expires_at").eq("id", user.id).single();
   const { data: selfReviews } = await admin
     .from("session_reviews").select("user_id, discipline_score, created_at").eq("user_id", user.id).gte("created_at", sinceCur);
-  const selfM = computeMetrics((selfReviews ?? []) as ReviewRow[]);
+  const selfM = computeMetrics((selfReviews ?? []) as ReviewRow[], selfProfile?.timezone as string | null);
 
   // Stats tous-temps pour le mur de badges (plafonnées : les badges saturent
   // bien avant 2000 sessions).
@@ -112,10 +129,13 @@ export async function GET(req: NextRequest) {
   // Lecture paginée : au-delà de 1 000 inscrits au classement, une lecture non
   // bornée en ignorerait le reste sans un mot (voir lib/supabase-paginate.ts).
   // Un classement public amputé n'est pas « incomplet », il est faux.
-  const profiles = await fetchAllRows<{ id: string; username: string; plan: string }>((from, to) =>
+  const profiles = await fetchAllRows<{ id: string; username: string; plan: string; timezone: string | null }>((from, to) =>
     admin
       .from("profiles")
-      .select("id, username, plan")
+      // ⚠️ `timezone` : la série se compte en jours DU TRADER, comme le fait
+      // déjà `computeAllTimeStats`. Sans lui, deux séances du même trader
+      // tombent parfois le même jour UTC et sa série se casse.
+      .select("id, username, plan, timezone")
       .eq("leaderboard_opt_in", true)
       .not("username", "is", null)
       .order("id", { ascending: true })
@@ -211,6 +231,8 @@ export async function GET(req: NextRequest) {
   ]));
   // Badge Premium affiché sur le classement (avantage de statut du plan).
   const premiumById = new Map(profiles.map((p) => [p.id, p.plan === "premium"]));
+  // ⚠️ Le fuseau de chacun : sa série se compte en SES jours, pas en UTC.
+  const tzById = new Map(profiles.map((p) => [p.id as string, (p.timezone as string) || null]));
 
   // Emblème « Membre fondateur » (les 100 premiers abonnés de l'offre de
   // lancement) : statut à vie, affiché à côté du pseudo. Requête séparée et
@@ -265,13 +287,13 @@ export async function GET(req: NextRequest) {
   const curRows: { id: string; username: string; m: UserMetrics }[] = [];
   for (const id of ids) {
     const rv = curByUser.get(id) ?? [];
-    const m = computeMetrics(rv);
+    const m = computeMetrics(rv, tzById.get(id));
     if (m.sessions >= MIN_SESSIONS) curRows.push({ id, username: usernameById.get(id)!, m });
   }
 
   // Classement période précédente (pour le mouvement de rang).
   const prevRows = ids
-    .map((id) => ({ username: usernameById.get(id)!, m: computeMetrics(prevByUser.get(id) ?? []) }))
+    .map((id) => ({ username: usernameById.get(id)!, m: computeMetrics(prevByUser.get(id) ?? [], tzById.get(id)) }))
     .filter((r) => r.m.sessions >= MIN_SESSIONS);
   const prevRanks = rankMap(prevRows, mode);
 
