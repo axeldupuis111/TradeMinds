@@ -57,6 +57,34 @@ export default function CountUp({
   const [count, setCount] = useState(0);
 
   /**
+   * ⚠️⚠️ LE RENDU DU SERVEUR DISAIT ZÉRO, ET LE LECTEUR LE CROYAIT. Le filet
+   * ci-dessous ne pouvait rien pour ça : c'est un effet React, donc il ne
+   * s'exécute qu'APRÈS l'hydratation. Avant elle, le HTML envoyé au navigateur
+   * portait l'état initial du compteur — zéro.
+   *
+   * ⚠️ MESURÉ SUR LA PRODUCTION LE 2026-09-18, sur le tableau de bord : la carte
+   * « SCORE DE DISCIPLINE » a affiché **« 0/100 » pendant 3,6 SECONDES**, avec
+   * juste à côté le verdict « Discipline correcte, à améliorer » — un texte
+   * calculé, lui, à partir du VRAI score. Deux moitiés de la même carte qui se
+   * contredisaient, et c'est la carte principale du produit.
+   *
+   * ⚠️ DIX-SEPT CHIFFRES SONT DANS CE CAS sur cinq écrans : le score, le P&L du
+   * mois, les séries, les taux de réussite, le capital récupérable. Un zéro à la
+   * place d'un chiffre réel est le pire défaut possible sur un bilan — c'est
+   * écrit en toutes lettres dans l'en-tête de ce fichier, à propos du même
+   * composant, pour un défaut voisin corrigé à moitié.
+   *
+   * ⚠️ LA CORRECTION NE CHANGE RIEN À L'ANIMATION : tant que le client n'a pas
+   * pris la main, on rend la VALEUR. Dès qu'il l'a prise — au premier effet,
+   * donc dans le même passage que le démarrage de l'animation — on rend le
+   * compteur. Sur un appareil rapide, c'est indiscernable d'avant ; sur un
+   * appareil lent, sans JavaScript, à l'impression ou dans une capture, le
+   * lecteur voit enfin le bon chiffre.
+   */
+  const [clientPret, setClientPret] = useState(false);
+  useEffect(() => setClientPret(true), []);
+
+  /**
    * ⚠️ LE FILET, INDÉPENDANT DE TOUT LE RESTE. Il ne regarde ni l'intersection
    * ni les images : au bout du temps d'animation, la valeur est là.
    */
@@ -96,13 +124,15 @@ export default function CountUp({
    */
   const langue =
     locale ?? ((typeof document !== "undefined" && document.documentElement.lang) || "fr-FR");
+  /** ⚠️ Avant que le client ait la main : la valeur, jamais l'état initial. */
+  const affiche = clientPret ? count : end;
   const formatted =
     decimals > 0
-      ? count.toLocaleString(langue, {
+      ? affiche.toLocaleString(langue, {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
         })
-      : Math.round(count).toLocaleString(langue);
+      : Math.round(affiche).toLocaleString(langue);
 
   return (
     <span ref={ref} className={className}>

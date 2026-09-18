@@ -53,3 +53,50 @@ describe("CountUp arrive toujours à sa valeur", () => {
     expect(source).toContain("document.documentElement.lang");
   });
 });
+
+/**
+ * ET LE RENDU DU SERVEUR PORTE LA VALEUR, PAS ZÉRO.
+ *
+ * ⚠️⚠️ LE FILET CI-DESSUS NE POUVAIT RIEN AVANT L HYDRATATION : c est un effet
+ * React, il ne s exécute que côté client. Le HTML envoyé par le serveur
+ * portait donc l état initial du compteur — zéro.
+ *
+ * ⚠️ MESURÉ SUR LA PRODUCTION LE 2026-09-18, dans la session réelle : la carte
+ * « SCORE DE DISCIPLINE » du tableau de bord a affiché « 0/100 » pendant
+ * 3,6 SECONDES, avec à côté le verdict « Discipline correcte, à améliorer »,
+ * calculé lui à partir du VRAI score de 74. Deux moitiés de la même carte qui
+ * se contredisaient, sur la carte principale du produit.
+ *
+ * ⚠️ DIX-SEPT CHIFFRES ÉTAIENT DANS CE CAS sur cinq écrans : le score, le P&L
+ * du mois, les séries, les taux de réussite, le capital récupérable.
+ */
+describe("CountUp ne montre jamais zéro à la place de sa valeur", () => {
+  const source = readFileSync(
+    join(process.cwd(), "components/animations/CountUp.tsx"),
+    "utf8",
+  );
+
+  it("rend la valeur tant que le client n a pas pris la main", () => {
+    expect(source, "le rendu ne distingue plus le serveur du client").toContain(
+      "clientPret ? count : end",
+    );
+  });
+
+  /**
+   * ⚠️ LE DRAPEAU SE LÈVE DANS SON PROPRE EFFET, SANS DÉPENDANCE : s il
+   * dépendait de l intersection ou de `end`, il hériterait des conditions qui
+   * empêchent déjà l animation de démarrer, et le zéro reviendrait.
+   */
+  it("le drapeau ne dépend de rien d autre que du montage", () => {
+    expect(source).toContain("useEffect(() => setClientPret(true), []);");
+  });
+
+  /** ⚠️ Et le nombre formaté vient bien de cette valeur-là, pas du compteur. */
+  it("formate la valeur affichée, pas l état interne", () => {
+    const i = source.indexOf("const formatted");
+    expect(i).toBeGreaterThan(0);
+    const corps = source.slice(i, source.indexOf("return (", i));
+    expect(corps, "le formatage lit encore le compteur brut").not.toContain("count.toLocaleString");
+    expect(corps).toContain("affiche");
+  });
+});
