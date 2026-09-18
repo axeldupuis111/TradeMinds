@@ -3,12 +3,10 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { groupByUser, statsForPeriod, type ReviewRow, type TradeRow } from "@/lib/challenge-stats";
 import {
-  MIN_PODIUM_PARTICIPANTS,
   challengeCompleted,
   challengeProgress,
   challengeRankScore,
   challengesForWeek,
-  competitionRanks,
   getCommunityChallenge,
   isoWeekKey,
   previousWeekKey,
@@ -18,6 +16,7 @@ import {
   type CommunityChallenge,
   type WeekStats,
 } from "@/lib/community-challenges";
+import { cloturerLesSemaines } from "@/lib/cloture-des-defis";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 
 /**
@@ -56,7 +55,6 @@ export async function GET() {
   const prevPrevKey = previousWeekKey(prevKey);
   const days = weekDayKeys(weekKey);
   const prevDays = weekDayKeys(prevKey);
-  const prevPrevDays = weekDayKeys(prevPrevKey);
   const challenges = challengesForWeek(weekKey);
   const prevChallenges = challengesForWeek(prevKey);
 
@@ -100,77 +98,12 @@ export async function GET() {
     return s;
   };
 
-  // ── Clôture paresseuse de la semaine précédente ────────────────────────────
+  // ── Clôture paresseuse, RATTRAPAGE COMPRIS ─────────────────────────
+  // ⚠️⚠️ Elle ne regardait que `prevKey` : une semaine que personne n'ouvrait
+  // n'était jamais clos et ses récompenses étaient perdues (cinq semaines dans
+  // ce cas en base le 2026-09-18). Voir lib/cloture-des-defis.
   try {
-    // ⚠️ On lit `error` : sans lui, une table absente ou une policy refusée
-    // faisait croire que la semaine n'était PAS clôturée, et la clôture se
-    // rejouait indéfiniment sans jamais aboutir. Le `catch` ne pouvait pas
-    // l'attraper, le client Supabase ne jette pas.
-    const { data: closure, error: closureError } = await admin
-      .from("challenge_week_closures").select("week_key").eq("week_key", prevKey).maybeSingle();
-    if (closureError) {
-      console.error(
-        "[community-challenges] clôture hebdo illisible, les défis ne se clôtureront pas :",
-        closureError.message,
-      );
-    }
-    if (!closure) {
-      const rows: {
-        user_id: string; week_key: string; challenge_key: string;
-        completed: boolean; rank: number | null; progress: number; score: number;
-      }[] = [];
-      for (const c of prevChallenges) {
-        const ids = prev.filter((p) => p.challenge_key === c.key).map((p) => p.user_id);
-        const entries = ids.map((id) => {
-          const s = weekStatsOf(id, prevDays, prevPrevDays);
-          return { id, progress: challengeProgress(c, s), completed: challengeCompleted(c, s), score: challengeRankScore(c, s) };
-        });
-        const active = entries.filter((e) => e.progress > 0 || e.completed);
-        // Podium seulement s'il y a une vraie compétition ; sinon les rangs
-        // restent nuls (les finishers gardent leur gel).
-        const ranks = active.length >= MIN_PODIUM_PARTICIPANTS
-          ? competitionRanks(active.map((e) => e.score))
-          : active.map(() => null);
-        active.forEach((e, i) => {
-          rows.push({
-            user_id: e.id, week_key: prevKey, challenge_key: c.key,
-            completed: e.completed, rank: ranks[i], progress: e.progress,
-            score: Math.round(e.score * 1000) / 1000,
-          });
-        });
-      }
-      if (rows.length > 0) {
-        const { error: awardsError } = await admin.from("challenge_awards").upsert(rows, {
-          onConflict: "user_id,week_key,challenge_key",
-          ignoreDuplicates: true,
-        });
-        // ⚠️ ON NE MARQUE PAS LA SEMAINE CLÔTURÉE SI LES RÉCOMPENSES N'ONT PAS
-        // ÉTÉ ÉCRITES. L'ordre « awards puis marqueur » ci-dessous protège d'un
-        // crash, mais pas d'une écriture refusée : le client Supabase ne jette
-        // pas, l'erreur revenait dans `error` que personne ne lisait. Le
-        // marqueur passait donc quand même, et la semaine restait close à
-        // jamais avec zéro récompense distribuée. Personne ne l'aurait su :
-        // aucune trace, et la clôture ne se rejoue plus.
-        if (awardsError) {
-          console.error(
-            `[community-challenges] récompenses de la semaine ${prevKey} non écrites, clôture reportée :`,
-            awardsError.message,
-          );
-          throw awardsError;
-        }
-      }
-      // Marqueur écrit APRÈS les awards : un crash entre les deux rejoue la
-      // clôture (déterministe + contrainte unique → aucune perte, aucun doublon).
-      const { error: marqueurError } = await admin.from("challenge_week_closures").upsert({ week_key: prevKey }, { onConflict: "week_key", ignoreDuplicates: true });
-      if (marqueurError) {
-        // Sans trace, la clôture se rejouerait à chaque requête sans jamais
-        // aboutir : exactement le symptôme qu'on a mis des semaines à voir.
-        console.error(
-          `[community-challenges] marqueur de clôture ${prevKey} non écrit, la clôture se rejouera :`,
-          marqueurError.message,
-        );
-      }
-    }
+    await cloturerLesSemaines(admin, prevKey);
   } catch { /* migration absente — les défis restent servis sans clôture */ }
 
   // ── Défis de la semaine courante ───────────────────────────────────────────
