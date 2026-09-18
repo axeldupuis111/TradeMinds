@@ -72,10 +72,25 @@ export default function LeaderboardOptInCard() {
       </div>
       <p className="text-muted text-sm mb-4">{t("leaderboard_settings_desc")}</p>
 
+      {/**
+        * ⚠️⚠️ L'APPEL À L'ACTION N'AGISSAIT PAS. « Il te faut un pseudo —
+        * en choisir un » pointait sur `href="#"` : un lien qui remonte en haut
+        * de la page et ne fait rien d'autre. Le trader à qui on demande un
+        * geste devait trouver le champ tout seul.
+        *
+        * ⚠️ L'ancre vise l'INPUT, pas la section : le navigateur y défile ET
+        * lui donne le focus, donc le geste demandé est à portée de frappe.
+        *
+        * ⚠️ MESURÉ EN BASE LE 2026-09-18 : un compte est inscrit au classement
+        * sans pseudo. Il coche « participer », ne figure nulle part, et le seul
+        * chemin que le produit lui montrait ne menait nulle part.
+        */}
       {!hasUsername && (
         <p className="text-sm text-warning mb-3">
           {t("leaderboard_need_username")}{" "}
-          <a href="#" className="text-accent hover:underline">{t("leaderboard_need_username_cta")}</a>
+          <a href="#settings-settings-username" className="text-accent hover:underline">
+            {t("leaderboard_need_username_cta")}
+          </a>
         </p>
       )}
 

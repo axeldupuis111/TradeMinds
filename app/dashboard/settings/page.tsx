@@ -2,7 +2,6 @@
 
 import { lienPartageable } from "@/lib/seo";
 import LectureRatee from "@/components/LectureRatee";
-import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
 import SyncGuide from "@/components/settings/SyncGuide";
 import PushNotificationsCard from "@/components/settings/PushNotificationsCard";
@@ -342,7 +341,6 @@ export default function SettingsPage() {
     );
   }
 
-  const canShare = plan === "plus" || plan === "premium";
   const confirmWord = t("settings_delete_confirm_word");
   const profileUrl = lienPartageable(`/profile/${originalUsername}`);
 
@@ -503,15 +501,32 @@ export default function SettingsPage() {
         </select>
       </section>
 
-      {/* Public profile */}
-      <section className="bg-card border border-border rounded-xl p-5">
+      {/**
+        * Profil public.
+        *
+        * ⚠️⚠️ LA TABLE DES TARIFS LE DONNE AU PLAN GRATUIT, CET ÉCRAN LE
+        * REFUSAIT. `plan_feat_public_profile` est passé à `free: true` le
+        * 2026-09-16, avec la décision écrite : le verrou ne rapportait rien (les
+        * seuls profils publics existants appartenaient à des comptes premium),
+        * la page est une surface d'ACQUISITION qui se termine par un appel à
+        * l'inscription, et elle n'affiche aucun montant. Le commentaire de la
+        * matrice dit même pourquoi : « pour que le tableau de tarifs, la
+        * landing et le compteur disent enfin la même chose que le code ».
+        *
+        * ⚠️ LA MATRICE A ÉTÉ CHANGÉE, PAS L'ÉCRAN. Un inscrit gratuit lisait donc
+        * « Profil public ✓ » sur la page de tarifs et trouvait ici une invitation
+        * à payer. Le correctif n'avait été appliqué qu'à la promesse.
+        *
+        * ⚠️ ET ÇA EN CACHAIT UN AUTRE : sans ce champ, un gratuit ne peut pas se
+        * choisir de pseudo — or le pseudo commande aussi le CLASSEMENT, qui,
+        * lui, est annoncé gratuit depuis toujours. Mesuré en base : un compte
+        * inscrit au classement n'a pas de pseudo et n'y apparaît donc jamais.
+        */}
+      <section id="profil-public" className="bg-card border border-border rounded-xl p-5 scroll-mt-6">
         <h2 className="text-lg font-semibold text-foreground mb-1">{t("settings_public_title")}</h2>
         <p className="text-muted text-sm mb-4">{t("settings_public_desc")}</p>
 
-        {!canShare ? (
-          <UpgradeBanner message={t("settings_public_locked")} />
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             <div>
               <label htmlFor="settings-settings-username" className="block text-sm text-muted mb-1">{t("settings_username")}</label>
               <input id="settings-settings-username"
@@ -568,8 +583,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted">{t("settings_profile_shared")}</p>
               </div>
             )}
-          </div>
-        )}
+        </div>
       </section>
 
       {/* ⚠️⚠️ ON N'ENREGISTRE PAS UN FORMULAIRE QU'ON N'A PAS PU REMPLIR.
