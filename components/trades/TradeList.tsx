@@ -1482,10 +1482,16 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
                       {/* Supprimer — hover only */}
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        {/* ⚠️⚠️ UN BOUTON QUI N'APPARAÎT QU'AU SURVOL N'EXISTE PAS SUR
+                            UN ÉCRAN TACTILE — sauf pour être touché par erreur : il
+                            reste cliquable à `opacity: 0`. Mesuré en production le
+                            2026-09-18 : `opacity 0`, `pointer-events auto`, sur
+                            chaque ligne, et c'est une SUPPRESSION. Et 16 px de
+                            côté là où la WCAG 2.5.8 en demande 24. */}
                         <button
                           onClick={() => handleDelete(tr.id)}
                           disabled={deletingId === tr.id}
-                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50"
+                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50 p-2 -m-2"
                           title={t("trades_delete")}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

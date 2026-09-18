@@ -239,9 +239,11 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   {planLabel}
                 </span>
               </div>
+              {/* ⚠️ 98 × 16 px mesurés en production : la WCAG 2.5.8 demande 24.
+                  `py-1.5 -my-1.5` agrandit la zone sans rien déplacer. */}
               <button
                 onClick={() => { onClose(); router.push("/dashboard/upgrade"); }}
-                className="text-xs text-muted hover:text-accent transition-colors"
+                className="text-xs text-muted hover:text-accent transition-colors py-1.5 -my-1.5"
               >
                 {t("sidebar_plan_manage")}
               </button>

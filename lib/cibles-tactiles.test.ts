@@ -117,3 +117,78 @@ describe("les cibles tactiles", () => {
     ).not.toContain("cursor-pointer p-2 -m-2 box-content");
   });
 });
+
+/**
+ * UN BOUTON QUI N'APPARAÎT QU'AU SURVOL N'EXISTE PAS SUR UN ÉCRAN TACTILE.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ IL N'EXISTE PAS, SAUF POUR ÊTRE TOUCHÉ PAR ERREUR. `opacity: 0` ne retire
+ * pas un élément du flux et ne coupe pas les clics : sur un téléphone, où le
+ * survol n'arrive jamais, le bouton reste invisible ET touchable. Mesuré sur le
+ * DOM de production le 2026-09-18, sur la liste des trades : `opacity 0`,
+ * `pointer-events auto`, présent à chaque ligne — et c'est le bouton SUPPRIMER.
+ *
+ * ⚠️ TROIS COMMANDES ÉTAIENT DANS CE CAS, dont deux destructives : supprimer un
+ * trade, retirer un item de la checklist de séance, retirer la capture d'écran
+ * d'un trade. Les deux premières mesuraient aussi seize pixels de côté, là où
+ * la WCAG 2.5.8 en demande vingt-quatre.
+ *
+ * ── LA RÈGLE ────────────────────────────────────────────────────────────────
+ *
+ * Là où le survol n'existe pas (`@media (hover: none)`), la commande s'affiche.
+ */
+describe("les commandes révélées au survol", () => {
+  const SURVOL_ABSENT = "[@media(hover:none)]:opacity-100";
+  const REVELEE = /className=[^\n]*opacity-0 group-hover:opacity-100/;
+
+  const surfaces: [string, string][] = [
+    ["components/trades/TradeList.tsx", "supprimer un trade"],
+    ["app/dashboard/session/page.tsx", "retirer un item de checklist"],
+    ["components/trades/TradeDetailPanel.tsx", "annoter ou retirer une capture"],
+  ];
+
+  /** Les lignes de `fichier` qui posent une commande révélée au survol. */
+  function lignesRevelees(fichier: string): string[] {
+    const src = readFileSync(join(RACINE, fichier), "utf8");
+    return src.split("\n").filter((l) => REVELEE.test(l));
+  }
+
+  for (const [fichier, quoi] of surfaces) {
+    it(`s'affichent sans survol (${quoi})`, () => {
+      const lignes = lignesRevelees(fichier);
+      expect(
+        lignes.length,
+        "plus aucune commande révélée au survol ici : le garde ne protège plus rien",
+      ).toBeGreaterThan(0);
+      for (const l of lignes) {
+        expect(
+          l,
+          "invisible sur un écran tactile, et pourtant touchable : " + l.trim().slice(0, 90),
+        ).toContain(SURVOL_ABSENT);
+      }
+    });
+  }
+
+  /** ⚠️ Et les deux boutons à icône de seize pixels portent enfin une zone de 32. */
+  it("les deux boutons à icône ont une zone touchable", () => {
+    for (const fichier of ["components/trades/TradeList.tsx", "app/dashboard/session/page.tsx"]) {
+      const ligne = lignesRevelees(fichier)[0];
+      expect(ligne, `zone tactile de seize pixels dans ${fichier}`).toMatch(/\bp-2\b/);
+      expect(
+        ligne,
+        `la marge ajoutée n'est pas compensée dans ${fichier} : la mise en page bouge`,
+      ).toMatch(/-m-2\b/);
+    }
+  });
+
+  /** ⚠️ Et le bouton « gérer mon plan » de la barre latérale, 98 × 16 mesurés. */
+  it("le bouton de plan de la barre latérale est assez haut", () => {
+    const src = readFileSync(join(RACINE, "components/Sidebar.tsx"), "utf8");
+    const i = src.indexOf('t("sidebar_plan_manage")');
+    expect(i, "le bouton de plan a changé de nom").toBeGreaterThan(0);
+    const balise = src.slice(src.lastIndexOf("<button", i), i);
+    expect(balise, "seize pixels de haut : sous le minimum de la WCAG 2.5.8").toMatch(/py-1\.5/);
+    expect(balise, "la hauteur ajoutée n'est pas compensée").toMatch(/-my-1\.5/);
+  });
+});
