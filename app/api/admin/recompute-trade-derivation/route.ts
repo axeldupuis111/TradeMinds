@@ -6,16 +6,33 @@
  * derived setup is non-null (to avoid destroying manually-set values for
  * strategies that predate this feature and have no mapping).
  *
- * Protected by ADMIN_SECRET header. Run once after deploying this feature.
+ * ⚠️⚠️ CETTE ROUTE ÉTAIT INAPPELABLE EN PRODUCTION. Elle était la seule des
+ * huit routes d'administration à se garder par un `ADMIN_SECRET` — les sept
+ * autres lisent `ADMIN_EMAILS` — et cette variable n'existe PAS dans
+ * l'environnement de production (vérifié le 2026-09-18 : Vercel connaît
+ * ADMIN_EMAILS, CRON_SECRET, STRIPE_WEBHOOK_SECRET…, pas ADMIN_SECRET). Toute
+ * tentative tombait donc sur `secret !== undefined` et repartait en 401.
+ *
+ * ⚠️ CE QUE ÇA A COÛTÉ : le correctif de `detectKillzone` (l'heure d'été écrite
+ * en dur, corrigée le 2026-09-17) n'a jamais pu être reporté sur les données.
+ * Rejoué sur la production le 2026-09-18 : **onze trades portent une killzone
+ * que le code contredit** (« off_session » là où il calcule « ny_pm », etc.),
+ * et 213 des 288 trades réels n'en ont aucune. Une correction qu'on ne peut
+ * pas exécuter n'est pas une correction.
+ *
+ * Elle accepte donc les DEUX portes : l'en-tête `x-admin-secret` si le secret
+ * existe (rien de ce qui marchait ne cesse de marcher), et une session dont
+ * l'adresse figure dans `ADMIN_EMAILS`, comme les sept autres.
  *
  * Manual steps before running:
  *   1. Execute migrations/20260601_add_checklist_setup_mapping_to_strategies.sql in Supabase
  *   2. Re-submit your strategy on /dashboard/strategy to generate the mapping
  *   3. Call this endpoint: POST /api/admin/recompute-trade-derivation
- *      with header: x-admin-secret: <ADMIN_SECRET env var>
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { NextResponse } from "next/server";
 import {
@@ -24,9 +41,43 @@ import {
   detectKillzone,
 } from "@/lib/strategy/derive";
 
-export async function POST(request: Request) {
+/** L'appelant est-il administrateur, par le secret ou par sa session ? */
+async function estAdministrateur(request: Request): Promise<boolean> {
+  const attendu = process.env.ADMIN_SECRET;
   const secret = request.headers.get("x-admin-secret");
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
+  if (attendu && secret && secret === attendu) return true;
+
+  const cookieStore = cookies();
+  const client = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {
+          // lecture seule : on ne fait que vérifier la session
+        },
+      },
+    },
+  );
+  const { data: { user } } = await client.auth.getUser();
+  if (!user?.email) return false;
+
+  /**
+   * ⚠️ LISTE VIDE = PERSONNE. Si `ADMIN_EMAILS` venait à manquer, `includes`
+   * rend faux pour tout le monde : la route se ferme au lieu de s'ouvrir.
+   */
+  const admins = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return admins.includes(user.email.toLowerCase());
+}
+
+export async function POST(request: Request) {
+  if (!(await estAdministrateur(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
