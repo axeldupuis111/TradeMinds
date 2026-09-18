@@ -181,12 +181,11 @@ export default function LoginPage() {
     setCooldown(RESEND_COOLDOWN_S);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      if (signupMode) handleSignUp();
-      else handleSignIn();
-    }
-  }
+  /*
+   * ⚠️ `handleKeyDown` A ÉTÉ RETIRÉ : il posait la touche Entrée à la main sur
+   * chaque champ, faute de `<form>`. Le formulaire la donne nativement, et
+   * garder les deux soumettrait deux fois.
+   */
 
   const errorMessage = error ?? (notice === "expired_link" ? t("login_link_expired") : null);
   const successMessage =
@@ -217,7 +216,38 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-8 shadow-2xl shadow-black/30 card-inset">
-          <div className="space-y-5">
+          {/*
+            ⚠️⚠️ IL N'Y AVAIT AUCUN `<form>` SUR CETTE PAGE, et c'est celle qui
+            porte la CRÉATION DE COMPTE. Vérifié dans le DOM de la production le
+            2026-09-18 : `document.querySelector("form")` rendait `null`, les
+            deux champs n'avaient ni `name` ni `autocomplete`, et les deux
+            boutons se déclaraient `type="submit"` sans formulaire pour les
+            recevoir.
+
+            ⚠️ CE QUE ÇA COÛTE N'EST PAS THÉORIQUE : sans `<form>` et sans
+            `autocomplete`, le navigateur et les gestionnaires de mots de passe
+            (Chrome, Apple Trousseau, 1Password, Bitwarden) ne proposent ni de
+            GÉNÉRER un mot de passe à l'inscription, ni de l'ENREGISTRER, ni de
+            le remplir au retour. `autocomplete="new-password"` et
+            `current-password` sont le contrat documenté ; l'heuristique qui
+            s'applique à défaut est incertaine, et elle l'est surtout sur les
+            pages qui basculent entre connexion et inscription comme celle-ci.
+            Un client qui ne peut pas remplir automatiquement est un client qui
+            clique sur « mot de passe oublié », ou qui s'en va. Toute
+            l'acquisition du produit passe par cet écran.
+
+            ⚠️ LA TOUCHE ENTRÉE MARCHAIT DÉJÀ, par un `onKeyDown` posé sur
+            chaque champ. Le formulaire la donne nativement : garder les deux
+            déclencherait la soumission DEUX FOIS.
+          */}
+          <form
+            className="space-y-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (signupMode) handleSignUp();
+              else handleSignIn();
+            }}
+          >
             {/* Google OAuth */}
             <button
               type="button"
@@ -242,13 +272,20 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm text-muted mb-1.5">{t("login_email")}</label>
-              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0" placeholder="you@example.com" />
+              <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0" placeholder="you@example.com" />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm text-muted mb-1.5">{t("login_password")}</label>
               <div className="relative">
-                <input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 pr-10 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0" placeholder="••••••••" />
+                {/*
+                  ⚠️ `new-password` À L'INSCRIPTION, `current-password` À LA
+                  CONNEXION, et la différence n'est pas cosmétique : c'est elle
+                  qui décide si le gestionnaire PROPOSE un mot de passe fort ou
+                  cherche celui qui est déjà enregistré. Cette page fait les
+                  deux, donc l'attribut suit le mode.
+                */}
+                <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete={signupMode ? "new-password" : "current-password"} required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2.5 pr-10 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0" placeholder="••••••••" />
                 {/* ⚠️⚠️ CIBLE DE SEIZE PIXELS SUR SEIZE, mesurée à 375 px de
                     large : l'icône faisait toute la surface cliquable. WCAG 2.2
                     demande 24 px (2.5.8, niveau AA), et celle-ci est collée au
@@ -352,7 +389,11 @@ export default function LoginPage() {
               </label>
             )}
 
-            <button onClick={signupMode ? handleSignUp : handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-on-accent rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent btn-primary-shimmer transition-colors">
+            {/*
+              ⚠️ `type="submit"` ET PLUS D'`onClick` : le formulaire déclenche
+              déjà l'action. Garder les deux la lancerait DEUX FOIS sur un clic.
+            */}
+            <button type="submit" disabled={loading} className="w-full py-2.5 bg-accent text-on-accent rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent btn-primary-shimmer transition-colors">
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -375,7 +416,7 @@ export default function LoginPage() {
                 </span>
               </button>
             </div>
-          </div>
+          </form>
         </div>
 
         <p className="text-center mt-6">

@@ -1,6 +1,7 @@
 "use client";
 
 import PasswordRequirements, { isPasswordValid } from "@/components/auth/PasswordRequirements";
+import { LONGUEUR_MINIMALE } from "@/lib/exigences-de-mot-de-passe";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
@@ -108,11 +109,13 @@ export default function ResetPasswordPage() {
                 <div className="relative">
                   <input
                     id="password"
+                    name="new-password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={LONGUEUR_MINIMALE}
                     className="w-full px-4 py-2.5 pr-10 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0"
                     placeholder="••••••••"
                   />
@@ -139,11 +142,13 @@ export default function ResetPasswordPage() {
                 </label>
                 <input
                   id="confirm"
+                  name="confirm-password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={LONGUEUR_MINIMALE}
                   className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0"
                   placeholder="••••••••"
                 />

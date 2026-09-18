@@ -30,8 +30,21 @@ export interface ExigenceDeMotDePasse {
   test: (motDePasse: string) => boolean;
 }
 
+/**
+ * La longueur minimale, exportée pour que le NAVIGATEUR dise la même chose.
+ *
+ * ⚠️⚠️ C'ÉTAIT UNE TROISIÈME COPIE, ET ELLE ÉTAIT EN DÉSACCORD. La page de
+ * réinitialisation posait `minLength={6}` sur ses deux champs — la validation
+ * native du navigateur annonçait donc six caractères quand la règle du produit
+ * en exige huit. Un visiteur qui en tape sept passe le contrôle du navigateur
+ * et se fait refuser par le nôtre, ce qui est exactement le cas que ce module
+ * a été écrit pour empêcher : « un refus sans explication sur un mot de passe
+ * que l'écran déclare bon ».
+ */
+export const LONGUEUR_MINIMALE = 8;
+
 export const EXIGENCES_DE_MOT_DE_PASSE: ExigenceDeMotDePasse[] = [
-  { key: "length", cle: "password_req_length", test: (p) => p.length >= 8 },
+  { key: "length", cle: "password_req_length", test: (p) => p.length >= LONGUEUR_MINIMALE },
   { key: "lowercase", cle: "password_req_lowercase", test: (p) => /[a-z]/.test(p) },
   { key: "uppercase", cle: "password_req_uppercase", test: (p) => /[A-Z]/.test(p) },
   { key: "digit", cle: "password_req_digit", test: (p) => /[0-9]/.test(p) },
