@@ -149,7 +149,7 @@ export default function GoalsStreaks() {
     // ⚠️ `null` = je n'ai pas tout lu. Le transformer en `[]` inventerait une
     // série de zéro jour à quelqu'un qui en a soixante-quinze.
     setLectureRatee(trades === null);
-    const streaks = serieDepuisLesTrades(trades ?? [], frozenDays);
+    const streaks = serieDepuisLesTrades(trades ?? [], frozenDays, browserTimezone());
     const streakCount = streaks.current;
     setStreak(streaks.current);
     setRecord(streaks.record);
@@ -177,7 +177,7 @@ export default function GoalsStreaks() {
 
     // Candidate = most recent emotional, not-yet-frozen day (the one breaking the
     // current streak), only if recent enough (≤ 30 days) to be worth protecting.
-    setFreezeCandidate(jourAGeler(joursEmotionnels(trades || []), frozenDays));
+    setFreezeCandidate(jourAGeler(joursEmotionnels(trades || [], browserTimezone()), frozenDays));
 
     // Weekly goal: count revenge trades this week (Monday in the trader's local zone)
     const monday = weekStartLocalKey(browserTimezone());

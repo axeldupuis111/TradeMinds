@@ -37,6 +37,7 @@ describe("la série de discipline est calculée à un seul endroit", () => {
     const serie = serieDepuisLesTrades(
       [jour("2026-09-01"), jour("2026-09-02"), jour("2026-09-03")],
       [],
+      "UTC",
     );
     expect(serie.current).toBe(3);
     expect(serie.record).toBe(3);
@@ -53,6 +54,7 @@ describe("la série de discipline est calculée à un seul endroit", () => {
         jour("2026-09-05"),
       ],
       [],
+      "UTC",
     );
     expect(serie.current).toBe(1);
     expect(serie.record).toBe(3);
@@ -65,18 +67,18 @@ describe("la série de discipline est calculée à un seul endroit", () => {
       jour("2026-09-02", "fomo"),
       jour("2026-09-03"),
     ];
-    expect(serieDepuisLesTrades(trades, []).current).toBe(1);
-    expect(serieDepuisLesTrades(trades, ["2026-09-02"]).current).toBe(3);
+    expect(serieDepuisLesTrades(trades, [], "UTC").current).toBe(1);
+    expect(serieDepuisLesTrades(trades, ["2026-09-02"], "UTC").current).toBe(3);
   });
 
   it("un seul trade émotionnel salit tout le jour", () => {
-    const j = joursEmotionnels([jour("2026-09-01"), jour("2026-09-01", "revenge")]);
+    const j = joursEmotionnels([jour("2026-09-01"), jour("2026-09-01", "revenge")], "UTC");
     expect(j.get("2026-09-01")).toBe(true);
   });
 
   it("les jours sans trade ne cassent rien : le marché était fermé", () => {
     // Vendredi, puis lundi : le week-end n'apparaît pas dans les trades.
-    const serie = serieDepuisLesTrades([jour("2026-09-04"), jour("2026-09-07")], []);
+    const serie = serieDepuisLesTrades([jour("2026-09-04"), jour("2026-09-07")], [], "UTC");
     expect(serie.current).toBe(2);
   });
 

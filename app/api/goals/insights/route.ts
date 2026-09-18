@@ -82,7 +82,7 @@ export async function GET() {
   // chiffre que l'écran contredisait. Une phrase qui affirme ne remplace pas
   // un appel à la fonction dont elle parle.
   const geles = ((gelsRes.data as { day: string }[] | null) ?? []).map((g) => g.day);
-  const streak = serieDepuisLesTrades(trades, geles);
+  const streak = serieDepuisLesTrades(trades, geles, fuseau);
 
   // ── Edge de discipline : trades posés vs impulsifs (win rate + résultat moyen).
   const composed = aggregate(trades.filter((t) => t.emotion != null && COMPOSED.has(t.emotion)));

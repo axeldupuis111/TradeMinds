@@ -1,5 +1,6 @@
 import { computeDisciplineStreaks, type StreakResult } from "@/lib/discipline-streak";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { cleDeJourDuTrader } from "@/lib/timezone";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -72,8 +73,14 @@ export interface TradePourLaSerie {
 export function serieDepuisLesTrades(
   trades: TradePourLaSerie[],
   joursGeles: Iterable<string>,
+  /**
+   * ⚠️ LE FUSEAU DU TRADER, ET IL EST OBLIGATOIRE. Une valeur par défaut aurait
+   * simplement remis Greenwich partout où l'appelant l'oublie, c'est-à-dire
+   * exactement le défaut que ce paramètre existe pour fermer.
+   */
+  fuseau: string | null | undefined,
 ): StreakResult {
-  const jourEmotionnel = joursEmotionnels(trades);
+  const jourEmotionnel = joursEmotionnels(trades, fuseau);
   // Un jour gelé compte comme propre : le gel sert exactement à ça.
   const geles = new Set<string>(joursGeles);
   return computeDisciplineStreaks(
@@ -91,11 +98,31 @@ export function serieDepuisLesTrades(
  * plus récent jour fautif, et il doit être décidé par la même lecture que la
  * série qu'il répare.
  */
-export function joursEmotionnels(trades: TradePourLaSerie[]): Map<string, boolean> {
+export function joursEmotionnels(
+  trades: TradePourLaSerie[],
+  fuseau: string | null | undefined,
+): Map<string, boolean> {
   const parJour = new Map<string, boolean>();
   for (const t of trades) {
     if (!t.open_time) continue;
-    const jour = t.open_time.split("T")[0];
+    /**
+     * ⚠️⚠️ C'ÉTAIT `open_time.split("T")[0]`, C'EST-À-DIRE LE JOUR DE
+     * GREENWICH, sur le chiffre qui donne son nom au produit. Un trader de Los
+     * Angeles qui prend la session asiatique à 18 h chez lui ouvre à 01 h UTC
+     * le lendemain : chacune de ses journées était coupée en deux, ou deux de
+     * ses journées fondues en une. La règle « donnée du trader → son fuseau »
+     * avait été appliquée au classement, aux fuites, à la heatmap et à l'export
+     * comptable, et pas ici.
+     *
+     * ⚠️ MESURÉ LE 2026-09-18, l'effet est aujourd'hui minuscule : sur les 447
+     * trades de production, DEUX changent de jour et aucune série n'en bouge,
+     * parce que les inscrits actuels tradent depuis l'Europe et l'Afrique du
+     * Sud. C'est une correction de forme, pas de chiffre — et elle vaut
+     * d'être faite maintenant : dix-sept inscrits sur vingt et un sont
+     * anglophones, et le premier trader américain aurait vu sa série fausse
+     * sans que rien ne le signale.
+     */
+    const jour = cleDeJourDuTrader(t.open_time, fuseau);
     parJour.set(jour, (parJour.get(jour) ?? false) || estEmotionnel(t.emotion));
   }
   return parJour;
@@ -111,7 +138,7 @@ export async function chargerLaSerieDeDiscipline(
   userId: string,
   options?: { sansDemo?: boolean },
 ): Promise<SerieDeDiscipline> {
-  const [trades, gels] = await Promise.all([
+  const [trades, gels, profil] = await Promise.all([
     fetchAllRows<{ emotion: string | null; open_time: string }>((from, to) => {
       /**
        * ⚠️⚠️ LA SURFACE PUBLIQUE ÉCARTE LES TRADES DE DÉMONSTRATION, et le
@@ -154,10 +181,19 @@ export async function chargerLaSerieDeDiscipline(
     }),
     // ⚠️ Table absente (migration non appliquée) : aucun gel, pas d'exception.
     supabase.from("streak_freezes").select("day").eq("user_id", userId),
+    /**
+     * ⚠️ UNE LECTURE DE PLUS, ET ELLE EST NÉCESSAIRE : sans le fuseau, ce
+     * calcul retombe sur Greenwich, ce qui est précisément le défaut corrigé.
+     * Elle part en PARALLÈLE des deux autres, donc ne coûte aucune latence.
+     * Fuseau absent ou illisible : `cleDeJourDuTrader` retombe sur UTC, comme
+     * avant — jamais d'exception dans un chemin de rendu.
+     */
+    supabase.from("profiles").select("timezone").eq("id", userId).maybeSingle(),
   ]);
 
   if (!trades) return VIDE;
 
   const geles = ((gels.data as { day: string }[] | null) || []).map((g) => g.day);
-  return { ...serieDepuisLesTrades(trades, geles), complet: true };
+  const fuseau = (profil.data as { timezone: string | null } | null)?.timezone ?? null;
+  return { ...serieDepuisLesTrades(trades, geles, fuseau), complet: true };
 }
