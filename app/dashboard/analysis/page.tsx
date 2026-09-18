@@ -502,6 +502,12 @@ export default function AnalysisPage() {
   const [aiHistoryLectureRatee, setAiHistoryLectureRatee] = useState(false);
   /** `null` quand la lecture a echoue : ce n'est pas « il n'en a pas ». */
   const [hasStrategy, setHasStrategy] = useState<boolean | null>(false);
+  /**
+   * ⚠️ LES FICHES DU TRADER ET CELLE QU'IL ANALYSE. Sans ce choix, la page
+   * jugeait tous les trades contre la fiche la plus ancienne, sans le dire.
+   */
+  const [fiches, setFiches] = useState<{ id: string; name: string | null }[]>([]);
+  const [ficheChoisie, setFicheChoisie] = useState<string | null>(null);
   /** Meme fait, nomme comme sur les dix autres ecrans : une convention se tient. */
   const [lectureRatee, setLectureRatee] = useState(false);
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
@@ -639,7 +645,7 @@ export default function AnalysisPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [{ count }, { data: strat, error: erreurStrategie }, trades] = await Promise.all([
+    const [{ count }, { data: fiches, error: erreurStrategie }, trades] = await Promise.all([
       supabase
         .from("trades")
         .select("*", { count: "exact", head: true })
@@ -652,12 +658,19 @@ export default function AnalysisPage() {
        * la fonctionnalite qu'il paie. Mesure en production en faisant repondre
        * 500 aux lectures. Une consigne fondee sur un fait faux fait AGIR.
        */
+      /**
+       * ⚠️⚠️ TOUTES SES FICHES, PAS LA PREMIÈRE. Un `.limit(1)` sans tri
+       * désignait une fiche au hasard, et l'analyse jugeait TOUS les trades
+       * contre elle. Mesuré en base : un abonné à trois fiches, dont une
+       * « trendline nas100 », se voyait reprocher 92 « mauvaise paire » sur
+       * 157 trades parce que la fiche retenue parlait d'or. La page Séance
+       * proposait déjà un sélecteur ; celle-ci n'en avait pas.
+       */
       supabase
         .from("strategies")
-        .select("id")
+        .select("id, name")
         .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle(),
+        .order("created_at", { ascending: true }),
       // Lecture paginée : ces dates servent à proposer les périodes analysables.
       // Non bornée, la lecture s'arrête à 1 000 lignes en silence (voir
       // lib/supabase-paginate.ts) et des périodes entières disparaîtraient.
@@ -683,7 +696,11 @@ export default function AnalysisPage() {
      * d'analyse. Le tableau de bord avait déjà payé ce `?? []` exact.
      */
     setLectureRatee(!!erreurStrategie || trades === null);
-    setHasStrategy(erreurStrategie ? null : !!strat);
+    setHasStrategy(erreurStrategie ? null : (fiches?.length ?? 0) > 0);
+    setFiches(fiches ?? []);
+    setFicheChoisie((actuelle) =>
+      actuelle && (fiches ?? []).some((f) => f.id === actuelle) ? actuelle : (fiches?.[0]?.id ?? null),
+    );
     setAllTrades(
       (trades ?? [])
         .slice()
@@ -775,12 +792,16 @@ export default function AnalysisPage() {
       if (!user) throw new Error(t("analysis_not_connected"));
 
       const [{ data: strategy }, trades] = await Promise.all([
-        supabase
-          .from("strategies")
-          .select("*")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle(),
+        // ⚠️ LA FICHE CHOISIE, pas la première venue : voir le sélecteur.
+        (ficheChoisie
+          ? supabase.from("strategies").select("*").eq("id", ficheChoisie).maybeSingle()
+          : supabase
+              .from("strategies")
+              .select("*")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle()),
         // Lecture paginée : ce sont les trades envoyés au modèle. Non bornée,
         // la lecture s'arrête à 1 000 lignes en silence (voir
         // lib/supabase-paginate.ts) et l'analyse porterait sur une partie de
@@ -1176,6 +1197,23 @@ export default function AnalysisPage() {
                 <option key={opt.key} value={opt.key}>{t(opt.labelKey)}</option>
               ))}
             </select>
+            {/* ⚠️⚠️ LA FICHE JUGÉE SE CHOISIT ET SE VOIT. Sans ce sélecteur, la
+                page prenait la plus ancienne en silence et lui opposait TOUS
+                les trades : 92 « mauvaise paire » sur 157 chez un abonné qui a
+                une fiche par instrument. La page Séance a le même depuis
+                toujours. */}
+            {fiches.length > 1 && (
+              <select
+                aria-label={t("strategy_select")}
+                value={ficheChoisie ?? ""}
+                onChange={(e) => setFicheChoisie(e.target.value)}
+                className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+              >
+                {fiches.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name || t("stratcmp_unnamed")}</option>
+                ))}
+              </select>
+            )}
             <span className={`text-sm ${filteredTradeCount === 0 ? "text-muted" : "text-foreground"}`}>
               {filteredTradeCount === 0
                 ? t("period_no_trades")

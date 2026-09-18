@@ -207,6 +207,23 @@ describe("la route d'analyse", () => {
    * déclare : sinon un client pourrait s'inventer un périmètre et effacer ses
    * propres violations.
    */
+  /**
+   * ⚠️⚠️ ET LA PAGE LAISSE CHOISIR. Elle prenait la fiche la plus ancienne par
+   * un `.limit(1)` sans tri, sans le dire. La page Séance propose ce sélecteur
+   * depuis toujours : c'est la même règle, appliquée à un écran sur deux.
+   */
+  it("la page d'analyse laisse choisir la fiche jugée", () => {
+    const page = readFileSync(join(RACINE, "app/dashboard/analysis/page.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
+    expect(page, "la page ne lit plus toutes les fiches du trader").toContain("setFiches(");
+    expect(page, "le sélecteur de fiche a disparu").toContain('aria-label={t("strategy_select")}');
+    expect(
+      page,
+      "l'analyse repart sur une fiche choisie au hasard",
+    ).toContain("ficheChoisie");
+  });
+
   it("lit les fiches avec l'identité du serveur", () => {
     const i = src.indexOf("autresFiches = ");
     const lecture = src.lastIndexOf('.from("strategies")', i);
