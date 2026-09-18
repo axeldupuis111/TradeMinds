@@ -177,8 +177,10 @@ export async function POST(req: Request) {
     if (localHour(tz) !== REMINDER_HOUR) continue;
     const debut = startOfDateKeyUtc(localDateKey(tz), tz);
     if (!debut) continue;
-    await fermerLesSeancesOubliees(supabase, user.id as string, debut.toISOString());
-    nettoyees++;
+    // ⚠️ ON COMPTE LES SÉANCES FERMÉES, pas les utilisateurs examinés : ce
+    // compteur incrémentait à chaque passage, donc un ménage qui ne fermait
+    // rien rendait le même chiffre qu'un ménage qui fermait douze séances.
+    nettoyees += await fermerLesSeancesOubliees(supabase, user.id as string, debut.toISOString());
   }
 
   let sent = 0;

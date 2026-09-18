@@ -346,6 +346,7 @@ const dict: Record<string, string> = {
   "close_trade_err_time": "Schließzeit erforderlich",
   "close_trade_err_time_before_open": "Schließzeit muss nach der Eröffnungszeit liegen",
   "close_trade_err_save": "Speichern fehlgeschlagen",
+  "close_trade_err_not_open": "Dieser Trade ist nicht mehr offen: Er wurde anderswo geschlossen (anderer Tab oder Broker-Sync). Lade die Liste neu.",
   "strategy_title": "Meine Strategien",
   "strategy_subtitle": "Beschreibe deine Strategien und die KI extrahiert automatisch deine Regeln.",
   "strategy_loading_sub": "Beschreibe deine Strategie in natürlicher Sprache",

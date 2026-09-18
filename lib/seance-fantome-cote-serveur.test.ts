@@ -80,7 +80,17 @@ describe("le ménage des séances oubliées", () => {
     const src = cron();
     const i = src.indexOf("let nettoyees = 0;");
     expect(i, "la boucle de ménage a changé de nom").toBeGreaterThan(0);
-    const boucle = src.slice(i, src.indexOf("}", src.indexOf("nettoyees++")));
+    /**
+     * ⚠️ L'ANCRE DE FIN EST L'APPEL AU MÉNAGE, PAS UN COMPTEUR. Elle était
+     * `nettoyees++`, et le jour où ce compteur est devenu
+     * `nettoyees += await fermerLesSeancesOubliees(...)` (il comptait les
+     * utilisateurs examinés, pas les séances fermées), `indexOf` a rendu -1 et la
+     * fenêtre est devenue vide : le garde s'est mis à lire une chaîne vide et à
+     * échouer sur du code correct.
+     */
+    const finAppel = src.indexOf("fermerLesSeancesOubliees", i);
+    expect(finAppel, "la boucle n'appelle plus le ménage").toBeGreaterThan(i);
+    const boucle = src.slice(i, src.indexOf(";", finAppel));
     expect(boucle, "le ménage passe par la règle des jours ouvrés").not.toContain("isReminderDue");
     expect(boucle).toContain("localHour(tz) !== REMINDER_HOUR");
   });

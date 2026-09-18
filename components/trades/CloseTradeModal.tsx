@@ -166,7 +166,18 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
     const closeIso = new Date(closeTime).toISOString();
 
-    const { error: dbError } = await supabase
+    /**
+     * ⚠️⚠️ LE GARDE-FOU `status = open` POUVAIT NE RIEN TROUVER, ET L'ÉCRAN
+     * DISAIT QUAND MÊME « c'est fait ». Une mise à jour qui ne touche aucune
+     * ligne n'est pas une erreur pour PostgREST : `error` reste nul, et le
+     * trader voyait sa modale se fermer sur un trade resté ouvert. Le cas
+     * arrive pour de vrai : deuxième onglet, ou synchronisation du courtier qui
+     * a clôturé la position entre-temps.
+     *
+     * C'est la règle écrite du dépôt (voir lib/supabase-silent-errors) :
+     * toute écriture non vérifiée ment.
+     */
+    const { data: misesAJour, error: dbError } = await supabase
       .from("trades")
       .update({
         status: "closed",
@@ -178,12 +189,17 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
         notes: mergedNotes,
       })
       .eq("id", trade.id)
-      .eq("status", "open"); // safety: only update if still open
+      .eq("status", "open") // safety: only update if still open
+      .select("id");
 
     setSaving(false);
     if (dbError) {
       console.error("Close trade failed:", dbError);
       setSaveError(t("close_trade_err_save"));
+      return;
+    }
+    if (!misesAJour || misesAJour.length === 0) {
+      setSaveError(t("close_trade_err_not_open"));
       return;
     }
     onSaved();

@@ -26,20 +26,30 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * tourne désormais aussi depuis la mise en page du tableau de bord, donc
  * derrière n'importe quelle page du produit.
  *
- * ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : c'est un ménage, refait à chaque
- * chargement. Un échec ne change rien à ce qui s'affiche et se rattrape tout
- * seul la fois d'après. La lecture, elle, se borne quand même à la journée en
- * cours, pour qu'un ménage raté n'éteigne pas le bandeau une deuxième fois.
+ * ⚠️ UN ÉCHEC N'EST PAS BLOQUANT : c'est un ménage, refait à chaque
+ * chargement, et il se rattrape tout seul la fois d'après. La lecture, elle, se
+ * borne quand même à la journée en cours, pour qu'un ménage raté n'éteigne pas
+ * le bandeau une deuxième fois.
+ *
+ * ⚠️⚠️ MAIS LE NOMBRE EST RENDU, PARCE QU'IL EST RAPPORTÉ. Le cron des rappels
+ * annonçait `nettoyees` dans sa réponse en comptant les UTILISATEURS EXAMINÉS,
+ * pas les séances fermées : un ménage qui ne ferme rien rendait le même chiffre
+ * qu'un ménage qui en ferme douze. Un nombre qu'on publie se mesure.
+ *
+ * @returns le nombre de séances réellement fermées (0 si la mise à jour a
+ *          échoué, ce qui reste sans conséquence pour l'appelant)
  */
 export async function fermerLesSeancesOubliees(
   supabase: SupabaseClient,
   userId: string,
   debutDuJour: string,
-): Promise<void> {
-  await supabase
+): Promise<number> {
+  const { data } = await supabase
     .from("sessions")
     .update({ active: false, ended_at: debutDuJour })
     .eq("user_id", userId)
     .eq("active", true)
-    .lt("created_at", debutDuJour);
+    .lt("created_at", debutDuJour)
+    .select("id");
+  return data ? data.length : 0;
 }
