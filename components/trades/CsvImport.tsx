@@ -510,7 +510,21 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       if (!demoMode && (plan === "plus" || plan === "premium")) {
         setSummaryLoading(true);
         try {
-          const { data: strat } = await supabase.from("strategies").select("name").eq("user_id", user.id).limit(1).single();
+          /**
+           * ⚠️ `.limit(1)` SANS TRI RENDAIT UNE FICHE AU HASARD, et le résumé
+           * du jour annonçait son nom au trader. `.single()` JETAIT en prime
+           * quand le trader n'a aucune fiche — l'erreur tombait dans le
+           * `catch` muet juste en dessous, et le résumé du jour ne s'affichait
+           * simplement pas. `maybeSingle()` rend `null`, ce qui est le cas
+           * normal d'un compte gratuit qui n'a encore rien écrit.
+           */
+          const { data: strat } = await supabase
+            .from("strategies")
+            .select("name")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
           const res = await fetch("/api/daily-summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -547,7 +561,25 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     try {
       const since = new Date(Date.now() - 30 * 86400000).toISOString();
       const [{ data: fullStrat }, { data: recentTrades }] = await Promise.all([
-        supabase.from("strategies").select("*").eq("user_id", userId).limit(1).maybeSingle(),
+        /**
+         * ⚠️⚠️ UNE FICHE AU HASARD PARTAIT À L'ANALYSE. `.limit(1)` sans tri
+         * laisse la base choisir : deux imports successifs pouvaient être
+         * analysés contre deux méthodes différentes, sans que rien ne le dise.
+         * Le tri rend le choix DÉTERMINISTE (la plus ancienne, comme partout
+         * ailleurs dans ce dépôt).
+         *
+         * ⚠️ ET LE COMPTAGE DES VIOLATIONS NE DÉPEND PLUS DE CE CHOIX : depuis
+         * la passe du 2026-09-18, `/api/analyze` relit LUI-MÊME toutes les
+         * fiches du trader et juge chaque trade sur la sienne. Cette fiche-ci
+         * ne sert plus qu'au bloc « STRATÉGIE DU TRADER » du prompt.
+         */
+        supabase
+          .from("strategies")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
         supabase
           .from("trades")
           .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap")

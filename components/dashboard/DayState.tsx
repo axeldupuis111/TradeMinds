@@ -14,6 +14,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
+import { reglesEcritesDuTrader, type FicheDuTrader } from "@/lib/regles-du-trader";
 import { createClient } from "@/lib/supabase/client";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { cn } from "@/lib/cn";
@@ -21,9 +22,6 @@ import { Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { pourcent, langueCourante } from "@/lib/nombres";
 
-interface Strategy {
-  max_trades_per_day: number | null;
-}
 
 interface DayStats {
   todayPnl: number;
@@ -157,12 +155,32 @@ export default function DayState() {
     const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
     const [{ data: strat }, { data: trades }, { data: activeSession }] = await Promise.all([
-      supabase.from("strategies").select("max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),
+      /**
+       * ⚠️⚠️ C'ÉTAIT `.limit(1)` SANS TRI, DONC UNE FICHE AU HASARD. La passe
+       * du matin avait corrigé SIX surfaces (analyse, calendrier, avertissement
+       * en direct, fuites de capital, coach, calculateur de position) et laissé
+       * celle-ci : le plafond « arrête-toi » venait d'une seule fiche, choisie
+       * par la base, pendant qu'un abonné premium en a trois. Le module partagé
+       * prend l'union et retient le chiffre le PLUS PERMISSIF : on ne reproche
+       * jamais au trader une règle qu'il n'a pas écrite pour ce trade-là.
+       */
+      supabase
+        .from("strategies")
+        .select("max_trades_per_day")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true }),
       supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).eq("challenge_id", selectedAccount.id).gte("open_time", today),
       supabase.from("sessions").select("created_at").eq("user_id", user.id).eq("active", true).gte("created_at", today).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
-    const strategy = strat as Strategy | null;
+    /**
+     * ⚠️ TOUTES LES FICHES, PAS UNE. `reglesEcritesDuTrader` est la seule
+     * définition des règles opposables au trader : elle rend le chiffre le
+     * plus permissif, et `null` dès qu'UNE fiche ne pose pas la règle — une
+     * fiche sans plafond laisse le trader libre, elle ne le contraint pas au
+     * plafond d'une autre.
+     */
+    const regles = reglesEcritesDuTrader((strat ?? []) as FicheDuTrader[]);
     const accountSize = selectedAccount?.account_size ?? 0;
     const todaysTrades = trades || [];
     const todayCount = todaysTrades.length;
@@ -190,7 +208,7 @@ export default function DayState() {
     setStats({
       todayPnl, todayCount, streak: streakCount,
       maxLossEuro, remainingBudget, budgetPct,
-      maxTradesPerDay: strategy?.max_trades_per_day ?? null,
+      maxTradesPerDay: regles.max_trades_per_day,
       activeSessionStartedAt: activeSession?.created_at ?? null,
     });
     setLoading(false);

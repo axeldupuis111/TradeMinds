@@ -24,6 +24,7 @@ import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
+import { reglesEcritesDuTrader, type FicheDuTrader } from "@/lib/regles-du-trader";
 import { useEffect, useRef } from "react";
 import { alertesDeSeance } from "@/lib/session-alerts";
 
@@ -117,14 +118,28 @@ export default function StopTradingGuard() {
 
     const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
-    // Strategy is still the source for max_trades and consecutive_losses.
+    /**
+     * ⚠️⚠️ LA GARDE D'ARRÊT JUGEAIT SUR UNE FICHE TIRÉE AU HASARD. C'est le
+     * composant qui dit au trader « arrête-toi maintenant » : son plafond de
+     * trades et son nombre de pertes consécutives venaient d'un `.limit(1)`
+     * SANS TRI, donc de la fiche que la base voulait bien rendre. Mesuré le
+     * 2026-09-18 : un abonné premium a TROIS fiches ; on pouvait lui ordonner
+     * de s'arrêter au nom d'une méthode qu'il n'était pas en train de jouer.
+     *
+     * La passe du matin avait corrigé six surfaces et laissé celle-ci, la plus
+     * autoritaire de toutes. `reglesEcritesDuTrader` prend l'union des fiches
+     * et retient le chiffre le PLUS PERMISSIF : on ne coupe jamais quelqu'un au
+     * nom d'une règle qu'il n'a pas écrite pour ce trade-là.
+     *
+     * ⚠️ `.single()` JETAIT AUSSI quand le trader n'a aucune fiche — le cas
+     * normal d'un compte gratuit qui vient de s'inscrire.
+     */
     const [{ data: strat }, { data: trades }] = await Promise.all([
       supabase
         .from("strategies")
-        .select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct")
+        .select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, max_daily_loss, pairs, sessions, risk_reward, max_sl_pips, id")
         .eq("user_id", user.id)
-        .limit(1)
-        .single(),
+        .order("created_at", { ascending: true }),
       supabase
         .from("trades")
         .select("pnl, commission, swap, open_time, status")
@@ -134,7 +149,26 @@ export default function StopTradingGuard() {
         .order("open_time", { ascending: true }),
     ]);
 
-    const strategy: Strategy = strat ?? { max_trades_per_day: null, max_consecutive_losses: null, risk_per_trade_pct: null };
+    /**
+     * ⚠️ TOUTES LES FICHES, PAS UNE. `reglesEcritesDuTrader` rend `null` dès
+     * qu'UNE fiche ne pose pas la règle : une méthode sans plafond de trades
+     * laisse le trader libre, elle ne le soumet pas au plafond d'une autre.
+     *
+     * ⚠️ `risk_per_trade_pct` RESTE HORS DU MODULE, et c'est voulu : ce n'est
+     * pas une règle opposable (un plafond franchi) mais le risque DÉCLARÉ, qui
+     * sert à repérer une perte plus lourde que prévu. Le prendre « le plus
+     * permissif » n'aurait aucun sens ; on garde la valeur de la fiche la plus
+     * ancienne, comme avant, et le tri la rend au moins déterministe.
+     */
+    const fiches = (strat ?? []) as FicheDuTrader[];
+    const regles = reglesEcritesDuTrader(fiches);
+    const strategy: Strategy = {
+      max_trades_per_day: regles.max_trades_per_day,
+      max_consecutive_losses: regles.max_consecutive_losses,
+      risk_per_trade_pct:
+        (fiches[0] as { risk_per_trade_pct?: number | null } | undefined)?.risk_per_trade_pct ??
+        null,
+    };
     const todayTrades = trades || [];
 
     // todayPnl — scoped to the active account (challenge_id).

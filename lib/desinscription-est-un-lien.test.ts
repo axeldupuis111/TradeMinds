@@ -131,9 +131,13 @@ describe("la désinscription des e-mails récurrents", () => {
 
     // Quatre libellés distincts, sinon « traduit » veut dire recopié — vérifiés
     // là où ils vivent désormais, une seule fois.
-    const module = lire("lib/desinscription.ts");
+    // ⚠️ PAS `module` COMME NOM DE VARIABLE : ESLint l'interdit (il masque le
+    // `module` de Node) et `next build` refuse de compiler. `tsc` et vitest,
+    // eux, passaient — c'est la raison pour laquelle le build local fait
+    // partie du contrôle avant chaque pousse.
+    const partage = lire("lib/desinscription.ts");
     const libelles = Array.from(
-      module.matchAll(/^\s+(?:fr|en|de|es):\s*"([^"]{8,})",\s*$/gm),
+      partage.matchAll(/^\s+(?:fr|en|de|es):\s*"([^"]{8,})",\s*$/gm),
     ).map((m) => m[1]);
     expect(new Set(libelles).size, "moins de quatre libellés distincts").toBeGreaterThanOrEqual(4);
   });

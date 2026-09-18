@@ -70,7 +70,12 @@ export function useStrategyTags(strategyId?: string): StrategyTagsResult {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          /**
+           * ⚠️ `.single()` JETAIT quand le trader n'a aucune fiche, ce qui est
+           * le cas normal d'un compte gratuit qui vient de s'inscrire.
+           * `maybeSingle()` rend `null`, que le code sait déjà traiter.
+           */
+          .maybeSingle();
         strategy = data;
       }
 
