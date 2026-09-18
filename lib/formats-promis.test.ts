@@ -154,8 +154,12 @@ describe("les plateformes promises sur la page d'accueil", () => {
   it("un en-tête explicite gagne sur un en-tête ambigu", () => {
     const r = parseCSV(
       [
-        "Symbol,Contracts,Side,Entry Price,Close Price,Realized PnL",
-        "NQ 12-26,3,Buy,19850,19875,250",
+        // ⚠️ LA COLONNE DE DATE EST LÀ EXPRÈS : `trades.open_time` est NOT NULL,
+        // et un fichier sans date part désormais vers le mappage manuel. Sans
+        // elle, ce test éprouverait la désambiguïsation des en-têtes sur un
+        // fichier dont l'import échouait de toute façon.
+        "Symbol,Contracts,Side,Entry Price,Close Price,Realized PnL,Order Time",
+        "NQ 12-26,3,Buy,19850,19875,250,2026-09-01 14:30:00",
       ].join("\n"),
     );
     expect(r.trades[0].pair).toBe("NQ 12-26");

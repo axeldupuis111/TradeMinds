@@ -45,7 +45,10 @@ const MAPPING_FIELDS: { key: MappableField; labelKey: string; required: boolean 
   { key: "pair",        labelKey: "csv_col_pair",        required: true },
   { key: "direction",   labelKey: "csv_col_direction",   required: true },
   { key: "pnl",        labelKey: "csv_col_pnl",         required: true },
-  { key: "open_time",  labelKey: "csv_col_open_time",   required: false },
+  // ⚠️ OBLIGATOIRE : `trades.open_time` est NOT NULL. Laissée facultative, la
+  // colonne pouvait ne pas être choisie du tout, et l'import entier échouait
+  // sur une contrainte de base, avec un message que personne ne peut lire.
+  { key: "open_time",  labelKey: "csv_col_open_time",   required: true },
   { key: "close_time", labelKey: "csv_col_close_time",  required: false },
   { key: "lot_size",   labelKey: "csv_col_lot",         required: false },
   { key: "entry_price",labelKey: "csv_col_entry",       required: false },

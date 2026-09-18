@@ -31,7 +31,7 @@ const LANGUES = ["fr", "en", "de", "es"] as const;
 function dictionnaire(langue: string): Record<string, string> {
   const src = readFileSync(join(RACINE, `lib/i18n/${langue}.ts`), "utf8");
   const out: Record<string, string> = {};
-  for (const m of src.matchAll(/^\s*"([a-z0-9_]+)":\s*"((?:[^"\\]|\\.)*)",?\s*$/gm)) {
+  for (const m of Array.from(src.matchAll(/^\s*"([a-z0-9_]+)":\s*"((?:[^"\\]|\\.)*)",?\s*$/gm))) {
     out[m[1]] = m[2];
   }
   return out;
@@ -40,7 +40,7 @@ function dictionnaire(langue: string): Record<string, string> {
 /** Les `{x}` qui portent une VALEUR, marqueurs d'accord exclus. */
 function variables(texte: string): Set<string> {
   const out = new Set<string>();
-  for (const m of texte.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g)) out.add(m[1]);
+  for (const m of Array.from(texte.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g))) out.add(m[1]);
   return out;
 }
 

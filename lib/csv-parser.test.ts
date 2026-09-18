@@ -99,8 +99,8 @@ describe("parseCSV — simple TradeDiscipline template", () => {
 
 describe("parseCSV — fuzzy detection (exchange exports)", () => {
   const csv = [
-    "Symbol,Side,Quantity,Entry Price,Close Price,Realized PnL",
-    "BTCUSDT,Buy,0.5,60000,60500,250",
+    "Symbol,Side,Quantity,Entry Price,Close Price,Realized PnL,Order Time",
+    "BTCUSDT,Buy,0.5,60000,60500,250,2026-09-01 10:00:00",
   ].join("\n");
 
   it("detects pair + pnl columns from a Binance-like export", () => {
@@ -112,6 +112,28 @@ describe("parseCSV — fuzzy detection (exchange exports)", () => {
       lot_size: 0.5,
       pnl: 250,
     });
+  });
+
+  /**
+   * ⚠️⚠️ CE TEST CERTIFIAIT UN IMPORT IMPOSSIBLE. Sa version d'origine n'avait
+   * AUCUNE colonne de date et attendait un trade : le parseur en rendait bien
+   * un, mais `trades.open_time` est NOT NULL et l'insertion se fait en un seul
+   * lot, donc ce fichier ne pouvait PAS entrer en base. Le test était vert sur
+   * un chemin qui échouait toujours, avec pour seul message une contrainte
+   * Postgres traduite en erreur générique.
+   *
+   * La bonne réponse à un fichier sans date, c'est le mappage manuel : le
+   * trader y désigne sa colonne de date, et s'il n'y en a pas, il l'apprend
+   * tout de suite au lieu de voir son import refusé en bloc.
+   */
+  it("envoie un export sans date vers le mappage manuel au lieu de faire semblant", () => {
+    const sansDate = [
+      "Symbol,Side,Quantity,Entry Price,Close Price,Realized PnL",
+      "BTCUSDT,Buy,0.5,60000,60500,250",
+    ].join("\n");
+    const result = parseCSV(sansDate);
+    expect(result.trades).toHaveLength(0);
+    expect(result.needsMapping, "le fichier sans date passe en silence").toBe(true);
   });
 });
 
@@ -129,9 +151,9 @@ describe("parseCSV — unknown layout asks for manual mapping", () => {
 
 describe("applyManualMapping — user-chosen column mapping", () => {
   it("builds trades from arbitrary headers via the mapping", () => {
-    const rawHeaders = ["Inst", "Result", "Vol", "Way", "In", "Out"];
+    const rawHeaders = ["Inst", "Result", "Vol", "Way", "In", "Out", "When"];
     const rawRows = [
-      { Inst: "GBPUSD", Result: "75.5", Vol: "2", Way: "sell", In: "1.27", Out: "1.265" },
+      { Inst: "GBPUSD", Result: "75.5", Vol: "2", Way: "sell", In: "1.27", Out: "1.265", When: "2026-09-01 10:00" },
     ];
     const trades = applyManualMapping(rawHeaders, rawRows, {
       pair: "Inst",
@@ -140,6 +162,10 @@ describe("applyManualMapping — user-chosen column mapping", () => {
       direction: "Way",
       entry_price: "In",
       exit_price: "Out",
+      // ⚠️ LA DATE EST OBLIGATOIRE : `trades.open_time` est NOT NULL, et l'écran
+      // de correspondance l'exige désormais. Sans elle, ce test certifiait une
+      // correspondance dont l'import échouait toujours.
+      open_time: "When",
     });
     expect(trades).toHaveLength(1);
     expect(trades[0]).toMatchObject({

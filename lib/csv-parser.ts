@@ -291,8 +291,24 @@ function tryParsecTrader(headers: string[], rows: Record<string, string>[]): Par
     const entry = cm.entry_price !== -1 ? parseNumber(row[headers[cm.entry_price]]) : null;
     const exit = cm.exit_price !== -1 ? parseNumber(row[headers[cm.exit_price]]) : null;
     if ((entry !== null && entry <= 0) || (exit !== null && exit <= 0)) return null;
+    /**
+     * ⚠️⚠️ UNE LIGNE SANS DATE NE PEUT PAS ENTRER, ET ELLE TUAIT TOUT
+     * L'IMPORT. `trades.open_time` est NOT NULL : l'insertion se fait en un
+     * seul lot, donc UNE ligne sans date faisait échouer les autres, avec pour
+     * seul message un « null value in column violates not-null constraint »
+     * traduit en erreur générique. Le trader voyait son fichier refusé en bloc
+     * sans savoir quelle ligne accuser.
+     *
+     * ⚠️ LA LIGNE EST ÉCARTÉE AVANT L'APERÇU, pas en silence : l'écran montre
+     * exactement ce qui va être importé, donc ce qui manque s'y voit.
+     *
+     * ⚠️ Les deux autres colonnes NOT NULL (`lot_size`, `entry_price`) ont un
+     * repli à zéro juste en dessous : elles n'ont jamais posé ce problème.
+     */
+    const ouverture = cm.open_time !== -1 ? (row[headers[cm.open_time]] || "").trim() : "";
+    if (!ouverture) return null;
     return {
-      open_time: cm.open_time !== -1 ? (row[headers[cm.open_time]] || "") : "",
+      open_time: ouverture,
       close_time: cm.close_time !== -1 ? (row[headers[cm.close_time]] || "") : "",
       pair: (row[headers[cm.pair]] || "").toUpperCase(),
       direction: mapDirection(dir),
@@ -387,8 +403,18 @@ function parseWithColumnMap(
       return null;
     }
 
+    /**
+     * ⚠️⚠️ LA MÊME RÈGLE QUE PLUS HAUT, ET C'EST ICI QU'ELLE COMPTE : ce
+     * chemin est celui de TOUS les fichiers (détection automatique et
+     * correspondance manuelle), l'autre ne sert qu'à cTrader. La première
+     * version de ce correctif n'a modifié que l'autre, parce que les deux
+     * fonctions ont la même forme à cent lignes d'écart : le garde l'a vu.
+     */
+    const ouverture = cm.open_time !== -1 ? (row[headers[cm.open_time]] || "").trim() : "";
+    if (!ouverture) return null;
+
     return {
-      open_time: cm.open_time !== -1 ? (row[headers[cm.open_time]] || "") : "",
+      open_time: ouverture,
       close_time: cm.close_time !== -1 ? (row[headers[cm.close_time]] || "") : "",
       pair: pairRaw.trim().toUpperCase().replace("/", ""),
       direction: mapDirection(dirRaw),
