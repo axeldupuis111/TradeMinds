@@ -77,7 +77,7 @@ export default async function DashboardPage() {
     { data: activeAccounts },
     { data: recentTrades },
     allTradesRows,
-    { data: primaryStrategy },
+    { data: fichesDuTrader },
     { data: tousLesComptes },
   ] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at, analysis, score_breakdown").eq("user_id", userId!).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -98,7 +98,15 @@ export default async function DashboardPage() {
         .order("id", { ascending: true })
         .range(from, to),
     ),
-    supabase.from("strategies").select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, pairs").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    /**
+     * ⚠️⚠️ TOUTES SES FICHES. Avec `.limit(1)`, le calendrier marquait
+     * « hors périmètre » les journées où le trader avait suivi une AUTRE de ses
+     * méthodes : mesuré en base, un abonné à trois fiches, dont une
+     * « trendline nas100 », aurait vu 92 de ses 157 trades comptés fautifs par
+     * la fiche « or ». Le périmètre écrit d'un trader, c'est l'union de ses
+     * fiches ; c'est déjà la règle côté analyse (lib/analysis-selection).
+     */
+    supabase.from("strategies").select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, pairs").eq("user_id", userId!).order("created_at", { ascending: true }),
     /**
      * ⚠️⚠️ LA DEVISE DE TOUS LES COMPTES, y compris CLOTURES. La carte des
      * devises se construisait sur les comptes ACTIFS, alors que les totaux et
@@ -126,12 +134,26 @@ export default async function DashboardPage() {
     .slice()
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
 
+  /**
+   * ⚠️ LE PÉRIMÈTRE ÉCRIT DU TRADER, C'EST L'UNION DE SES FICHES, et la limite
+   * de trades par jour la plus permissive. Une fiche sans liste de paires ne
+   * restreint rien : elle ouvre tout. Même règle que lib/analysis-selection.
+   */
+  const fiches = fichesDuTrader ?? [];
+  const uneFicheOuvreTout = fiches.some((f) => ((f.pairs as string[]) ?? []).filter(Boolean).length === 0);
+  const pairesAutorisees = fiches.length === 0 || uneFicheOuvreTout
+    ? null
+    : Array.from(new Set(fiches.flatMap((f) => ((f.pairs as string[]) ?? []).filter(Boolean))));
+  const maxTradesParJour = fiches.some((f) => f.max_trades_per_day == null)
+    ? null
+    : Math.max(...fiches.map((f) => f.max_trades_per_day as number), 0) || null;
+
   const onboarding = {
     hasAccount: (activeAccounts?.length ?? 0) > 0,
     // ⚠️ Ne pas savoir n'est pas « il n'y en a pas » : la lecture courte des
     // cinq derniers trades, elle, a peut-etre reussi.
     hasTrades: allTrades.length > 0 || (recentTrades?.length ?? 0) > 0,
-    hasStrategy: !!primaryStrategy,
+    hasStrategy: (fichesDuTrader?.length ?? 0) > 0,
     hasSession: !!lastReview,
   };
 
@@ -146,8 +168,8 @@ export default async function DashboardPage() {
       weekTrades={(weekTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
       monthTrades={(monthTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
       todayTrades={(todayTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
-      maxTradesPerDay={primaryStrategy?.max_trades_per_day ?? null}
-      allowedPairs={primaryStrategy?.pairs ?? null}
+      maxTradesPerDay={maxTradesParJour}
+      allowedPairs={pairesAutorisees}
       activeAccounts={(activeAccounts ?? []).map(a => ({
         id: a.id, firm: a.firm, account_number: a.account_number, account_size: a.account_size,
         profit_target_pct: a.profit_target_pct, max_total_dd_pct: a.max_total_dd_pct,
