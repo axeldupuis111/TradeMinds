@@ -71,7 +71,21 @@ export type MechanicalViolationType =
 export interface MechanicalViolation {
   category: "strategy" | "execution";
   type: MechanicalViolationType;
-  /** Index (dans le tableau d'origine) des trades concernés, plafonné à l'affichage. */
+  /**
+   * Index (dans le tableau d'origine) de TOUS les trades concernés.
+   *
+   * ⚠️⚠️ CETTE LISTE ÉTAIT PLAFONNÉE À VINGT, et trois mesures s'en servaient
+   * comme si elle était complète : le coût de la violation, la courbe
+   * contrefactuelle et le compte de trades conformes. Le plafond avait été posé
+   * pour le prompt, qui n'en avait pas besoin : `renderMechanicalBlock` ne cite
+   * déjà que DIX index à titre d'exemple.
+   *
+   * ⚠️ REJOUÉ SUR LES DONNÉES RÉELLES LE 2026-09-18 : sur une stratégie de
+   * production, `missing_tp` compte 137 occurrences et ne citait que 20 index,
+   * `missing_sl` 128 pour 20, `wrong_pair` 92 pour 20. Le coût annoncé
+   * (« cette erreur t'a coûté X ») portait donc sur 15 % des trades fautifs, et
+   * l'en-tête « N trades conformes » en comptait une centaine de trop.
+   */
   trade_ids: number[];
   /** Nombre de trades pour les règles par trade, de jours/événements sinon. */
   occurrences: number;
@@ -226,7 +240,7 @@ export function computeMechanicalViolations(
     out.push({
       category: CATEGORY[type as MechanicalViolationType],
       type: type as MechanicalViolationType,
-      trade_ids: ids.slice(0, 20),
+      trade_ids: ids,
       occurrences: ids.length,
     });
   }
@@ -249,7 +263,7 @@ export function computeMechanicalViolations(
       }
     }
     if (days > 0) {
-      out.push({ category: "strategy", type: "max_trades_day", trade_ids: offendingDays.slice(0, 20), occurrences: days });
+      out.push({ category: "strategy", type: "max_trades_day", trade_ids: offendingDays, occurrences: days });
     }
   }
 
@@ -295,7 +309,7 @@ export function computeMechanicalViolations(
       }
     }
     if (jours > 0) {
-      out.push({ category: "strategy", type: "max_daily_loss", trade_ids: fautifs.slice(0, 20), occurrences: jours });
+      out.push({ category: "strategy", type: "max_daily_loss", trade_ids: fautifs, occurrences: jours });
     }
   }
 
@@ -321,7 +335,7 @@ export function computeMechanicalViolations(
       }
     }
     if (events > 0) {
-      out.push({ category: "strategy", type: "consecutive_losses", trade_ids: offenders.slice(0, 20), occurrences: events });
+      out.push({ category: "strategy", type: "consecutive_losses", trade_ids: offenders, occurrences: events });
     }
   }
 

@@ -463,7 +463,17 @@ async function handle(req: Request) {
       locale,
       tradeCurrency(stats.worst?.challengeId, carteDesDevises, deviseDeLaSemaine ?? deviseParDefaut),
     );
-    const weekLabel = `${since.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${now.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
+    /**
+     * ⚠️⚠️ LES DATES DU BANDEAU SONT CELLES DU LECTEUR, PAS CELLES DE VERCEL.
+     * Sans `timeZone`, `toLocaleDateString` formate dans le fuseau du serveur,
+     * c'est-à-dire UTC. L'e-mail part le dimanche à 20 h locales : pour un
+     * trader à Sydney il est alors 10 h le LUNDI en UTC, et son bilan
+     * « de la semaine » s'annonçait donc jusqu'au lundi. Les profils du produit
+     * couvrent vingt-deux fuseaux, de Chicago à Sydney.
+     */
+    const fuseauDuLecteur = (user.timezone as string) || "UTC";
+    const jourCourt = { day: "numeric", month: "short", timeZone: fuseauDuLecteur } as const;
+    const weekLabel = `${since.toLocaleDateString(locale, jourCourt)} – ${now.toLocaleDateString(locale, { ...jourCourt, year: "numeric" })}`;
 
     if (dryRun) {
       preview.push({ email: user.email, language: lang, email_envoye: user.veutEmail, push_envoye: user.veutPush, ...stats });
