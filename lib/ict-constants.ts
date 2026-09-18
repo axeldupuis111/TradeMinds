@@ -40,13 +40,109 @@ export const ICT_LIQUIDITY_TARGETS: { value: string; label: LabelMap }[] = [
   { value: "none", label: { fr: "Non identifiée", en: "Not identified", de: "Nicht identifiziert", es: "No identificada" } },
 ];
 
+/**
+ * LE FUSEAU DES KILLZONES, ÉCRIT UNE FOIS.
+ *
+ * ⚠️⚠️ LES HEURES ÉTAIENT AFFICHÉES SANS LEUR FUSEAU. Le trader lisait
+ * « London Open (08h-12h) » et n'avait aucun moyen de savoir qu'il s'agissait de
+ * 08 h À PARIS : il lisait sa propre montre. Un trader de New York étiquetait
+ * donc ses trades à la main d'après une grille décalée de six heures, et le
+ * produit le contredisait sans jamais dire pourquoi. Le module des sessions de
+ * marché avait déjà tiré cette leçon et écrit « UTC » dans chacun de ses
+ * libellés ; les killzones, non.
+ *
+ * ── POURQUOI PARIS, ET POURQUOI ON N'Y TOUCHE PAS ───────────────────────────
+ *
+ * ✅ DÉCISION PRISE LE 2026-09-18, après mesure, et elle est de NE PAS
+ * RÉ-ANCRER. Les trois candidats ont été rejoués sur les 447 trades de
+ * production :
+ *
+ *   - ancre UTC (celle des sessions de marché) : 216 trades sur 447 changent
+ *     d'étiquette ;
+ *   - ancre Londres (celle que les nombres semblent décrire) : 139 changent.
+ *
+ * ⚠️ ET AUCUNE DES TROIS N'EST « LA BONNE », parce que les FENÊTRES elles-mêmes
+ * sont une approximation grossière. La convention ICT découpe des créneaux
+ * étroits en heure de New York (London Open 02:00-05:00 NY, New York AM
+ * 08:30-11:00 NY) ; le produit, lui, pave la journée de quatre blocs de quatre
+ * heures. Vérifié trade par trade : l'ancre Londres tombe juste sur les trades
+ * de 11 h UTC et faux sur ceux de 06 h, l'ancre Paris l'inverse. Changer
+ * d'horloge ré-étiquetterait entre 139 et 216 trades DÉJÀ RELUS par leur
+ * auteur, sans rendre la grille plus juste.
+ *
+ * ⚠️ CE QUI ÉTAIT VRAIMENT CASSÉ, C'ÉTAIT LE LIBELLÉ, pas l'horloge : une plage
+ * horaire montrée sans son fuseau. C'est ce qu'on corrige, et le libellé est
+ * désormais CONSTRUIT à partir de la fenêtre, comme pour les sessions : il ne
+ * peut plus la contredire, parce qu'il n'existe plus séparément.
+ */
+export const FUSEAU_DES_KILLZONES = "Europe/Paris";
+
+/**
+ * Les fenêtres, heure de Paris, début inclus et fin exclue.
+ *
+ * ⚠️ `detectKillzone` LIT CETTE TABLE : déplacer une borne déplace l'étiquette
+ * ET le libellé du même geste.
+ */
+export const KILLZONE_WINDOWS: Record<string, [number, number]> = {
+  asia: [0, 8],
+  london_open: [8, 12],
+  ny_am: [13, 16],
+  ny_pm: [16, 20],
+};
+
+/**
+ * ⚠️ `london_close` N'EST JAMAIS AUTO-DÉTECTÉ, et c'est volontaire : sa fenêtre
+ * (16 h-17 h) est INCLUSE dans celle de `ny_pm`. Il reste proposé à la saisie
+ * manuelle pour le trader qui veut le distinguer lui-même, et il ne figure donc
+ * pas dans la table ci-dessus, qui décide toute seule.
+ */
+const KILLZONE_LONDON_CLOSE: [number, number] = [16, 17];
+
+const NOMS_DE_KILLZONE: Record<string, LabelMap> = {
+  asia: { fr: "Asia", en: "Asia", de: "Asien", es: "Asia" },
+  london_open: { fr: "London Open", en: "London Open", de: "London Open", es: "London Open" },
+  ny_am: { fr: "New York AM", en: "New York AM", de: "New York AM", es: "New York AM" },
+  ny_pm: { fr: "New York PM", en: "New York PM", de: "New York PM", es: "New York PM" },
+  london_close: { fr: "London Close", en: "London Close", de: "London Close", es: "London Close" },
+};
+
+/**
+ * ⚠️⚠️ « HORS SESSION » DISAIT UNE CHOSE FAUSSE. Une killzone est un CRÉNEAU
+ * ÉTROIT, une session de marché est la journée entière : mesuré le 2026-09-18,
+ * vingt-quatre trades de production portaient l'étiquette « hors session »
+ * pendant que la règle de discipline du produit — qui, elle, lit
+ * `lib/sessions-de-marche.ts` — les voyait DANS la session de Londres. Le
+ * trader lisait donc deux verdicts contraires sur le même trade, sur le même
+ * écran. Les deux calculs étaient justes ; c'est le MOT qui mentait.
+ */
+const HORS_KILLZONE: LabelMap = {
+  fr: "Hors killzone",
+  en: "Outside killzones",
+  de: "Außerhalb der Killzones",
+  es: "Fuera de killzones",
+};
+
+function avecHeures(nom: LabelMap, [debut, fin]: [number, number]): LabelMap {
+  const h = (n: number) => `${String(n).padStart(2, "0")}:00`;
+  const plage = `${h(debut)}–${h(fin)} Paris`;
+  return {
+    fr: `${nom.fr} (${plage})`,
+    en: `${nom.en} (${plage})`,
+    de: `${nom.de} (${plage})`,
+    es: `${nom.es} (${plage})`,
+  };
+}
+
 export const ICT_KILLZONES: { value: string; label: LabelMap }[] = [
-  { value: "asia", label: { fr: "Asia (00h-08h)", en: "Asia (00:00-08:00)", de: "Asien (00:00-08:00)", es: "Asia (00:00-08:00)" } },
-  { value: "london_open", label: { fr: "London Open (08h-12h)", en: "London Open (08:00-12:00)", de: "London Open (08:00-12:00)", es: "London Open (08:00-12:00)" } },
-  { value: "ny_am", label: { fr: "New York AM (13h-16h)", en: "New York AM (13:00-16:00)", de: "New York AM (13:00-16:00)", es: "New York AM (13:00-16:00)" } },
-  { value: "ny_pm", label: { fr: "New York PM (16h-20h)", en: "New York PM (16:00-20:00)", de: "New York PM (16:00-20:00)", es: "New York PM (16:00-20:00)" } },
-  { value: "london_close", label: { fr: "London Close (16h-17h)", en: "London Close (16:00-17:00)", de: "London Close (16:00-17:00)", es: "London Close (16:00-17:00)" } },
-  { value: "off_session", label: { fr: "Hors session", en: "Off session", de: "Außerhalb der Sitzung", es: "Fuera de sesión" } },
+  ...Object.entries(KILLZONE_WINDOWS).map(([value, fenetre]) => ({
+    value,
+    label: avecHeures(NOMS_DE_KILLZONE[value], fenetre),
+  })),
+  {
+    value: "london_close",
+    label: avecHeures(NOMS_DE_KILLZONE.london_close, KILLZONE_LONDON_CLOSE),
+  },
+  { value: "off_session", label: HORS_KILLZONE },
 ];
 
 export const ICT_TIMEFRAMES: { value: string; label: string }[] = [
@@ -100,15 +196,15 @@ export const ICT_CHECKLIST_ITEMS: { key: string; label: LabelMap }[] = [
  * étiqueté « hors session » alors que c'est l'ouverture de Londres ; un autre
  * « NY après-midi » alors qu'il est du matin.
  *
- * ⚠️ L'ANCRE RESTE PARIS, faute de mieux et parce que c'est ce que le code
- * voulait dire. ⚠️ MAIS ELLE EST DISCUTABLE, et la question est ouverte : les
- * fenêtres de session du produit (`lib/sessions-de-marche.ts`) sont en UTC, et
- * « Londres » y vaut 08:00-12:00 UTC quand la killzone « london_open » vaut
- * 08:00-12:00 à PARIS, soit deux heures plus tôt. Le même trade peut donc être
- * « dans la session de Londres » pour la règle de discipline et « hors
- * session » pour son étiquette. Trancher l'ancre (Paris, UTC, ou New York comme
- * le veut la convention ICT) change l'étiquette de tous les trades passés :
- * c'est une décision de produit, pas une correction.
+ * ⚠️ L'ANCRE RESTE PARIS, ET C'EST UNE DÉCISION PRISE, PAS UN REPORT : voir
+ * `FUSEAU_DES_KILLZONES` ci-dessus, qui donne la mesure des trois candidats sur
+ * les trades de production et dit pourquoi aucun ré-ancrage ne vaut le
+ * ré-étiquetage de 139 à 216 trades déjà relus.
+ *
+ * ⚠️⚠️ LES BORNES NE SONT PLUS ÉCRITES ICI. Elles viennent de
+ * `KILLZONE_WINDOWS`, la même table qui fabrique les libellés : une fenêtre
+ * déplacée déplace les deux, et l'étiquette ne peut plus contredire ce que le
+ * trader lit dans le menu.
  */
 export function detectKillzone(openTime: string): string {
   if (!openTime) return "";
@@ -116,15 +212,14 @@ export function detectKillzone(openTime: string): string {
   if (Number.isNaN(date.getTime())) return "";
   const h = Number(
     new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/Paris",
+      timeZone: FUSEAU_DES_KILLZONES,
       hour: "2-digit",
       hour12: false,
     }).format(date),
   ) % 24;
-  if (h >= 0 && h < 8) return "asia";
-  if (h >= 8 && h < 12) return "london_open";
-  if (h >= 13 && h < 16) return "ny_am";
-  if (h >= 16 && h < 20) return "ny_pm";
+  for (const [nom, [debut, fin]] of Object.entries(KILLZONE_WINDOWS)) {
+    if (h >= debut && h < fin) return nom;
+  }
   return "off_session";
 }
 
