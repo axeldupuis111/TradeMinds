@@ -175,11 +175,27 @@ export default function UpgradePage() {
 
   const changeInterval: "monthly" | "yearly" = annual ? "yearly" : "monthly";
 
-  // Les erreurs de /api/stripe/change-plan s'affichent telles quelles : on traduit
-  // les cas métier identifiés par un `code`, le reste garde le message générique.
+  /**
+   * ⚠️⚠️ LE MESSAGE BRUT S'AFFICHAIT TEL QUEL, EN ANGLAIS. Un seul refus
+   * portait un `code` traduisible ; tous les autres — « No active subscription
+   * found », « Already on this plan », « Server configuration error » —
+   * arrivaient à l'écran dans la langue du serveur. Le produit sert
+   * trente-deux anglophones, vingt-et-un francophones et un hispanophone.
+   *
+   * ⚠️ LA RÈGLE EST DÉJÀ ÉCRITE dans ce dépôt, pour la même raison, sur
+   * `api/broker/connections/[id]` : `code` = ce que le PRODUIT a écrit, donc
+   * traduisible ; `error` = le message brut du prestataire, qu'on ne peut ni
+   * traduire ni inventer, et qui reste la seule information utile pour
+   * comprendre un refus inattendu.
+   */
   function planChangeErrorMessage(data: { error?: string; code?: string }): string {
     if (data.code === "subscription_canceling") return t("planchange_error_canceling");
-    return data.error || t("planchange_error");
+    if (data.code) {
+      const traduit = t(data.code);
+      // `t()` rend la CLÉ quand elle manque : on ne montre jamais une clé.
+      if (traduit && traduit !== data.code) return traduit;
+    }
+    return t("planchange_error");
   }
 
   // Ouvre la modale de changement de plan et récupère l'aperçu (montant prorata).

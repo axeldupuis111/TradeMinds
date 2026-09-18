@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (targetPlan !== 'plus' && targetPlan !== 'premium') {
-      return NextResponse.json({ error: 'Invalid targetPlan' }, { status: 400 })
+      return NextResponse.json({ code: 'planchange_err_invalid', error: 'Invalid targetPlan' }, { status: 400 })
     }
     if (interval !== 'monthly' && interval !== 'yearly') {
-      return NextResponse.json({ error: 'Invalid interval' }, { status: 400 })
+      return NextResponse.json({ code: 'planchange_err_invalid', error: 'Invalid interval' }, { status: 400 })
     }
     const action = mode === 'commit' ? 'commit' : 'preview'
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+      return NextResponse.json({ code: 'planchange_err_auth', error: 'Not authenticated' }, { status: 401 })
     }
 
     // 3. Profil + plan courant
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+      return NextResponse.json({ code: 'planchange_err_profile', error: 'Profile not found' }, { status: 404 })
     }
 
     const currentPlan = profile.plan as string
@@ -66,10 +66,24 @@ export async function POST(req: NextRequest) {
     }
     if (currentPlan === targetPlan) {
       // Même plan : rien à faire côté tier (changement d'intervalle non géré ici)
-      return NextResponse.json({ error: 'Already on this plan' }, { status: 400 })
+      return NextResponse.json({ code: 'planchange_err_same_plan', error: 'Already on this plan' }, { status: 400 })
     }
 
     // 4. Abonnement Stripe actif de l'utilisateur
+    /**
+     * ⚠️⚠️ CHAQUE REFUS PORTE UN CODE, PAS SEULEMENT UN. La page affiche
+     * `data.error` tel quel dès qu'aucun `code` n'est reconnu : un abonné
+     * germanophone ou hispanophone lisait donc « No active subscription
+     * found ». La règle est déjà écrite dans ce dépôt, pour la même raison, sur
+     * `api/broker/connections/[id]` : `code` = ce que le PRODUIT a écrit et
+     * qu'on traduit, `error` = le message brut de Stripe, qu'on ne peut ni
+     * traduire ni inventer.
+     *
+     * ⚠️ ET LE CAS « AUCUN ABONNEMENT » N'EST PAS UNE PANNE : mesuré en base le
+     * 2026-09-18, dix comptes payants sur treize n'ont aucun client Stripe —
+     * leur accès a été accordé à la main. Leur dire « introuvable » en anglais
+     * ne leur apprend rien ; on leur dit d'écrire.
+     */
     const { data: subRow } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id')
@@ -80,13 +94,13 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     if (!subRow?.stripe_subscription_id) {
-      return NextResponse.json({ error: 'No active subscription found' }, { status: 400 })
+      return NextResponse.json({ code: 'planchange_err_no_subscription', error: 'No active subscription found' }, { status: 400 })
     }
 
     const subscription = await stripe.subscriptions.retrieve(subRow.stripe_subscription_id)
     const item = subscription.items.data[0]
     if (!item) {
-      return NextResponse.json({ error: 'Subscription has no item' }, { status: 500 })
+      return NextResponse.json({ code: 'planchange_err_server', error: 'Subscription has no item' }, { status: 500 })
     }
 
     // Un abonnement programmé pour s'arrêter ne peut PAS servir de base à un
@@ -112,7 +126,7 @@ export async function POST(req: NextRequest) {
     const targetPriceId = getPriceId(targetPlan, interval)
     if (!targetPriceId) {
       console.error('[Change Plan] Missing price ID env var for', targetPlan, interval)
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      return NextResponse.json({ code: 'planchange_err_server', error: 'Server configuration error' }, { status: 500 })
     }
 
     const isUpgrade = PLAN_RANK[targetPlan] > PLAN_RANK[currentPlan as 'plus' | 'premium']
@@ -239,7 +253,13 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Stripe.errors.StripeError
       ? error.message
       : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    /**
+     * ⚠️ LE CODE DIT AU LECTEUR CE QU'IL DOIT COMPRENDRE, `message` garde ce
+     * que STRIPE a dit — la seule information exploitable dans un journal
+     * quand un refus surprend. On ne traduit pas le second, on ne montre pas
+     * le premier à la place du second.
+     */
+    return NextResponse.json({ code: 'planchange_err_server', error: message }, { status: 500 })
   }
 }
 
