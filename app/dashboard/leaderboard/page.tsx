@@ -577,7 +577,8 @@ export default function LeaderboardPage() {
       {/* Bandeau saison : le classement du mois repart de zéro le 1er */}
       {days === "season" && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/[0.06] px-4 py-2.5">
-          <p className="text-sm font-semibold text-foreground capitalize">
+          {/* ⚠️ PAS DE `capitalize` : il écrivait « Saison De Septembre ». */}
+          <p className="text-sm font-semibold text-foreground">
             🏆 {t("leaderboard_season_title").replace("{month}", seasonMonth)}
           </p>
           <p className="text-xs text-muted">

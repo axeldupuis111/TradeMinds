@@ -19,6 +19,7 @@ import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { pourcent, nombre } from "@/lib/nombres";
+import { avecMajusculeInitiale } from "@/lib/dates";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -544,7 +545,7 @@ export default function MonthlyReviewPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="text-center">
-              <span className="text-sm font-semibold text-foreground capitalize">{monthLabel}</span>
+              <span className="text-sm font-semibold text-foreground">{avecMajusculeInitiale(monthLabel)}</span>
               {month && !month.isCurrentMonth && (
                 <button onClick={() => setMonthParam(null)} className="block mx-auto text-[11px] text-accent hover:underline">{t("review_back_current")} →</button>
               )}
@@ -1173,8 +1174,8 @@ function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel:
   return (
     <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-2 items-center text-xs">
       <span />
-      <span className="text-right font-semibold text-foreground capitalize">{aLabel}</span>
-      <span className="text-right text-muted capitalize">{bLabel}</span>
+      <span className="text-right font-semibold text-foreground">{avecMajusculeInitiale(aLabel)}</span>
+      <span className="text-right text-muted">{avecMajusculeInitiale(bLabel)}</span>
       <span className="text-right text-muted">Δ</span>
       {rows.map((r) => {
         const delta = (r.a ?? 0) - (r.b ?? 0);
@@ -1250,7 +1251,7 @@ function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void 
         role="dialog" aria-modal="true" aria-label={title}
       >
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
-          <h3 className="text-base font-bold text-foreground leading-snug capitalize">{title}</h3>
+          <h3 className="text-base font-bold text-foreground leading-snug">{avecMajusculeInitiale(title)}</h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-border/40 transition-colors shrink-0" aria-label={t("manual_cancel")}>
             <X className="w-4 h-4 text-muted" />
           </button>

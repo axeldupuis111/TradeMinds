@@ -43,6 +43,7 @@ import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { pourcent, langueCourante } from "@/lib/nombres";
+import { avecMajusculeInitiale } from "@/lib/dates";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -478,7 +479,7 @@ export default function DashboardContent({
             </motion.span>
           </h1>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <p className="text-foreground-muted text-sm capitalize">{dateStr}</p>
+            <p className="text-foreground-muted text-sm">{avecMajusculeInitiale(dateStr)}</p>
             <span className="inline-flex items-center gap-1.5 shrink-0">
               <span
                 className="w-2 h-2 rounded-full bg-accent motion-safe:animate-pulse shrink-0"

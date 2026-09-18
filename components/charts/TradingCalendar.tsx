@@ -2,6 +2,7 @@
 
 import { fmtPrice } from "@/lib/prix-instrument";
 import { langueCourante, lots } from "@/lib/nombres";
+import { avecMajusculeInitiale } from "@/lib/dates";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -210,8 +211,8 @@ export default function TradingCalendar({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 className="text-lg font-semibold text-foreground capitalize">
-            {monthNames[month]} {year}
+          <h2 className="text-lg font-semibold text-foreground">
+            {avecMajusculeInitiale(monthNames[month])} {year}
           </h2>
           <button
             onClick={nextMonth}
@@ -408,8 +409,8 @@ export default function TradingCalendar({
                   {isPinnedPanel && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-accent" aria-hidden="true" />
                   )}
-                  <p className="text-xs text-foreground font-medium capitalize truncate">
-                    {panelDate}
+                  <p className="text-xs text-foreground font-medium truncate">
+                    {avecMajusculeInitiale(panelDate)}
                   </p>
                 </div>
                 {/* Hover mode: pairs chips below the date */}

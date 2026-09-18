@@ -96,3 +96,28 @@ export function enHeure(valeur: Date | number | string, langue?: string): string
     minute: "2-digit",
   });
 }
+
+/**
+ * UNE MAJUSCULE AU DÉBUT DE LA PHRASE, ET NULLE PART AILLEURS.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────
+ *
+ * ⚠️⚠️ LA CLASSE CSS `capitalize` MET UNE MAJUSCULE À CHAQUE MOT, pas au
+ * premier. Utilisée pour relever l'initiale d'une date, elle donnait à l'écran,
+ * en production : « Vendredi 18 Septembre 2026 » sur le tableau de bord et
+ * « 🏆 Saison De Septembre » sur le classement. En français comme en espagnol,
+ * les noms de mois et de jours s'écrivent en minuscules, et « De » au milieu
+ * d'un titre ne s'écrit nulle part.
+ *
+ * ⚠️ ET `::first-letter` NE RÉPARE PAS TOUT : ce pseudo-élément ne s'applique
+ * pas à un élément en ligne, or la moitié de ces dates vivent dans un `<span>`.
+ * La majuscule se pose donc sur le TEXTE, pas sur son habillage.
+ *
+ * ⚠️ Les langues décident déjà seules de leurs majuscules (`September`,
+ * `septembre`, `septiembre`, `September`) : on ne relève que l'initiale d'une
+ * phrase, et seulement quand cette date EST la phrase.
+ */
+export function avecMajusculeInitiale(texte: string): string {
+  if (!texte) return texte;
+  return texte.charAt(0).toLocaleUpperCase(langueCourante()) + texte.slice(1);
+}

@@ -3,6 +3,7 @@
 import { libelleDeSession } from "@/lib/sessions-de-marche";
 import DayStatus from "@/components/DayStatus";
 import { langueCourante } from "@/lib/nombres";
+import { avecMajusculeInitiale } from "@/lib/dates";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import SessionDebriefModal, { type SessionDebrief } from "@/components/session/SessionDebriefModal";
 import EconomicCalendarCard from "@/components/session/EconomicCalendarCard";
@@ -1116,7 +1117,7 @@ export default function SessionPage() {
                   return (
                     <div key={s.id} className="flex items-center gap-2 py-2 border-b border-border last:border-0">
                       <span className="text-lg shrink-0">{emotion?.emoji ?? "—"}</span>
-                      <span className="text-sm text-foreground font-medium capitalize shrink-0">{date}</span>
+                      <span className="text-sm text-foreground font-medium shrink-0">{avecMajusculeInitiale(date)}</span>
                       <span className="text-xs text-muted">
                         · {t("session_checklist_label")} {s.checklist_completed ? <span className="text-profit">{t("session_complete")}</span> : <span className="text-orange-400">{t("session_incomplete")}</span>}
                       </span>
