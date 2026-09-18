@@ -135,3 +135,38 @@ export function lienDeDesinscription(
   const langue = lang ? `&l=${encodeURIComponent(lang)}` : "";
   return `${siteUrl}/api/unsubscribe?t=${encodeURIComponent(jeton)}${langue}`;
 }
+
+/**
+ * LA LIGNE DE DÉSINSCRIPTION DU PIED DE PAGE, ÉCRITE UNE SEULE FOIS.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️ TROIS COPIES MOT POUR MOT, dans trois routes : le rappel quotidien, le
+ * rapport hebdomadaire et l'e-mail de réactivation portaient chacun leur propre
+ * table `DESINSCRIPTION_LIBELLE` (quatre langues) et leur propre fonction
+ * `ligneDeDesinscription`, identiques au caractère près. Elles étaient d'accord
+ * le jour où elles ont été écrites, et rien ne les y obligeait.
+ *
+ * ⚠️ CE N'EST PAS UNE QUESTION DE STYLE : le lien de désinscription est une
+ * OBLIGATION, pas une décoration. Une quatrième route écrite demain oublierait
+ * la sienne, ou une correction n'en toucherait qu'une sur trois — c'est
+ * exactement ce qui est arrivé cette semaine au message « −1 trades conformes »,
+ * corrigé sur une surface et laissé sur l'autre.
+ *
+ * ⚠️ RETOURNE UN TABLEAU, PAS UNE CHAÎNE, parce que `footerLines` en attend un
+ * et parce qu'un jeton absent doit donner ZÉRO ligne — pas une ligne vide qui
+ * laisserait un lien mort dans le pied de page.
+ */
+const DESINSCRIPTION_LIBELLE: Record<string, string> = {
+  fr: "Se désinscrire de ces e-mails",
+  en: "Unsubscribe from these emails",
+  de: "Diese E-Mails abbestellen",
+  es: "Darse de baja de estos correos",
+};
+
+export function ligneDeDesinscription(userId: string, lang: string): string[] {
+  const url = lienDeDesinscription(userId, lang);
+  if (!url) return [];
+  const libelle = DESINSCRIPTION_LIBELLE[lang] ?? DESINSCRIPTION_LIBELLE.en;
+  return [`<a href="${url}" style="color:#6e7887;text-decoration:underline">${libelle}</a>`];
+}

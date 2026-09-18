@@ -8,7 +8,7 @@ import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { destinataires } from "@/lib/audience-des-notifications";
-import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
+import { entetesDeDesinscription, ligneDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, statCell, statRow, EMAIL_GREEN, EMAIL_RED, EMAIL_INK } from "@/lib/email-template";
 
 // Delivered Sunday evening in each trader's LOCAL timezone (was a fixed 18:00
@@ -181,20 +181,6 @@ function computeStats(trades: TradeRow[]): WeekStats {
  * suppose que le lecteur se reconnecte. Le geste qui reste, sinon, est
  * « signaler comme spam », et c'est la plainte qui abime le domaine.
  */
-const DESINSCRIPTION_LIBELLE: Record<Lang, string> = {
-  fr: "Se désinscrire de ces e-mails",
-  en: "Unsubscribe from these emails",
-  de: "Diese E-Mails abbestellen",
-  es: "Darse de baja de estos correos",
-};
-
-/** La ligne de pied de page, ou rien si aucun secret n'est configuré. */
-function ligneDeDesinscription(userId: string, lang: Lang): string[] {
-  const url = lienDeDesinscription(userId, lang);
-  if (!url) return [];
-  return [`<a href="${url}" style="color:#6e7887;text-decoration:underline">${DESINSCRIPTION_LIBELLE[lang]}</a>`];
-}
-
 /**
  * ⚠️ TROIS FORMATEURS, PAS UN. Le total peut etre ventile (la semaine mele
  * les devises), et le meilleur comme le pire trade portent LEUR devise : ce

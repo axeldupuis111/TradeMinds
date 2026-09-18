@@ -103,20 +103,39 @@ describe("la désinscription des e-mails récurrents", () => {
     expect(apres.includes("headers: entetesDeDesinscription(")).toBe(true);
   });
 
+  /**
+   * ⚠️⚠️ CE TEST TENAIT LA TRIPLICATION EN PLACE. Sa première version exigeait
+   * de chaque route qu'elle contienne `lienDeDesinscription(userId, lang)` ET
+   * quatre libellés distincts — c'est-à-dire exactement la table et la fonction
+   * RECOPIÉES dans les trois fichiers. Le jour où ces cinq cent soixante et un
+   * octets identiques ont été réduits à un seul module, le garde est tombé.
+   *
+   * ⚠️ IL ÉPINGLAIT LA MISE EN ŒUVRE, PAS L'INTENTION. L'intention est : tout
+   * e-mail récurrent porte un lien de désinscription, dans la langue du
+   * lecteur. Elle se vérifie sur le module partagé (les quatre libellés
+   * distincts, testés dans `un-email-porte-sa-desinscription`) et, ici, sur le
+   * fait que chaque route l'APPELLE en lui passant la langue.
+   */
   it("chaque pied de page porte le lien, dans la langue du lecteur", () => {
     const fautes: string[] = [];
     for (const chemin of RECURRENTS) {
       const src = lire(chemin);
-      if (!src.includes("...ligneDeDesinscription(userId, lang)")) fautes.push(`${chemin} : pied de page`);
-      if (!src.includes("lienDeDesinscription(userId, lang)")) fautes.push(`${chemin} : langue du lien`);
-      // Quatre libellés distincts, sinon « traduit » veut dire recopié.
-      const libelles = Array.from(
-        src.matchAll(/^\s+(?:fr|en|de|es):\s*"([^"]{8,})",\s*$/gm),
-      ).map((m) => m[1]);
-      const uniques = new Set(libelles);
-      if (uniques.size < 4) fautes.push(`${chemin} : moins de quatre libellés distincts`);
+      if (!src.includes("...ligneDeDesinscription(userId, lang)")) {
+        fautes.push(`${chemin} : pied de page sans lien de désinscription`);
+      }
+      if (!src.includes('from "@/lib/desinscription"')) {
+        fautes.push(`${chemin} : n'importe plus le module partagé`);
+      }
     }
     expect(fautes, fautes.join("\n  ")).toEqual([]);
+
+    // Quatre libellés distincts, sinon « traduit » veut dire recopié — vérifiés
+    // là où ils vivent désormais, une seule fois.
+    const module = lire("lib/desinscription.ts");
+    const libelles = Array.from(
+      module.matchAll(/^\s+(?:fr|en|de|es):\s*"([^"]{8,})",\s*$/gm),
+    ).map((m) => m[1]);
+    expect(new Set(libelles).size, "moins de quatre libellés distincts").toBeGreaterThanOrEqual(4);
   });
 
   // ── 2. Le GET n'écrit pas ─────────────────────────────────────────────────

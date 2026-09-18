@@ -6,7 +6,7 @@ import { Resend } from "resend";
 import { alertCronFailure, alertEnvoisEchoues } from "@/lib/cron-alert";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
-import { entetesDeDesinscription, lienDeDesinscription } from "@/lib/desinscription";
+import { entetesDeDesinscription, ligneDeDesinscription } from "@/lib/desinscription";
 import { renderBrandEmail, emailParagraph, statCell, statRow, EMAIL_GREEN, EMAIL_RED } from "@/lib/email-template";
 
 // Sent Wednesday late-morning in each trader's LOCAL timezone (was a fixed
@@ -102,20 +102,6 @@ const REACTIVATION_COPY: Record<Lang, {
  * suppose que le lecteur se reconnecte. Le geste qui reste, sinon, est
  * « signaler comme spam », et c'est la plainte qui abime le domaine.
  */
-const DESINSCRIPTION_LIBELLE: Record<Lang, string> = {
-  fr: "Se désinscrire de ces e-mails",
-  en: "Unsubscribe from these emails",
-  de: "Diese E-Mails abbestellen",
-  es: "Darse de baja de estos correos",
-};
-
-/** La ligne de pied de page, ou rien si aucun secret n'est configuré. */
-function ligneDeDesinscription(userId: string, lang: Lang): string[] {
-  const url = lienDeDesinscription(userId, lang);
-  if (!url) return [];
-  return [`<a href="${url}" style="color:#6e7887;text-decoration:underline">${DESINSCRIPTION_LIBELLE[lang]}</a>`];
-}
-
 /**
  * ⚠️⚠️ LE P&L CUMULE D'UN TRADER MULTI-COMPTES MELE FORCEMENT LES DEVISES,
  * et cet email-ci l'annonce depuis toujours. `resolveUserCurrency` ne regarde
