@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { EXIGENCES_DE_MOT_DE_PASSE, isPasswordValid } from "@/lib/exigences-de-mot-de-passe";
 
 interface PasswordRequirementsProps {
   password: string;
@@ -15,12 +16,7 @@ interface Requirement {
 export default function PasswordRequirements({ password }: PasswordRequirementsProps) {
   const { t } = useLanguage();
 
-  const requirements: Requirement[] = [
-    { key: "length", label: t("password_req_length"), test: (p) => p.length >= 8 },
-    { key: "lowercase", label: t("password_req_lowercase"), test: (p) => /[a-z]/.test(p) },
-    { key: "uppercase", label: t("password_req_uppercase"), test: (p) => /[A-Z]/.test(p) },
-    { key: "digit", label: t("password_req_digit"), test: (p) => /[0-9]/.test(p) },
-  ];
+  const requirements: Requirement[] = EXIGENCES_DE_MOT_DE_PASSE.map((e) => ({ key: e.key, label: t(e.cle), test: e.test }));
 
   return (
     <div className="mt-2 space-y-1.5">
@@ -45,11 +41,9 @@ export default function PasswordRequirements({ password }: PasswordRequirementsP
   );
 }
 
-export function isPasswordValid(password: string): boolean {
-  return (
-    password.length >= 8 &&
-    /[a-z]/.test(password) &&
-    /[A-Z]/.test(password) &&
-    /[0-9]/.test(password)
-  );
-}
+/**
+ * ⚠️ LA RÈGLE VIT DANS `lib/exigences-de-mot-de-passe.ts`, et elle est
+ * réexportée ici pour les deux écrans qui l'importaient déjà. La liste affichée
+ * et la liste appliquée étaient deux listes, à vingt lignes d'écart.
+ */
+export { isPasswordValid };
