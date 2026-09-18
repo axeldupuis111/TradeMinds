@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bornesDePeriode, cleDePeriode, debutDePeriodeIso } from "@/lib/periode-objectif";
+import { bornesDePeriode, cleDePeriode, debutDePeriodeIso, periodesEcoulees, reconduireLaSerie } from "@/lib/periode-objectif";
 import { cleDeJourDuTrader, normalizeTimezone } from "@/lib/timezone";
 import { createClient } from "@/lib/supabase/server";
 
@@ -184,16 +184,32 @@ export async function GET() {
     return streak;
   }
 
-  // Reconduction des objectifs perso récurrents : si la période a changé, on
-  // valide la série (streak) selon l'atteinte de la période précédente, puis on
-  // remet à zéro pour la nouvelle période. Best-effort (ignore si colonnes absentes).
+  /**
+   * Reconduction des objectifs perso récurrents : si la période a changé, on
+   * valide la série selon l'atteinte de la période stockée, puis on remet à zéro
+   * pour la nouvelle. Best-effort (ignore si colonnes absentes).
+   *
+   * ⚠️⚠️ LES PÉRIODES SAUTÉES NE SE COMPTAIENT PAS. La comparaison était
+   * binaire (« la clé a changé »), donc un objectif hebdomadaire coché une fois
+   * puis laissé cinq semaines rendait une série de DEUX : quatre semaines
+   * jamais tenues, effacées en silence. Et comme la reconduction ne tourne qu'à
+   * la visite de la page, la série récompensait la fréquence des visites
+   * plutôt que la discipline — l'inverse exact de ce que le produit vend.
+   *
+   * ⚠️ LE RECORD, LUI, GARDE CE QUI A ÉTÉ RÉELLEMENT TENU : la période cochée
+   * compte dans `best_streak` même quand la chaîne se casse juste après.
+   */
   for (const g of goals) {
     if (g.kind !== "custom" || !g.recurring) continue;
     const curKey = periodKey(g.period, fuseau);
     if (g.period_key !== curKey) {
       const wasDone = !!g.done;
-      const newStreak = wasDone ? (g.streak ?? 0) + 1 : 0;
-      const newBest = Math.max(g.best_streak ?? 0, newStreak);
+      const { serie: newStreak, record: newBest } = reconduireLaSerie({
+        done: wasDone,
+        serie: g.streak ?? 0,
+        record: g.best_streak ?? 0,
+        ecoulees: periodesEcoulees(g.period, g.period_key, curKey),
+      });
       const { error } = await supabase
         .from("goals")
         .update({ done: false, period_key: curKey, streak: newStreak, best_streak: newBest })
