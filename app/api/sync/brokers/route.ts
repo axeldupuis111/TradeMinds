@@ -77,7 +77,8 @@ export async function POST(req: Request) {
           .eq("id", conn.user_id)
           .single();
         const lang = (prof?.language as string) || "en";
-        await checkDailyLossAlert(admin, conn.user_id, lang, insertedNetPnl);
+        // ⚠️ Ventilé par compte : cette connexion alimente un seul challenge.
+        await checkDailyLossAlert(admin, conn.user_id, lang, { [challengeId ?? ""]: insertedNetPnl });
         if (challengeId) {
           await checkDrawdownAlert(admin, conn.user_id, lang, challengeId, insertedNetPnl);
         }

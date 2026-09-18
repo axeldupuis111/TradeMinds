@@ -71,8 +71,13 @@ function clientQuiRend(reponses: Record<string, { data: unknown; error: unknown 
   return { from: (table: string) => requete(table) } as never;
 }
 
+/**
+ * ⚠️ LA LIGNE PORTE SON `id`, comme en base : l'alerte vérifie désormais la
+ * limite COMPTE PAR COMPTE (elle additionnait les devises de tous les comptes),
+ * et une ligne de `prop_challenges` sans identifiant n'existe pas.
+ */
 const CHALLENGE_STRICT = {
-  data: [{ account_size: 10000, max_daily_loss_pct: 5, max_daily_dd_pct: null }],
+  data: [{ id: "c1", account_size: 10000, max_daily_loss_pct: 5, max_daily_dd_pct: null }],
   error: null,
 };
 
@@ -88,7 +93,7 @@ describe("l'alerte de perte journalière", () => {
       clientQuiRend({
         profiles: { data: { push_notif_alerts: true, timezone: "UTC" }, error: null },
         prop_challenges: CHALLENGE_STRICT,
-        trades: { data: [{ pnl: -600, commission: 0, swap: 0 }], error: null },
+        trades: { data: [{ pnl: -600, commission: 0, swap: 0, challenge_id: "c1" }], error: null },
       }),
       "u1",
       "fr",
@@ -127,7 +132,7 @@ describe("l'alerte de perte journalière", () => {
       clientQuiRend({
         profiles: { data: { push_notif_alerts: true, timezone: "UTC" }, error: null },
         prop_challenges: { data: null, error: ERREUR },
-        trades: { data: [{ pnl: -600, commission: 0, swap: 0 }], error: null },
+        trades: { data: [{ pnl: -600, commission: 0, swap: 0, challenge_id: "c1" }], error: null },
       }),
       "u1",
       "fr",

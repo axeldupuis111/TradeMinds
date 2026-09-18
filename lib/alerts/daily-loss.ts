@@ -77,19 +77,41 @@ const DAILY_LOSS_COPY: Record<AlertLang, {
 
 /**
  * Vérifie la perte journalière de l'utilisateur après l'ingestion d'un lot de
- * trades et envoie un push au franchissement de 80 % / 100 % de la limite la plus
- * stricte parmi ses challenges actifs. Best-effort : ne throw jamais.
+ * trades et envoie un push au franchissement de 80 % / 100 % de la limite d'un
+ * de ses comptes actifs. Best-effort : ne throw jamais.
  *
- * @param batchNetPnl  P&L net (négatif = perte) des trades NOUVELLEMENT insérés.
+ * ⚠⚠ LA RÈGLE SE VÉRIFIE COMPTE PAR COMPTE, ET ELLE NE LE FAISAIT PAS. L'alerte
+ * prenait la limite la plus stricte de tous les comptes actifs, puis la comparait
+ * à la SOMME de tous les trades du jour, tous comptes confondus. Deux défauts dans
+ * la même ligne :
+ *
+ *   - elle ADDITIONNAIT DES DEVISES. Un trader avec un compte prop en euros et un
+ *     compte en dollars (le cas d'au moins un compte réel du produit) voyait ses
+ *     pertes en dollars comptées contre une limite en euros. Le reste du produit
+ *     refuse ce mélange depuis longtemps ; cette alerte, la plus importante de
+ *     toutes puisqu'elle dit « arrête-toi », le faisait encore.
+ *   - elle appliquait la limite d'UN compte aux trades d'un AUTRE.
+ *
+ * ⚠️ LES TRADES SANS COMPTE VONT AU COMPTE ACTIF S'IL EST SEUL. C'est déjà la
+ * règle du rail de synchro (`resolveActiveChallengeId`) : avec un seul compte
+ * actif, il n'y a pas d'ambiguïté. Sans cette reprise, un trader dont les trades
+ * n'ont pas de compte rattaché (42 % des trades du produit) n'aurait plus
+ * d'alerte du tout.
+ *
+ * @param batchNetPnl  P&L net (négatif = perte) des trades NOUVELLEMENT insérés,
+ *                     par identifiant de compte (clé vide = sans compte).
  */
 export async function checkDailyLossAlert(
   admin: SupabaseClient,
   userId: string,
   language: string,
-  batchNetPnl: number,
+  batchNetPnl: number | Record<string, number>,
 ): Promise<void> {
   try {
-    if (batchNetPnl >= 0) return; // ce lot n'aggrave pas la perte → rien à vérifier
+    const lotParCompte: Record<string, number> =
+      typeof batchNetPnl === "number" ? { "": batchNetPnl } : batchNetPnl;
+    const totalDuLot = Object.values(lotParCompte).reduce((s, v) => s + v, 0);
+    if (totalDuLot >= 0) return; // ce lot n'aggrave pas la perte → rien à vérifier
 
     // Préférence utilisateur (défensif : si la colonne n'existe pas encore, on
     // procède par défaut — opt-in). On ne notifie pas si l'utilisateur l'a coupé.
@@ -103,7 +125,7 @@ export async function checkDailyLossAlert(
 
     const { data: challenges, error: erreurChallenges } = await admin
       .from("prop_challenges")
-      .select("account_size, max_daily_loss_pct, max_daily_dd_pct")
+      .select("id, account_size, max_daily_loss_pct, max_daily_dd_pct")
       .eq("user_id", userId)
       .eq("status", "active");
 
@@ -124,20 +146,29 @@ export async function checkDailyLossAlert(
 
     if (!challenges || challenges.length === 0) return;
 
-    let limit = Infinity;
-    for (const c of challenges) {
-      const pct = (c.max_daily_loss_pct ?? c.max_daily_dd_pct) as number | null;
-      if (!pct || !c.account_size) continue;
-      limit = Math.min(limit, (c.account_size as number) * (pct / 100));
-    }
-    if (!isFinite(limit) || limit <= 0) return;
+    /** Les comptes qui portent vraiment une limite journalière. */
+    const avecLimite = challenges
+      .map((c) => ({
+        id: c.id as string,
+        limite: ((c.max_daily_loss_pct ?? c.max_daily_dd_pct) as number | null)
+          ? (c.account_size as number) * (((c.max_daily_loss_pct ?? c.max_daily_dd_pct) as number) / 100)
+          : 0,
+      }))
+      .filter((c) => c.limite > 0 && isFinite(c.limite));
+    if (avecLimite.length === 0) return;
+
+    /**
+     * ⚠️ LE COMPTE QUI HÉRITE DES TRADES SANS RATTACHEMENT : le seul actif, s'il
+     * est seul. Même règle que `resolveActiveChallengeId` côté synchro.
+     */
+    const heritier = challenges.length === 1 ? (challenges[0].id as string) : null;
 
     // Start of the trader's local day (not UTC midnight) so the daily-loss
     // window matches the trading day they actually experience.
     const todayStart = startOfLocalDayUtc(timezone).toISOString();
     const { data: todayTrades, error: erreurTrades } = await admin
       .from("trades")
-      .select("pnl, commission, swap")
+      .select("pnl, commission, swap, challenge_id")
       .eq("user_id", userId)
       .gte("open_time", todayStart);
 
@@ -155,21 +186,40 @@ export async function checkDailyLossAlert(
       return;
     }
 
-    const afterPnl = (todayTrades ?? []).reduce(
-      (s, t) => s + t.pnl + (t.commission || 0) + (t.swap || 0),
-      0,
-    );
-    const afterLoss = -afterPnl;
-    const beforeLoss = -(afterPnl - batchNetPnl);
-    const warn = limit * 0.8;
+    /** P&L net du jour, par compte, les orphelins revenant à l'héritier. */
+    const duJour = new Map<string, number>();
+    for (const t of todayTrades ?? []) {
+      const brut = (t as { challenge_id?: string | null }).challenge_id ?? "";
+      const cle = brut || heritier || "";
+      duJour.set(cle, (duJour.get(cle) ?? 0) + t.pnl + (t.commission || 0) + (t.swap || 0));
+    }
+    const duLot = (id: string) =>
+      (lotParCompte[id] ?? 0) + (heritier === id ? (lotParCompte[""] ?? 0) : 0);
 
     const copy = DAILY_LOSS_COPY[asLang(language)];
 
-    if (beforeLoss < limit && afterLoss >= limit) {
+    /**
+     * ⚠️ UN SEUL PUSH, MÊME AVEC TROIS COMPTES : on annonce le franchissement le
+     * plus grave. Trois notifications identiques à la seconde près se lisent
+     * comme un bogue, pas comme une alerte.
+     */
+    let aEnvoyer: "breach" | "warn" | null = null;
+    for (const compte of avecLimite) {
+      const apres = -(duJour.get(compte.id) ?? 0);
+      const avant = apres + duLot(compte.id); // le lot est négatif : avant = après - lot
+      const warn = compte.limite * 0.8;
+      if (avant < compte.limite && apres >= compte.limite) {
+        aEnvoyer = "breach";
+        break;
+      }
+      if (avant < warn && apres >= warn) aEnvoyer = aEnvoyer ?? "warn";
+    }
+
+    if (aEnvoyer === "breach") {
       await sendPushToUser(userId, {
         title: copy.breachTitle, body: copy.breachBody, url: "/dashboard", tag: "daily-loss",
       });
-    } else if (beforeLoss < warn && afterLoss >= warn) {
+    } else if (aEnvoyer === "warn") {
       await sendPushToUser(userId, {
         title: copy.warnTitle, body: copy.warnBody, url: "/dashboard", tag: "daily-loss",
       });

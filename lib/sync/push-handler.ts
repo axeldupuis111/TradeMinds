@@ -424,7 +424,16 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   }
 
   // ── Alertes temps réel (module partagé) ──────────────────────────────────
-  const batchNetPnl = toInsert.reduce((s, r) => s + netOf(r), 0);
+  /**
+   * ⚠️ LE LOT EST VENTILÉ PAR COMPTE : la limite de perte journalière appartient
+   * à un compte, et la comparer à la somme de tous les comptes additionnait aussi
+   * des devises. Voir lib/alerts/daily-loss.
+   */
+  const batchNetPnl = toInsert.reduce<Record<string, number>>((acc, r) => {
+    const cle = (r as { challenge_id?: string | null }).challenge_id ?? "";
+    acc[cle] = (acc[cle] ?? 0) + netOf(r);
+    return acc;
+  }, {});
   const lang = (profile.language as string) || "en";
   await checkDailyLossAlert(admin, userId, lang, batchNetPnl);
   // Drawdown : une alerte par challenge réellement impacté par ce lot.
