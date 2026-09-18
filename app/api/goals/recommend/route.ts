@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import { cleDeJourDuTrader, normalizeTimezone } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +31,12 @@ export async function GET() {
   const supabase = await createClient();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [reviewsRes, tradesRes] = await Promise.all([
+  const [profilRes, reviewsRes, tradesRes] = await Promise.all([
+    supabase.from("profiles").select("timezone").eq("id", auth.userId).maybeSingle(),
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", auth.userId).gte("created_at", since),
     supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", auth.userId).gte("open_time", since).order("open_time", { ascending: true }),
   ]);
+  const fuseau = normalizeTimezone((profilRes.data?.timezone as string | null) ?? null);
   if (reviewsRes.error || tradesRes.error) {
     console.error("[Goals recommend] data query error:", reviewsRes.error ?? tradesRes.error);
     return NextResponse.json({ error: "Failed to load recommendation data" }, { status: 503 });
@@ -55,7 +58,12 @@ export async function GET() {
   }
 
   if (tr.length >= 5) {
-    const days = new Set(tr.map((t) => t.open_time.slice(0, 10)));
+    // ⚠️⚠️ LES JOURS DE TRADING SONT CEUX DU TRADER. Comptés en UTC, une séance
+    // du soir à Los Angeles ou du matin à Sydney se coupe en deux jours : le
+    // diviseur gonfle, « trades par jour » tombe de moitié, et le seuil qui
+    // détecte le surtrading n'est jamais franchi. Le produit ne signalait donc
+    // pas le surtrading à ceux qui vivent loin de Greenwich.
+    const days = new Set(tr.map((t) => cleDeJourDuTrader(t.open_time, fuseau)));
     const tradingDays = days.size;
 
     // Overtrading.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bornesDePeriode, cleDePeriode, debutDePeriodeIso } from "@/lib/periode-objectif";
-import { normalizeTimezone } from "@/lib/timezone";
+import { cleDeJourDuTrader, normalizeTimezone } from "@/lib/timezone";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -118,7 +118,11 @@ export async function GET() {
       }
       case "trades_per_day": {
         if (!tr.length) return 0;
-        const days = new Set(tr.map((t) => t.open_time.slice(0, 10)));
+        // ⚠️⚠️ LES JOURS DE TRADING SONT CEUX DU TRADER. Comptés en UTC, une
+        // séance du soir à Los Angeles ou du matin à Sydney se coupe en deux
+        // jours : le diviseur gonfle, et « trades par jour » tombe de moitié.
+        // C'est cette moyenne qui dit si l'objectif est tenu.
+        const days = new Set(tr.map((t) => cleDeJourDuTrader(t.open_time, fuseau)));
         return Math.round((tr.length / days.size) * 10) / 10;
       }
       case "max_consecutive_losses": {

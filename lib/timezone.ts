@@ -90,6 +90,26 @@ export function localDateKey(tz?: string | null, at: Date = new Date()): string 
   return `${m.year}-${m.month}-${m.day}`;
 }
 
+/**
+ * Le jour d'un horodatage, VU DU TRADER.
+ *
+ * ⚠️⚠️ `iso.slice(0, 10)` EST LA MÊME ERREUR ÉCRITE PARTOUT : il prend les dix
+ * premiers caractères d'un instant UTC, donc le jour de Greenwich. Les traders
+ * du produit vivent dans vingt-deux fuseaux. À Los Angeles, une séance du soir
+ * bascule au lendemain ; à Sydney, une séance du matin appartient encore à la
+ * veille. Ce découpage sert à compter des jours de trading, à remplir une
+ * heatmap et à dater un export comptable : chaque fois, le trader et nous
+ * n'avons pas le même calendrier.
+ *
+ * On garde le repli `slice(0, 10)` pour une valeur illisible : mieux vaut un
+ * jour approximatif qu'une ligne perdue.
+ */
+export function cleDeJourDuTrader(iso: string | null | undefined, tz?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? String(iso).slice(0, 10) : localDateKey(tz, d);
+}
+
 /** Hour 0–23 of `at` in `tz`. */
 export function localHour(tz?: string | null, at: Date = new Date()): number {
   const h = parseInt(wallParts(safeTz(tz), at).hour, 10);

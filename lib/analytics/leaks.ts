@@ -12,7 +12,7 @@
  * orientées impact financier plutôt qu'alerte comportementale.
  */
 
-import { localDateKey, localHour } from "@/lib/timezone";
+import { cleDeJourDuTrader, localHour } from "@/lib/timezone";
 import { estImpulsive } from "@/lib/emotions";
 
 export interface LeakTrade {
@@ -105,10 +105,7 @@ function netPnl(t: LeakTrade): number {
  * fuseaux, de America/Chicago à Australia/Sydney. L'hypothèse « tout le monde
  * est à Paris » n'a jamais été vraie.
  */
-function dayKey(iso: string, tz: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : localDateKey(tz, d);
-}
+const dayKey = cleDeJourDuTrader;
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);

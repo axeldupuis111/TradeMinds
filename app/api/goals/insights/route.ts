@@ -1,7 +1,7 @@
 import { estImpulsive } from "@/lib/emotions";
 import { NextResponse } from "next/server";
 import { bornesDePeriode } from "@/lib/periode-objectif";
-import { addDaysToDateKey as decalerJours, localDateKey, normalizeTimezone } from "@/lib/timezone";
+import { addDaysToDateKey as decalerJours, cleDeJourDuTrader, localDateKey, normalizeTimezone } from "@/lib/timezone";
 import { createClient } from "@/lib/supabase/server";
 import { serieDepuisLesTrades } from "@/lib/discipline-streak-source";
 import { fetchAllRows } from "@/lib/supabase-paginate";
@@ -97,7 +97,11 @@ export async function GET() {
     const tr = trades.filter((t) => t.open_time != null && t.open_time >= startISO && (endISO == null || t.open_time < endISO));
     const discipline = rv.length ? Math.round(rv.reduce((s, r) => s + (r.discipline_score as number), 0) / rv.length) : null;
     const winRate = tr.length ? Math.round((tr.filter((t) => netPnl(t) > 0).length / tr.length) * 100) : null;
-    const days = new Set(tr.map((t) => (t.open_time as string).slice(0, 10)));
+    // ⚠️⚠️ LES JOURS DE TRADING SONT CEUX DU TRADER. Comptés en UTC, une
+    // séance du soir à Los Angeles ou du matin à Sydney se coupe en deux
+    // jours : le diviseur gonfle, et « trades par jour » tombe de moitié.
+    // C'est cette moyenne qui dit si l'objectif est tenu.
+    const days = new Set(tr.map((t) => cleDeJourDuTrader(t.open_time as string, fuseau)));
     const perDay = days.size ? Math.round((tr.length / days.size) * 10) / 10 : null;
     let max = 0, run = 0;
     for (const t of tr) { if (netPnl(t) < 0) { run += 1; if (run > max) max = run; } else run = 0; }
@@ -125,7 +129,10 @@ export async function GET() {
   const cutoffIso = decalerJours(localDateKey(fuseau), -(HEATMAP_DAYS - 1));
   const dayAgg = new Map<string, { sum: number; n: number }>();
   for (const r of reviews) {
-    const d = r.created_at.slice(0, 10);
+    // ⚠️ LA FENÊTRE ÉTAIT DÉJÀ COMPTÉE EN JOURS DU TRADER (ligne au-dessus),
+    // pendant que chaque CASE était rangée au jour UTC : la règle n'était
+    // appliquée qu'à la bordure de la grille, pas à son contenu.
+    const d = cleDeJourDuTrader(r.created_at, fuseau);
     if (d < cutoffIso) continue;
     const a = dayAgg.get(d) ?? { sum: 0, n: 0 };
     a.sum += r.discipline_score as number; a.n += 1; dayAgg.set(d, a);

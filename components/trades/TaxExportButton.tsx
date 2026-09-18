@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { browserTimezone, cleDeJourDuTrader, normalizeTimezone, startOfDateKeyUtc } from "@/lib/timezone";
 import { FileSpreadsheet } from "lucide-react";
 
 /** Colonnes de l'export comptable (voir la lecture paginée plus bas). */
@@ -25,6 +26,18 @@ interface TaxRow {
  * for a chosen year as a standard CSV (UTF-8 BOM, comma-delimited, dot decimals,
  * quoted fields) — imports cleanly into Excel / Google Sheets / accounting tools.
  * Self-contained: reads the user's own rows (RLS), builds the file client-side.
+ *
+ * ⚠️⚠️ L'ANNÉE EST CELLE DU TRADER, PAS CELLE DE GREENWICH. La lecture bornait
+ * l'année sur `"2026-01-01T00:00:00"`, une chaîne SANS FUSEAU : PostgREST la
+ * compare à une colonne timestamptz, donc à minuit UTC. Pour un trader à Los
+ * Angeles, tout ce qu'il a clôturé le 31 décembre après 16 h tombait dans le
+ * fichier de l'ANNÉE SUIVANTE, et la colonne Date l'y datait du 1er janvier.
+ * Sur un document comptable, c'est un revenu déclaré sur le mauvais exercice.
+ *
+ * ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÉCRITE, et `startOfDateKeyUtc` existe précisément pour
+ * ça (voir lib/timezone) : elle n'avait simplement jamais atteint cet export.
+ * Le fuseau est celui du PROFIL, pas celui du navigateur : un trader en
+ * déplacement ne change pas de résidence fiscale en changeant de fuseau.
  */
 export default function TaxExportButton() {
   const { t } = useLanguage();
@@ -52,8 +65,11 @@ export default function TaxExportButton() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const start = `${year}-01-01T00:00:00`;
-      const end = `${year + 1}-01-01T00:00:00`;
+      const { data: profil } = await supabase
+        .from("profiles").select("timezone").eq("id", user.id).maybeSingle();
+      const fuseau = normalizeTimezone((profil?.timezone as string | null) ?? browserTimezone());
+      const start = (startOfDateKeyUtc(`${year}-01-01`, fuseau) ?? new Date(0)).toISOString();
+      const end = (startOfDateKeyUtc(`${year + 1}-01-01`, fuseau) ?? new Date(0)).toISOString();
       // Lecture paginée. C'est un document comptable : une année de scalping
       // dépasse facilement 1 000 trades, et une lecture non bornée s'arrête
       // exactement là, sans erreur (voir lib/supabase-paginate.ts). Le fichier
@@ -89,7 +105,7 @@ export default function TaxExportButton() {
 
       const body = rows.map((r) => {
         const netv = (r.pnl ?? 0) + (r.commission ?? 0) + (r.swap ?? 0);
-        const date = String(r.close_time || r.open_time || "").slice(0, 10);
+        const date = cleDeJourDuTrader(r.close_time || r.open_time, fuseau);
         return [date, r.pair ?? "", r.direction ?? "", r.lot_size ?? "", r.entry_price ?? "", r.exit_price ?? "", csvNum(r.pnl), csvNum(r.commission), csvNum(r.swap), csvNum(netv)];
       });
 
