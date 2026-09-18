@@ -273,10 +273,45 @@ export async function POST(request: Request) {
         ? body.accountSize
         : null;
 
+    /**
+     * ⚠️⚠️ LES AUTRES FICHES DU TRADER FONT PARTIE DE SON PÉRIMÈTRE ÉCRIT.
+     * La page n'envoie qu'UNE fiche, choisie par un `.limit(1)` sans tri (la
+     * plus ancienne), et toutes les règles étaient appliquées à TOUS les
+     * trades. Un abonné premium à trois fiches, dont une « trendline nas100 »,
+     * se voyait reprocher 92 « mauvaise paire » sur 157 trades parce que la
+     * fiche retenue parlait d'or. La lecture se fait ICI, avec l'identité
+     * vérifiée : la page ne peut pas se déclarer un périmètre qu'elle n'a pas.
+     */
+    let autresFiches: { pairs: string[]; sessions: string[] }[] = [];
+    try {
+      const sb = createSupabaseServer();
+      const { data: fiches, error: erreurFiches } = await sb
+        .from("strategies")
+        .select("id, pairs, sessions")
+        .eq("user_id", userId);
+      if (erreurFiches) {
+        // ⚠️ Sans la liste, on juge comme avant : plus sévère, jamais faux
+        // dans l'autre sens. Mais ça se sait.
+        console.error(
+          "[API Analyze] fiches stratégie illisibles, jugement sur une seule fiche :",
+          erreurFiches.message,
+        );
+      }
+      autresFiches = (fiches ?? [])
+        .filter((f) => f.id !== (strategy as { id?: string }).id)
+        .map((f) => ({
+          pairs: (f.pairs as string[]) ?? [],
+          sessions: (f.sessions as string[]) ?? [],
+        }));
+    } catch {
+      // lecture indisponible — non bloquant
+    }
+
     const mechanicalViolations = computeMechanicalViolations(
       recentTrades as SelectionTrade[],
       strategy as SelectionStrategy,
       capitalDuCompte,
+      autresFiches,
     );
     const selection = selectSignificantTrades(
       recentTrades as SelectionTrade[],

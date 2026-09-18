@@ -147,13 +147,44 @@ export function computeMechanicalViolations(
    * n'est pas vérifiée : mieux vaut ne rien compter que compter faux.
    */
   accountSize?: number | null,
+  /**
+   * LES AUTRES FICHES STRATÉGIE DU TRADER.
+   *
+   * ⚠️⚠️ L'ANALYSE JUGE TOUS LES TRADES CONTRE UNE SEULE FICHE, CHOISIE PAR
+   * UN `.limit(1)` SANS TRI : la plus ancienne. Un trader qui écrit trois
+   * fiches (une par instrument, ce que le produit encourage) voyait donc ses
+   * trades NAS100 comptés « mauvaise paire » parce que la fiche retenue parle
+   * d'or.
+   *
+   * ⚠️ MESURÉ EN BASE LE 2026-09-18 : un abonné premium, 157 trades sur cinq
+   * instruments, TROIS fiches dont une « trendline nas100 » — et
+   * 92 trades sur 157 comptés « mauvaise paire » contre la fiche « or ». Aucun
+   * de ses trades n'est rattaché à une fiche. Sur une analyse payée, le
+   * produit lui reprochait 92 fautes qu'il n'a pas commises.
+   *
+   * ⚠️ LE PÉRIMÈTRE ÉCRIT D'UN TRADER, C'EST L'UNION DE SES FICHES. On ne
+   * reproche donc l'instrument ou l'horaire que s'ils sortent de TOUT ce qu'il
+   * a écrit. C'est la règle déjà posée deux lignes plus bas : « on se tait
+   * plutôt que de juger à moitié ».
+   */
+  autresFiches: { pairs: string[]; sessions: string[] }[] = [],
 ): MechanicalViolation[] {
   const hits: Record<string, number[]> = {};
   const add = (type: MechanicalViolationType, idx: number) => {
     (hits[type] ??= []).push(idx);
   };
 
-  const allowedPairs = strategy.pairs.map(normPair).filter(Boolean);
+  /**
+   * Le périmètre d'instruments écrit par le trader : l'union de ses fiches.
+   * Une fiche sans liste de paires ne restreint rien, donc elle ouvre tout.
+   */
+  const fichesDInstruments = [strategy, ...autresFiches];
+  const uneFicheNeRestreintPas = fichesDInstruments.some(
+    (f) => f.pairs.map(normPair).filter(Boolean).length === 0,
+  );
+  const allowedPairs = uneFicheNeRestreintPas
+    ? []
+    : Array.from(new Set(fichesDInstruments.flatMap((f) => f.pairs.map(normPair).filter(Boolean))));
   /**
    * ⚠️⚠️ UNE SESSION NON RECONNUE FAISAIT JUGER SUR LA MOITIÉ DE LA RÈGLE. Le
    * `.filter(Boolean)` laissait tomber en silence les identifiants inconnus :
@@ -172,9 +203,11 @@ export function computeMechanicalViolations(
    * peut rien reprocher. C'est déjà ce que faisait le code quand AUCUNE
    * session n'était reconnue ; il manquait le cas intermédiaire.
    */
-  const fenetresDeclarees = strategy.sessions.map(fenetreDeSession);
+  const fenetresDeclarees = fichesDInstruments.flatMap((f) => f.sessions.map(fenetreDeSession));
+  // ⚠️ Une fiche sans plage horaire n'interdit aucune heure : l'union non plus.
+  const uneFicheSansHoraire = fichesDInstruments.some((f) => f.sessions.length === 0);
   const toutesReconnues = fenetresDeclarees.every(Boolean);
-  const windows: [number, number][] = toutesReconnues
+  const windows: [number, number][] = toutesReconnues && !uneFicheSansHoraire
     ? fenetresDeclarees.filter((f): f is [number, number] => f !== undefined)
     : [];
 
