@@ -97,7 +97,7 @@ describe("les deux ensembles", () => {
    */
   it("la série se casse plus difficilement que le défi hebdomadaire", () => {
     expect(Array.from(EMOTIONS_QUI_CASSENT_LA_SERIE).sort()).toEqual(["fomo", "revenge"]);
-    for (const e of EMOTIONS_QUI_CASSENT_LA_SERIE) {
+    for (const e of Array.from(EMOTIONS_QUI_CASSENT_LA_SERIE)) {
       expect(EMOTIONS_IMPULSIVES.has(e), `${e} casse la série sans compter comme impulsif`).toBe(
         true,
       );
