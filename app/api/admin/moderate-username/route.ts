@@ -1,8 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateUsername } from "@/lib/username-moderation";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { refusDAdministrateur } from "@/lib/garde-admin";
 
 /**
  * Modération admin des pseudos : renommer ou retirer le pseudo d'un
@@ -32,37 +31,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify caller is authenticated
-    const cookieStore = cookies();
-    const supabaseUserClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {
-            // read-only — session check only
-          },
-        },
-      }
-    );
-
-    const { data: { user }, error: userError } = await supabaseUserClient.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ success: false, message: "Non authentifié" }, { status: 401 });
-    }
-
-    // Verify caller is admin
-    const adminEmails = (process.env.ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-
-    if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
-      return NextResponse.json({ success: false, message: "Accès refusé" }, { status: 403 });
-    }
+    /**
+     * ⚠️ LE GARDE VIT DANS `lib/garde-admin.ts`, AVEC LES SEPT AUTRES. Il a
+     * été recopié huit fois, et l'une des copies a fini par se garder sur un
+     * `ADMIN_SECRET` qui n'existe pas en production : la route était
+     * inappelable, et personne ne le savait.
+     *
+     * ⚠️ LA FORME `{ success, message }` EST CELLE QUE CET ÉCRAN LIT : elle
+     * est un paramètre, pas une uniformisation qui casserait le front.
+     */
+    const refus = await refusDAdministrateur("success");
+    if (refus) return refus;
 
     const adminClient = createAdminClient();
 

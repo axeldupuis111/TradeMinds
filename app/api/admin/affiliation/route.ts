@@ -1,6 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { refusDAdministrateur } from "@/lib/garde-admin";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -67,20 +66,14 @@ function invoiceSubscriptionId(inv: Stripe.Invoice): string | null {
 
 export async function GET(req: NextRequest) {
   // ── Garde admin (cookie session + liste blanche ADMIN_EMAILS) ────────────
-  const cookieStore = cookies();
-  const supabaseUser = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll(); }, setAll() {} } }
-  );
-  const { data: { user } } = await supabaseUser.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-  if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-  }
+  /**
+   * ⚠️ LE GARDE VIT DANS `lib/garde-admin.ts`, AVEC LES SEPT AUTRES. Il a
+   * été recopié huit fois, et l'une des copies a fini par se garder sur un
+   * `ADMIN_SECRET` qui n'existe pas en production : la route était
+   * inappelable, et personne ne le savait.
+   */
+  const refus = await refusDAdministrateur();
+  if (refus) return refus;
 
   // ── Fenêtre du mois demandé ───────────────────────────────────────────────
   const monthParam = req.nextUrl.searchParams.get("month") ?? "";

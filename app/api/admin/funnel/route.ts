@@ -1,8 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cohorteTronquee, dansLaCohorte, tousUtilisateurs } from "@/lib/cohorte";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { refusDAdministrateur } from "@/lib/garde-admin";
 
 /**
  * Funnel d'activation (admin) — lit product_events + profiles et renvoie les
@@ -14,20 +13,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   // ── Garde admin (cookie session + liste blanche ADMIN_EMAILS) ────────────
-  const cookieStore = cookies();
-  const supabaseUser = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll(); }, setAll() {} } }
-  );
-  const { data: { user } } = await supabaseUser.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-  if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-  }
+  /**
+   * ⚠️ LE GARDE VIT DANS `lib/garde-admin.ts`, AVEC LES SEPT AUTRES. Il a
+   * été recopié huit fois, et l'une des copies a fini par se garder sur un
+   * `ADMIN_SECRET` qui n'existe pas en production : la route était
+   * inappelable, et personne ne le savait.
+   */
+  const refus = await refusDAdministrateur();
+  if (refus) return refus;
 
   const daysParam = Number(req.nextUrl.searchParams.get("days"));
   const days = daysParam === 7 ? 7 : 30;

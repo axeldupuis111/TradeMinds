@@ -31,50 +31,31 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { NextResponse } from "next/server";
+import { refusDAdministrateur } from "@/lib/garde-admin";
 import {
   computeConfluenceScore,
   deriveSetupFromChecklist,
   detectKillzone,
 } from "@/lib/strategy/derive";
 
-/** L'appelant est-il administrateur, par le secret ou par sa session ? */
+/**
+ * ⚠️ LE SECRET RESTE ACCEPTÉ QUAND IL EXISTE : rien de ce qui marchait ne
+ * cesse de marcher. Mais `ADMIN_EMAILS` est la voie normale, et elle vient
+ * désormais du module partagé.
+ *
+ * ⚠️⚠️ CETTE ROUTE EST CELLE QUI A PROUVÉ CE QUE COÛTE UNE COPIE DIVERGENTE.
+ * Gardée par un `ADMIN_SECRET` absent de la production, elle répondait 401 à
+ * tout le monde, y compris à son auteur, et la correction du calcul ICT n'a
+ * jamais pu être appliquée : onze trades portent une killzone que le code
+ * contredit, 213 sur 288 n'en ont aucune.
+ */
 async function estAdministrateur(request: Request): Promise<boolean> {
   const attendu = process.env.ADMIN_SECRET;
   const secret = request.headers.get("x-admin-secret");
   if (attendu && secret && secret === attendu) return true;
-
-  const cookieStore = cookies();
-  const client = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {
-          // lecture seule : on ne fait que vérifier la session
-        },
-      },
-    },
-  );
-  const { data: { user } } = await client.auth.getUser();
-  if (!user?.email) return false;
-
-  /**
-   * ⚠️ LISTE VIDE = PERSONNE. Si `ADMIN_EMAILS` venait à manquer, `includes`
-   * rend faux pour tout le monde : la route se ferme au lieu de s'ouvrir.
-   */
-  const admins = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return admins.includes(user.email.toLowerCase());
-}
+  return (await refusDAdministrateur()) === null;}
 
 export async function POST(request: Request) {
   if (!(await estAdministrateur(request))) {

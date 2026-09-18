@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { adressesAdmin } from "./garde-admin";
 
 /**
  * UNE ROUTE D'ADMINISTRATION SE GARDE COMME LES AUTRES, ET RESTE APPELABLE.
@@ -25,11 +26,20 @@ import { describe, expect, it } from "vitest";
  *
  * Une correction qu'on ne peut pas exécuter n'est pas une correction.
  *
- * ── LA RÈGLE ────────────────────────────────────────────────────────────────
+ * ── LA CAUSE, TRAITÉE LE SOIR MÊME ──────────────────────────────────────────
  *
- * Une route d'administration se garde par `ADMIN_EMAILS`, comme les sept
- * autres. Le secret reste accepté quand il existe : rien de ce qui marchait ne
- * cesse de marcher.
+ * ⚠️⚠️ LE GARDE ÉTAIT RECOPIÉ HUIT FOIS. Chaque route réécrivait les mêmes
+ * quinze lignes et portait un commentaire « Même garde admin que
+ * /api/admin/X », désignant à chaque fois une sœur DIFFÉRENTE. Huit fichiers
+ * affirmaient se ressembler, et rien ne les y obligeait — jusqu'au jour où l'un
+ * d'eux a cessé. Le garde vit désormais dans `lib/garde-admin.ts`.
+ *
+ * ⚠️ ET CE TEST-CI TENAIT LA DUPLICATION EN PLACE : sa version du matin
+ * exigeait de CHAQUE FICHIER qu'il contienne `ADMIN_EMAILS` et un `includes`,
+ * c'est-à-dire exactement les copies. Il est tombé le jour où elles ont
+ * disparu. C'est le troisième garde de la journée à épingler la mise en œuvre
+ * plutôt que l'intention ; l'intention est : toute route d'administration passe
+ * par le même garde, et ce garde se ferme quand la liste est vide.
  */
 
 const RACINE = process.cwd();
@@ -54,35 +64,69 @@ describe("les routes d'administration", () => {
    * ⚠️ CE TEST PART DU DISQUE, pas d'une liste recopiée : une route
    * d'administration ajoutée demain est protégée par ce test le jour même.
    */
-  it("lisent toutes ADMIN_EMAILS", () => {
-    const sansListe = Array.from(sources.entries())
-      .filter(([, src]) => !src.includes("ADMIN_EMAILS"))
+  it("passent toutes par le garde partagé", () => {
+    const sansGarde = Array.from(sources.entries())
+      .filter(([, src]) => !src.includes("@/lib/garde-admin"))
       .map(([f]) => f);
     expect(
-      sansListe,
-      "ces routes se gardent autrement que les autres : si leur secret n'est pas " +
-        "déployé, elles sont inappelables et personne ne le sait",
+      sansGarde,
+      "ces routes se gardent autrement que les autres : c'est ainsi que l'une " +
+        "d'elles est devenue inappelable sans que personne le sache :\n  " + sansGarde.join("\n  "),
     ).toEqual([]);
   });
 
-  /** ⚠️ Et aucune ne dépend UNIQUEMENT d'un secret qui peut ne pas exister. */
-  it("ne dépendent jamais du seul ADMIN_SECRET", () => {
-    const seulementSecret = Array.from(sources.entries())
-      .filter(([, src]) => src.includes("ADMIN_SECRET") && !src.includes("ADMIN_EMAILS"))
+  /** ⚠️ Et aucune ne réécrit la liste dans son coin. */
+  it("ne réécrivent plus la liste des adresses", () => {
+    const copies = Array.from(sources.entries())
+      .filter(([, src]) => /process\.env\.ADMIN_EMAILS/.test(src))
       .map(([f]) => f);
-    expect(seulementSecret).toEqual([]);
+    expect(copies, "la liste est de nouveau recopiée : " + copies.join(" ")).toEqual([]);
   });
 
   /**
-   * ⚠️ LISTE VIDE = PERSONNE. Le jour où `ADMIN_EMAILS` disparaît, une route
-   * doit se FERMER, pas s'ouvrir. `[].includes(x)` rend faux : c'est déjà le
-   * bon sens, ce test le fige.
+   * ⚠️⚠️ ET AUCUNE NE DÉPEND UNIQUEMENT D'UN SECRET QUI PEUT NE PAS EXISTER.
+   * C'est le défaut d'origine, mot pour mot.
    */
-  it("se ferment quand la liste est vide", () => {
-    for (const [f, src] of Array.from(sources.entries())) {
-      expect(src, `${f} n'utilise plus \`includes\` pour décider`).toMatch(
-        /admins?Emails?\s*\.includes|admins\.includes/i,
-      );
+  it("ne dépendent jamais du seul ADMIN_SECRET", () => {
+    const seulementSecret = Array.from(sources.entries())
+      .filter(([, src]) => src.includes("ADMIN_SECRET") && !src.includes("@/lib/garde-admin"))
+      .map(([f]) => f);
+    expect(seulementSecret).toEqual([]);
+  });
+});
+
+describe("le garde partagé", () => {
+  /**
+   * ⚠️⚠️ LISTE VIDE = PERSONNE. Le jour où `ADMIN_EMAILS` disparaît, une route
+   * doit se FERMER, pas s'ouvrir. Ce test l'éprouve par le COMPORTEMENT, pas
+   * par une recherche de texte : la version précédente cherchait le mot
+   * `includes` dans huit fichiers, ce qui prouvait seulement que le mot était
+   * là.
+   */
+  it("ne connaît personne quand la variable est absente", () => {
+    const avant = process.env.ADMIN_EMAILS;
+    try {
+      delete process.env.ADMIN_EMAILS;
+      expect(adressesAdmin()).toEqual([]);
+      process.env.ADMIN_EMAILS = "";
+      expect(adressesAdmin()).toEqual([]);
+      process.env.ADMIN_EMAILS = " , ,, ";
+      expect(adressesAdmin(), "des entrées vides deviendraient des adresses").toEqual([]);
+    } finally {
+      if (avant === undefined) delete process.env.ADMIN_EMAILS;
+      else process.env.ADMIN_EMAILS = avant;
+    }
+  });
+
+  /** ⚠️ Et la comparaison ne dépend ni de la casse ni des espaces. */
+  it("reconnaît une adresse quelle que soit sa casse", () => {
+    const avant = process.env.ADMIN_EMAILS;
+    try {
+      process.env.ADMIN_EMAILS = " Axel.Dupuis111@Gmail.COM , autre@exemple.fr ";
+      expect(adressesAdmin()).toEqual(["axel.dupuis111@gmail.com", "autre@exemple.fr"]);
+    } finally {
+      if (avant === undefined) delete process.env.ADMIN_EMAILS;
+      else process.env.ADMIN_EMAILS = avant;
     }
   });
 });
