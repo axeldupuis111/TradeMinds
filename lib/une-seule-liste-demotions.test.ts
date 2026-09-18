@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   EMOTIONS_A_RISQUE,
   EMOTIONS_IMPULSIVES,
+  EMOTIONS_QUI_CASSENT_LA_SERIE,
+  casseLaSerie,
   emojiDEmotion,
   estARisque,
   estImpulsive,
@@ -77,6 +79,39 @@ describe("les deux ensembles", () => {
     expect(estImpulsive(undefined)).toBe(false);
   });
 
+  /**
+   * ⚠️⚠️ LE TROISIÈME ENSEMBLE, ET LA DÉCISION QUI LE JUSTIFIE. La série de
+   * discipline ne se casse QUE sur `revenge` et `fomo`, plus étroit encore que
+   * l'impulsivité. Ce n'est plus une divergence tolérée, c'est un choix mesuré
+   * le 2026-09-18 : la version large coûterait à un trader une série EN COURS
+   * de 7 jours (ramenée à 2) et son record de 8 (ramené à 5), et à un second un
+   * record de 5 ramené à 3 — pour des trades consignés sous une règle qui ne
+   * les comptait pas.
+   *
+   * ⚠️ ET LA RAISON DE FOND N'EST PAS LE COÛT : `revenge` et `fomo` sont des
+   * ACTES, `frustrated` est un ÉTAT, déclaré 31 fois et souvent APRÈS une perte
+   * parfaitement disciplinée. La série est la seule mesure à laquelle une
+   * récompense est attachée ; faire payer l'aveu apprend à ne plus rien
+   * déclarer. Le catalogue le dit déjà : `frustrated` y est `warning`, pas
+   * `negative`.
+   */
+  it("la série se casse plus difficilement que le défi hebdomadaire", () => {
+    expect(Array.from(EMOTIONS_QUI_CASSENT_LA_SERIE).sort()).toEqual(["fomo", "revenge"]);
+    for (const e of EMOTIONS_QUI_CASSENT_LA_SERIE) {
+      expect(EMOTIONS_IMPULSIVES.has(e), `${e} casse la série sans compter comme impulsif`).toBe(
+        true,
+      );
+    }
+    // La frustration coûte de l'argent dans les défis, elle ne casse pas la série.
+    expect(estImpulsive("frustrated")).toBe(true);
+    expect(casseLaSerie("frustrated")).toBe(false);
+    expect(casseLaSerie("greedy")).toBe(false);
+    expect(casseLaSerie("overconfident")).toBe(false);
+    expect(casseLaSerie("revenge")).toBe(true);
+    expect(casseLaSerie("FOMO"), "la casse ne doit pas dépendre de la casse").toBe(true);
+    expect(casseLaSerie(null)).toBe(false);
+  });
+
   it("l'impulsivité est plus étroite que le risque", () => {
     for (const e of Array.from(EMOTIONS_IMPULSIVES)) {
       if (e === "cupide") continue; // alias hors catalogue
@@ -131,16 +166,13 @@ describe("les surfaces", () => {
       // Le catalogue et le module partagé ont le droit de les nommer.
       if (nom === "lib/emotions.ts" || nom === "lib/ict-constants.ts") continue;
       /**
-       * ⚠️⚠️ EXCEPTION NOMMÉE, AVEC SA RAISON, ET UNE QUESTION OUVERTE. La
-       * SÉRIE DE DISCIPLINE ne se casse que sur `revenge` et `fomo` : c'est un
-       * quatrième ensemble, plus étroit encore que l'impulsivité. Il porte le
-       * chiffre dont le produit tire son nom, et l'élargir remettrait à zéro la
-       * série de traders qui la tiennent depuis des semaines. Ce n'est donc pas
-       * une correction, c'est une décision de produit : en attendant, la
-       * divergence est ÉCRITE ici, pas découverte un jour par un trader dont le
-       * défi hebdomadaire compte une journée sale que sa série compte propre.
+       * ✅ L'EXCEPTION EST LEVÉE (2026-09-18). Elle disait : « la SÉRIE DE
+       * DISCIPLINE ne se casse que sur revenge et fomo, c'est un quatrième
+       * ensemble, et c'est une décision de produit ». La décision a été prise
+       * et mesurée, et la liste a rejoint les deux autres dans `lib/emotions.ts`
+       * sous le nom `EMOTIONS_QUI_CASSENT_LA_SERIE` : ce fichier n'a donc plus
+       * besoin d'être excusé, il n'écrit plus rien.
        */
-      if (nom === "lib/discipline-streak-source.ts") continue;
       const src = readFileSync(chemin, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
       if (/"revenge"[^\n]{0,40}"fomo"|"fomo"[^\n]{0,40}"revenge"/.test(src)) {
         fautes.push(nom);

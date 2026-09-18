@@ -1,5 +1,6 @@
 import { computeDisciplineStreaks, type StreakResult } from "@/lib/discipline-streak";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { casseLaSerie } from "@/lib/emotions";
 import { cleDeJourDuTrader } from "@/lib/timezone";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -52,10 +53,14 @@ export interface SerieDeDiscipline extends StreakResult {
 
 const VIDE: SerieDeDiscipline = { current: 0, record: 0, isRecord: false, complet: false };
 
-/** Un trade compte contre la série s'il a été pris sous l'émotion. */
-function estEmotionnel(emotion: string | null): boolean {
-  return emotion === "revenge" || emotion === "fomo";
-}
+/**
+ * Un trade compte contre la série s'il a été pris sous l'émotion.
+ *
+ * ⚠️ LA LISTE VIT DANS `lib/emotions.ts`, avec les deux autres et avec la
+ * décision écrite de ne PAS l'élargir. Elle était ici, écrite à la main, dans
+ * un dépôt qui interdit par test aux écrans d'en réécrire une.
+ */
+const estEmotionnel = (emotion: string | null): boolean => casseLaSerie(emotion);
 
 /** Ce qu'il faut savoir d'un trade pour la série, et rien de plus. */
 export interface TradePourLaSerie {

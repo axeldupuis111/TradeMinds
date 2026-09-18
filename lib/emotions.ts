@@ -111,6 +111,47 @@ export const EMOTIONS_IMPULSIVES: ReadonlySet<string> = new Set([
   "cupide",
 ]);
 
+/**
+ * Émotions qui CASSENT LA SÉRIE DE DISCIPLINE.
+ *
+ * ── LA TROISIÈME LISTE, ET C'EST LA DERNIÈRE ────────────────────────────────
+ *
+ * ⚠️⚠️ ELLE ÉTAIT ÉCRITE À LA MAIN AILLEURS, dans `discipline-streak-source`,
+ * sous la forme `emotion === "revenge" || emotion === "fomo"` — dans un dépôt
+ * qui possède un module nommé « une seule liste d'émotions » et un test qui
+ * interdit aux écrans d'en réécrire une. Le module s'appliquait à deux des
+ * trois ensembles.
+ *
+ * ── POURQUOI ELLE EST PLUS ÉTROITE QUE `EMOTIONS_IMPULSIVES` ────────────────
+ *
+ * ✅ DÉCISION PRISE LE 2026-09-18, après mesure, et elle est de NE PAS
+ * l'élargir. Rejouée sur les 447 trades de production, la version large
+ * (celle des défis et des fuites de capital) coûterait : un trader perd une
+ * série EN COURS de 7 jours, ramenée à 2, et son record de 8 à 5 ; un second
+ * perd un record de 5, ramené à 3. Deux traders punis rétroactivement pour des
+ * trades déjà consignés sous une règle qui ne les comptait pas.
+ *
+ * ⚠️ ET LA RAISON DE FOND N'EST PAS LE COÛT, C'EST LE SENS. `revenge` et `fomo`
+ * sont des ACTES : le trader a pris une position qu'il n'aurait pas prise.
+ * `frustrated` est un ÉTAT, et c'est la troisième émotion la plus déclarée du
+ * produit (31 trades) : elle se déclare souvent APRÈS une perte parfaitement
+ * disciplinée. La série est la seule mesure du produit à laquelle une
+ * récompense est attachée (gels, emblèmes, certificats) ; faire payer l'aveu
+ * apprend au trader à ne plus rien déclarer, et c'est le contraire de ce que
+ * le produit vend. Le catalogue dit d'ailleurs la même chose : `frustrated` y
+ * est rangé `warning`, pas `negative`.
+ *
+ * ⚠️ LES DÉFIS ET LES FUITES GARDENT LA LISTE LARGE, ET C'EST COHÉRENT : ils
+ * mesurent ce que l'impulsivité COÛTE, sur une semaine et sans récompense
+ * rétroactive à détruire.
+ */
+export const EMOTIONS_QUI_CASSENT_LA_SERIE: ReadonlySet<string> = new Set(["revenge", "fomo"]);
+
+/** Vrai si ce trade a été pris sous une émotion qui casse la série. */
+export function casseLaSerie(emotion: string | null | undefined): boolean {
+  return !!emotion && EMOTIONS_QUI_CASSENT_LA_SERIE.has(emotion.toLowerCase());
+}
+
 /** Vrai si cette émotion mérite une mise en garde immédiate. */
 export function estARisque(emotion: string | null | undefined): boolean {
   return !!emotion && EMOTIONS_A_RISQUE.has(emotion.toLowerCase());
