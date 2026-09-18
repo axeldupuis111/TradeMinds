@@ -197,4 +197,29 @@ describe("les commandes révélées au survol", () => {
     expect(balise, "seize pixels de haut : sous le minimum de la WCAG 2.5.8").toMatch(/py-1\.5/);
     expect(balise, "la hauteur ajoutée n'est pas compensée").toMatch(/-my-1\.5/);
   });
+
+  /**
+   * ⚠️⚠️ ET LES TROIS ANCRES DU BANDEAU PUBLIC, mesurées dans une iframe de
+   * 1280 px sur la production le 2026-09-18 : « Fonctionnalités » 100x20,
+   * « Tarifs » 36x20, « FAQ » 26x20. Ce sont des commandes d une barre de
+   * navigation, donc l exemption WCAG « lien dans une phrase » ne s applique
+   * pas — celle-ci vaut pour les liens de /contact et /legal/cgv, qui font
+   * 16 px de haut et sont, eux, dans du texte courant.
+   *
+   * ⚠️ LA RÈGLE ÉTAIT DÉJÀ DANS CE FICHIER-LÀ : le lien « Blog », trois
+   * lignes plus bas dans le même bandeau, portait déjà `px-3 py-1.5`.
+   * Une règle écrite, appliquée à une moitié du bandeau.
+   */
+  it("les ancres du bandeau public sont assez hautes", () => {
+    const src = readFileSync(join(RACINE, "components/PublicHeader.tsx"), "utf8");
+    for (const ancre of ["#features", "#pricing", "#faq"]) {
+      const i = src.indexOf(`href="${ancre}"`);
+      expect(i, `l ancre ${ancre} a disparu du bandeau`).toBeGreaterThan(0);
+      const balise = src.slice(i, src.indexOf(">", i));
+      expect(
+        balise,
+        `${ancre} fait vingt pixels de haut : sous le minimum de la WCAG 2.5.8`,
+      ).toMatch(/py-1.5/);
+    }
+  });
 });

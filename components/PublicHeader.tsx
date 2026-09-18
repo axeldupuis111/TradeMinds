@@ -74,14 +74,30 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
              un `gap` sur le conteneur : un gap s'appliquerait aussi quand les
              ancres sont masquées, et poussait le CTA 22px au-delà du padding
              en mobile. */
+          /*
+            ⚠️ LES TROIS ANCRES FAISAIENT 20 PIXELS DE HAUT, mesurées dans une
+            iframe de 1280 px sur la production le 2026-09-18 :
+            « Fonctionnalités » 100x20, « Tarifs » 36x20, « FAQ » 26x20. WCAG
+            2.5.8 (AA) demande 24 px, et l exemption « lien dans une phrase »
+            ne s applique pas : ce sont des commandes d une barre de
+            navigation, pas du texte courant.
+
+            ⚠️ ET LE LIEN « Blog », TROIS LIGNES PLUS BAS DANS CE MÊME FICHIER,
+            porte déjà `px-3 py-1.5`. La règle était écrite ici, appliquée à
+            une moitié du bandeau.
+
+            ⚠️ `py-1.5` PLUTÔT QU UNE HAUTEUR FIXE : le conteneur est en
+            `items-center` et déjà plus haut que 20 px à cause du bouton de
+            droite, donc la mise en page ne bouge pas d un pixel.
+          */
           <div className="hidden lg:flex items-center gap-6 shrink-0 ml-8">
-            <a href="#features" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
+            <a href="#features" className="text-sm text-foreground-muted hover:text-foreground transition-colors py-1.5">
               {t("nav_features")}
             </a>
-            <a href="#pricing" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
+            <a href="#pricing" className="text-sm text-foreground-muted hover:text-foreground transition-colors py-1.5">
               {t("nav_pricing")}
             </a>
-            <a href="#faq" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
+            <a href="#faq" className="text-sm text-foreground-muted hover:text-foreground transition-colors py-1.5">
               {t("nav_faq")}
             </a>
           </div>
