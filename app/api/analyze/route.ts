@@ -22,6 +22,7 @@ import { logAiCost } from "@/lib/ai-cost-log";
 import { CATEGORIE_DE_VIOLATION, computeDisciplineScore, type Violation } from "@/lib/discipline-score";
 import { calculatePips, getTradeResult } from "@/lib/pips";
 import { prixConnu, prixDeSortieConnu } from "@/lib/prix-connu";
+import { risqueEnPips, stopVisiblementDeplace } from "@/lib/risque-du-trade";
 import { localDateKey } from "@/lib/timezone";
 import { refusSiDemo, requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -302,7 +303,17 @@ export async function POST(request: Request) {
         // par un zéro, et `Risque: 45000 pips` en découlait. Voir lib/prix-connu.ts.
         const effectiveSL = prixConnu(t.sl_initial) ?? prixConnu(t.sl);
         const effectiveTP = prixConnu(t.tp_initial) ?? prixConnu(t.tp);
-        const riskPips = effectiveSL != null ? calculatePips(t.pair, t.entry_price, effectiveSL) : null;
+        /**
+         * ⚠️⚠️ UN STOP SUIVI N'EST PAS UN RISQUE MINUSCULE, C'EST UN RISQUE
+         * INCONNU. MetaTrader pousse le stop COURANT à la clôture : remonté au
+         * point mort ou en profit, il passe du côté du GAIN. La ligne envoyée
+         * au modèle annonçait alors « Risque: 4 pips | RR planifié: 1:250 »,
+         * avec pour consigne de la reprendre telle quelle : le modèle
+         * félicitait une gestion du risque qui n'avait pas eu lieu. Mesuré en
+         * base le 2026-09-18 : 64 trades sur 447, dont 57 gagnants.
+         * Voir lib/risque-du-trade.
+         */
+        const riskPips = risqueEnPips(t.pair, t.direction, t.entry_price, effectiveSL);
         const rewardPips = effectiveTP != null ? calculatePips(t.pair, t.entry_price, effectiveTP) : null;
         /**
          * ⚠️⚠️ UN PRIX DE SORTIE À ZÉRO N'EST PAS UN PRIX (voir
@@ -317,7 +328,17 @@ export async function POST(request: Request) {
         const realizedPips = sortieConnue != null ? calculatePips(t.pair, t.entry_price, sortieConnue) : null;
         const rrPlanned = riskPips && rewardPips ? Math.round((rewardPips / riskPips) * 100) / 100 : null;
         const result = getTradeResult(pnlNet);
-        const slWasModified = t.sl_initial != null && t.sl_initial !== t.sl;
+        /**
+         * ⚠️⚠️ `sl_initial` N'EST RENSEIGNÉ SUR AUCUNE LIGNE (0 sur 447, mesuré
+         * le 2026-09-18) : le rail de synchro n'écrit que `sl`. Ce drapeau
+         * était donc TOUJOURS faux, y compris sur les 64 trades dont le stop
+         * est visiblement du côté du gain, c'est-à-dire dont le stop a
+         * forcément été déplacé. Un stop du côté du gain est une PREUVE de
+         * déplacement : aucune plateforme n'accepte de l'y poser à l'ouverture.
+         */
+        const slWasModified =
+          (t.sl_initial != null && t.sl_initial !== t.sl) ||
+          stopVisiblementDeplace(t.direction, t.entry_price, effectiveSL);
         const tpWasModified = t.tp_initial != null && t.tp_initial !== t.tp;
         const pipsDirection = sortieConnue == null
           ? null
@@ -344,7 +365,11 @@ export async function POST(request: Request) {
           ? `\n  Analyse visuelle (Claude a vu le graphique) : grade ${vr.grade}${vr.setup_validity ? `, setup ${sanitizeUserInput(vr.setup_validity)}` : ""}${vr.summary ? ` : ${sanitizeUserInput(vr.summary)}` : ""}`
           : "";
 
-        const slNote = slWasModified ? ` [SL initial: ${t.sl_initial}, SL final CSV: ${t.sl}]` : "";
+        const slNote = !slWasModified
+          ? ""
+          : t.sl_initial != null
+            ? ` [SL initial: ${t.sl_initial}, SL final CSV: ${t.sl}]`
+            : " [stop déplacé après l'entrée : le stop enregistré est du côté du gain, le risque pris à l'ouverture est inconnu]";
         const tpNote = tpWasModified ? ` [TP initial: ${t.tp_initial}, TP final CSV: ${t.tp}]` : "";
 
         return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | Lot:${t.lot_size}

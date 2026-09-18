@@ -23,6 +23,7 @@
 import { fenetreDeSession } from "@/lib/sessions-de-marche";
 import { prixConnu } from "@/lib/prix-connu";
 import { calculatePips, getTradeResult } from "@/lib/pips";
+import { risqueEnPips } from "@/lib/risque-du-trade";
 
 export interface SelectionTrade {
   open_time: string;
@@ -194,18 +195,27 @@ export function computeMechanicalViolations(
     if (sl == null) add("missing_sl", idx);
     if (tp == null) add("missing_tp", idx);
 
-    // RR planifié et largeur du SL : calculés sur les mêmes pips que le prompt.
-    if (sl != null) {
-      const riskPips = calculatePips(t.pair, t.entry_price, sl);
-      if (riskPips > 0) {
-        if (strategy.max_sl_pips != null && riskPips > strategy.max_sl_pips) {
-          add("sl_too_wide", idx);
-        }
-        if (strategy.risk_reward != null && tp != null) {
-          const rewardPips = calculatePips(t.pair, t.entry_price, tp);
-          if (rewardPips > 0 && rewardPips / riskPips < strategy.risk_reward) {
-            add("low_rr", idx);
-          }
+    /**
+     * RR planifié et largeur du SL : calculés sur les mêmes pips que le prompt.
+     *
+     * ⚠️⚠️ UN STOP SUIVI N'EST PAS UN RISQUE MINUSCULE, C'EST UN RISQUE
+     * INCONNU. MetaTrader pousse le stop COURANT à la clôture : remonté au
+     * point mort ou en profit, il se retrouve du côté du GAIN, et la distance
+     * |entrée − sl| ne mesure plus rien. Mesuré en base le 2026-09-18 :
+     * 64 trades sur 447, tous MT5, dont 57 gagnants. `sl_too_wide` ne pouvait
+     * donc jamais se déclencher sur eux, et `low_rr` divisait par un risque
+     * quasi nul. Les deux contrôles se taisent maintenant plutôt que d'absoudre.
+     * Voir lib/risque-du-trade.
+     */
+    const riskPips = risqueEnPips(t.pair, t.direction, t.entry_price, sl);
+    if (riskPips != null) {
+      if (strategy.max_sl_pips != null && riskPips > strategy.max_sl_pips) {
+        add("sl_too_wide", idx);
+      }
+      if (strategy.risk_reward != null && tp != null) {
+        const rewardPips = calculatePips(t.pair, t.entry_price, tp);
+        if (rewardPips > 0 && rewardPips / riskPips < strategy.risk_reward) {
+          add("low_rr", idx);
         }
       }
     }
