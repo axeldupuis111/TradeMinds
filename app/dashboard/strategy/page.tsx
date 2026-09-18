@@ -1,6 +1,7 @@
 "use client";
 
 import { libelleDeSession, sessionsProposees } from "@/lib/sessions-de-marche";
+import { quotaAtteint } from "@/lib/quota-du-plan";
 import { useLanguage } from "@/lib/LanguageContext";
 import LectureRatee from "@/components/LectureRatee";
 import { money } from "@/lib/account-currency";
@@ -120,7 +121,7 @@ export default function StrategyPage() {
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(showUnsavedModal, () => setShowUnsavedModal(false));
-  const [strategies, setStrategies] = useState<{ id: string; name: string }[]>([]);
+  const [strategies, setStrategies] = useState<{ id: string; name: string; is_demo?: boolean }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(showDeleteConfirm, () => setShowDeleteConfirm(false));
@@ -256,7 +257,7 @@ export default function StrategyPage() {
     }
     setLectureRatee(false);
 
-    const list = (allStrats || []).map((s: Record<string, unknown>) => ({ id: s.id as string, name: (s.name as string) || "" }));
+    const list = (allStrats || []).map((s: Record<string, unknown>) => ({ id: s.id as string, name: (s.name as string) || "", is_demo: s.is_demo === true }));
     setStrategies(list);
 
     const target = selectId ? allStrats?.find((s: Record<string, unknown>) => s.id === selectId) : allStrats?.[0];
@@ -324,7 +325,10 @@ export default function StrategyPage() {
 
   // Le plan free est limité à 1 stratégie (maxStrategies) ; les plans payants
   // en créent autant qu'ils veulent.
-  const strategyLimitReached = maxStrategies != null && strategies.length >= maxStrategies;
+  // ⚠️⚠️ LA FICHE DE DÉMONSTRATION NE COMPTE PAS : elle est prêtée, et elle
+  // occupait la seule place du plan gratuit. Un inscrit qui essayait la démo se
+  // voyait refuser sa PREMIÈRE fiche. Voir lib/quota-du-plan.
+  const strategyLimitReached = quotaAtteint(strategies, maxStrategies);
 
   function handleNewStrategy() {
     if (strategyLimitReached) {

@@ -1,6 +1,7 @@
 "use client";
 
 import EquityCurve from "@/components/charts/EquityCurve";
+import { quotaAtteint } from "@/lib/quota-du-plan";
 import LectureRatee from "@/components/LectureRatee";
 import {
   DEFAULT_CURRENCY,
@@ -47,6 +48,8 @@ interface Challenge {
   balance: number;
   status: "active" | "passed" | "failed";
   created_at: string;
+  /** Ligne prêtée par le mode démo : elle ne compte pas dans le quota du plan. */
+  is_demo?: boolean | null;
   /** Devise choisie à la création. Le broker fait autorité s'il en annonce une. */
   currency: string | null;
   /** Solde réel poussé par l'EA. Null tant qu'aucune synchro n'a eu lieu. */
@@ -992,6 +995,8 @@ export default function ChallengePage() {
 
   // Data state
   const [activeAccounts, setActiveAccounts] = useState<Challenge[]>([]);
+  // ⚠️ Les comptes de démonstration sont prêtés, pas créés : voir lib/quota-du-plan.
+  const limiteDeComptesAtteinte = quotaAtteint(activeAccounts, maxAccounts);
   const [accountStatsMap, setAccountStatsMap] = useState<Record<string, AccountStats>>({});
   const [history, setHistory] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1507,7 +1512,9 @@ export default function ChallengePage() {
         </h2>
         <div className="h-px bg-border mt-2 mb-4" />
 
-        {!planLoading && maxAccounts !== null && activeAccounts.length >= maxAccounts && (
+        {/* ⚠️⚠️ Le compte de DÉMONSTRATION ne compte pas : on demandait de payer
+            pour sortir d'une démo offerte. Voir lib/quota-du-plan. */}
+        {!planLoading && limiteDeComptesAtteinte && (
           <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 mb-4 flex items-center gap-3">
             <svg className="w-5 h-5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1517,7 +1524,7 @@ export default function ChallengePage() {
           </div>
         )}
 
-        <div className="space-y-4" style={!planLoading && maxAccounts !== null && activeAccounts.length >= maxAccounts ? { opacity: 0.4, pointerEvents: "none" as const } : {}}>
+        <div className="space-y-4" style={!planLoading && limiteDeComptesAtteinte ? { opacity: 0.4, pointerEvents: "none" as const } : {}}>
           {/* Account type selector */}
           <div>
             <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>
