@@ -1127,8 +1127,15 @@ export default function GoalsPage() {
                                       <button
                                         onClick={() => { setEditingTarget(g.id); setEditValue(String(g.target)); }}
                                         title={t("goals_edit_target")} aria-label={t("goals_edit_target")}
-                                        /* ⚠️ 30 × 17 sans marge : voir la note du bouton de suppression. */
-                                        className="group/edit inline-flex items-center gap-1 py-1.5 -my-1.5 text-[11px] text-muted mt-0.5 hover:text-accent transition-colors">
+                                        /**
+                                         * ⚠️ 30 × 17 sans marge : voir la note du bouton de
+                                         * suppression. ⚠️ ET LA LARGEUR COMPTE AUSSI : mesuré
+                                         * en production après le premier correctif, le plus
+                                         * court de ces boutons faisait 21 px de LARGE (« ≤ 2 »)
+                                         * pour 45 de haut. La WCAG 2.5.8 demande 24 dans les
+                                         * DEUX sens.
+                                         */
+                                        className="group/edit inline-flex items-center gap-1 px-1.5 -mx-1.5 py-1.5 -my-1.5 text-[11px] text-muted mt-0.5 hover:text-accent transition-colors">
                                         {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}
                                         <PenLine className="w-2.5 h-2.5 opacity-0 group-hover/edit:opacity-60 transition-opacity" />
                                       </button>

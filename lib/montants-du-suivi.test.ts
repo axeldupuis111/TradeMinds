@@ -117,9 +117,20 @@ describe("les montants du suivi de compte s'écrivent au centime", () => {
     const chart = sansCommentaires(
       readFileSync(join(process.cwd(), "components/charts/EquityCurve.tsx"), "utf8"),
     );
-    expect(chart, "le trait annonce « capital initial » en toute circonstance").toContain(
-      't(recale ? "equity_depart_recale" : "challenge_initial_capital")',
+    /**
+     * ⚠️ ON ÉPINGLE L'INTENTION, PAS LA CHAÎNE. La première version exigeait
+     * `t(recale ? "equity_depart_recale" : "challenge_initial_capital")` mot
+     * pour mot, et elle a cassé le jour où l'étiquette a été RACCOURCIE parce
+     * qu'elle débordait du graphique sur téléphone : le code s'améliorait, le
+     * garde tombait. Ce qui compte : le trait dit quelque chose de DIFFÉRENT
+     * selon qu'il est recalé ou non.
+     */
+    const etiquette = /label=\{\{\s*value:\s*t\(recale \? "([a-z_]+)" : "([a-z_]+)"\)/.exec(chart);
+    expect(etiquette, "le trait annonce la même chose en toute circonstance").not.toBeNull();
+    expect(etiquette![1], "l'étiquette du recalage parle encore de capital initial").not.toBe(
+      etiquette![2],
     );
+    expect(etiquette![2]).toBe("challenge_initial_capital");
     const page = source();
     expect(page, "la page ne dit pas au graphique si elle a recalé la courbe").toContain(
       "recale={stats.curveRecale}",
@@ -128,6 +139,7 @@ describe("les montants du suivi de compte s'écrivent au centime", () => {
     const dits = new Set<string>();
     for (const langue of ["fr", "en", "de", "es"]) {
       const src = readFileSync(join(process.cwd(), `lib/i18n/${langue}.ts`), "utf8");
+      // La phrase complète vit sous le graphique ; c'est elle qu'on éprouve ici.
       const m = /"equity_depart_recale":\s*"([^"]+)"/.exec(src);
       expect(m, `equity_depart_recale manquante en ${langue}`).not.toBeNull();
       dits.add(m![1]);

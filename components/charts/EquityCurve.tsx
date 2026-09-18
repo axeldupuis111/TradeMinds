@@ -180,7 +180,7 @@ export default function EquityCurve({ data, initialBalance, currency = DEFAULT_C
                * téléphone, le trader en voit cinq pixels : l'explication de la
                * courbe, celle qui dit POURQUOI elle part de là, est invisible.
                */
-              label={{ value: t(recale ? "equity_depart_recale" : "challenge_initial_capital"), position: "insideTopLeft", fill: c.axis, fontSize: 10 }}
+              label={{ value: t(recale ? "equity_depart_recale_court" : "challenge_initial_capital"), position: "insideTopLeft", fill: c.axis, fontSize: 10 }}
             />
             <Area
               type="monotone"
@@ -195,6 +195,21 @@ export default function EquityCurve({ data, initialBalance, currency = DEFAULT_C
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {/**
+       * ⚠️⚠️ L'EXPLICATION VIT SOUS LE GRAPHIQUE, PAS DEDANS. Mesuré à 390 px :
+       * la phrase entière fait 172 px alors que l'aire tracée en offre 207 à
+       * partir de l'axe, et Recharts la posait d'abord à DROITE de la ligne,
+       * donc dehors (elle courait jusqu'à x=482 pour un graphique qui s'arrête
+       * à 315). Rentrée à l'intérieur, elle débordait encore de vingt pixels.
+       *
+       * Une étiquette de ligne doit être COURTE ; une phrase qui explique
+       * pourquoi la courbe part de là est une légende, et une légende se met
+       * sous le dessin, où elle a toute la largeur et où elle peut aller à la
+       * ligne.
+       */}
+      {recale && (
+        <p className="mt-2 text-xs text-foreground-muted">{t("equity_depart_recale")}</p>
+      )}
     </KpiCardPremium>
   );
 }

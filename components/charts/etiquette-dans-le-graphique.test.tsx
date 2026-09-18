@@ -63,3 +63,36 @@ describe("les étiquettes de lignes de référence", () => {
     expect(n, "plus aucun graphique : le balayage est cassé").toBeGreaterThanOrEqual(3);
   });
 });
+
+describe("une legende de graphique", () => {
+  /**
+   * ⚠️⚠️ RENTRÉE À L'INTÉRIEUR, LA PHRASE DÉBORDAIT ENCORE. Mesuré en
+   * production à 390 px après le premier correctif : 172 px de texte pour une
+   * aire tracée qui en offre 207 à partir de l'axe, et Recharts la posait à
+   * x=165, donc jusqu'à 337 pour un graphique qui s'arrête à 315.
+   *
+   * Une étiquette de ligne doit être COURTE. La phrase qui explique pourquoi
+   * la courbe part de là est une légende, et une légende se met SOUS le dessin.
+   */
+  it("l'explication du recalage est sous le graphique, pas dessus", () => {
+    const src = readFileSync(join(RACINE, "components/charts/EquityCurve.tsx"), "utf8");
+    const i = src.indexOf("</ResponsiveContainer>");
+    expect(i, "le graphique a changé de forme").toBeGreaterThan(-1);
+    expect(
+      src.slice(i),
+      "la phrase d'explication n'est plus rendue sous le graphique",
+    ).toContain("equity_depart_recale");
+    const etiquette = src.slice(src.indexOf("<ReferenceLine"), i);
+    expect(
+      etiquette,
+      "l'étiquette de la ligne reprend la phrase longue : elle sera coupée sur un téléphone",
+    ).toContain("equity_depart_recale_court");
+  });
+
+  it("la version courte existe dans les quatre langues", () => {
+    for (const langue of ["fr", "en", "de", "es"]) {
+      const dict = readFileSync(join(RACINE, `lib/i18n/${langue}.ts`), "utf8");
+      expect(dict, `étiquette courte absente en ${langue}`).toContain('"equity_depart_recale_court"');
+    }
+  });
+});

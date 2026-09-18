@@ -725,6 +725,7 @@ const dict: Record<string, string> = {
   "equity_balance": "Balance",
   "equity_date": "Datum",
   "equity_depart_recale": "Start auf den Broker-Kontostand ausgerichtet",
+  "equity_depart_recale_court": "Broker-Saldo",
   "challenge_closed": "Geschlossen",
   "challenge_confirm_closed": "Dieses Tracking schließen?",
   "challenge_marked_closed": "Tracking geschlossen.",
